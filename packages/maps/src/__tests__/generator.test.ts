@@ -116,3 +116,24 @@ describe("no-adjacent-red-tokens constraint — 10,000 seeds", () => {
     }
   }, 60_000); // 60s timeout for 10k iterations
 });
+
+describe("port placement", () => {
+  it("never puts two ports on edges that share a corner (1,000 seeds)", async () => {
+    const { buildGraph } = await import("@settlers/engine");
+    const def = await loadBaseDef();
+    for (let i = 0; i < 1000; i++) {
+      const { map } = generateMap(def, seedFromString(`ports-${i}`));
+      const graph = buildGraph(map.hexes.filter((h) => h.terrain !== "sea"));
+      const corners = map.ports.flatMap((p) => graph.edges.get(p.edgeId)!.vertices);
+      expect(new Set(corners).size, `seed ports-${i}`).toBe(corners.length);
+    }
+  });
+
+  it("uses each port type from the pool exactly once", async () => {
+    const def = await loadBaseDef();
+    const { map } = generateMap(def, seedFromString("port-types"));
+    const counts: Record<string, number> = {};
+    for (const p of map.ports) counts[p.type] = (counts[p.type] ?? 0) + 1;
+    expect(counts).toEqual(def.pools!.ports);
+  });
+});

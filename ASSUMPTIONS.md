@@ -13,11 +13,12 @@ applies to the number-token draw phase only. It does not constrain terrain place
 
 ### A2: Port auto-placement distributes ports evenly around the coast
 
-When a port entry uses `"edge": "auto"`, the generator picks coastal edges in order
-around the perimeter of the board, distributing the port pool evenly.
-Exact canonical position is not required; a valid coastal edge placement is sufficient.
+When a port entry uses `"edge": "auto"`, the generator sorts the coastal edges by angle around
+the board's centre and takes evenly spaced ones, starting from a random offset. Port types are
+shuffled from the pool. Ports with a fixed edge ID keep it. This doesn't reproduce the official
+layout; it only guarantees spread-out ports that never share a corner.
 
-**Test:** `generator.test.ts` — "resolved map passes validation" (every port edge is on the land graph).
+**Test:** `generator.test.ts` — "never puts two ports on edges that share a corner (1,000 seeds)" and "resolved map passes validation".
 
 ### A3: Generator retry limit for red-token constraint is 1,000
 

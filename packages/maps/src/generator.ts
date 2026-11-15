@@ -1,4 +1,12 @@
-import { type RngState, shuffle, buildGraph, edgeId, hexKey, type Hex } from "@settlers/engine";
+import {
+  type RngState,
+  shuffle,
+  nextInt,
+  buildGraph,
+  edgeId,
+  hexKey,
+  type Hex,
+} from "@settlers/engine";
 import {
   type MapDef,
   type ResolvedHex,
@@ -42,6 +50,24 @@ function hasRedTokenViolation(hexes: ResolvedHex[], graph: ReturnType<typeof bui
     }
   }
   return false;
+}
+
+/** Coastal edges sorted by angle around the board's centre, so neighbours in the list are neighbours on the coast. */
+function coastalEdgesAroundBoard(landHexes: ResolvedHex[]): string[] {
+  const px = (q: number, r: number) => Math.sqrt(3) * (q + r / 2);
+  const py = (_q: number, r: number) => 1.5 * r;
+  const cx = landHexes.reduce((a, h) => a + px(h.q, h.r), 0) / landHexes.length;
+  const cy = landHexes.reduce((a, h) => a + py(h.q, h.r), 0) / landHexes.length;
+  const angle = (eid: string) => {
+    const hexes = eid.split("|").map((k) => k.split(",").map(Number) as [number, number]);
+    const mx = hexes.reduce((a, [q, r]) => a + px(q, r), 0) / 2;
+    const my = hexes.reduce((a, [q, r]) => a + py(q, r), 0) / 2;
+    return Math.atan2(my - cy, mx - cx);
+  };
+  return coastalEdgeIds(landHexes)
+    .map((eid) => ({ eid, a: angle(eid) }))
+    .sort((x, y) => x.a - y.a || (x.eid < y.eid ? -1 : 1))
+    .map((x) => x.eid);
 }
 
 function coastalEdgeIds(landHexes: ResolvedHex[]): string[] {
@@ -137,10 +163,17 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
   }
 
   // --- Ports ---
+  // "auto" ports are spread evenly around the coast, starting from a random offset (ASSUMPTIONS A2).
   type PortType = ResolvedPort["type"];
-  const coastal = coastalEdgeIds(landHexes);
-  let shuffledCoastal: string[];
-  ({ result: shuffledCoastal, rng: r } = shuffle(coastal, r));
+  const coastal = coastalEdgesAroundBoard(landHexes);
+  const portDefs = def.ports ?? [];
+  const autoCount = portDefs.filter((p) => p.edge === "auto").length;
+  let offset = 0;
+  if (autoCount > 0 && coastal.length > 0) {
+    let pick: number;
+    ({ value: pick, rng: r } = nextInt(r, coastal.length));
+    offset = pick;
+  }
 
   const portPoolEntries = expandPool<PortType>(
     (def.pools?.ports ?? {}) as Partial<Record<PortType, number>>,
@@ -148,13 +181,21 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
   let shuffledPortTypes: PortType[];
   ({ result: shuffledPortTypes, rng: r } = shuffle(portPoolEntries, r));
 
-  const ports: ResolvedPort[] = (def.ports ?? []).map((p, i) => ({
-    edgeId: shuffledCoastal[i % shuffledCoastal.length]!,
-    type:
+  let autoIndex = 0;
+  let poolIndex = 0;
+  const ports: ResolvedPort[] = portDefs.map((p) => {
+    let edge = p.edge;
+    if (edge === "auto") {
+      const slot = Math.floor((autoIndex * coastal.length) / autoCount) + offset;
+      edge = coastal[slot % coastal.length]!;
+      autoIndex++;
+    }
+    const type =
       p.type === "pool:ports"
-        ? (shuffledPortTypes[i % shuffledPortTypes.length] ?? "any3to1")
-        : (p.type as PortType),
-  }));
+        ? (shuffledPortTypes[poolIndex++ % shuffledPortTypes.length] ?? "any3to1")
+        : (p.type as PortType);
+    return { edgeId: edge, type };
+  });
 
   return {
     map: {

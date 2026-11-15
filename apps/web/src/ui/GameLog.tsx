@@ -1,5 +1,5 @@
 import type { Snapshot } from "../game/LocalGame";
-import { withNames, type SeatInfo } from "../game/store";
+import { withNames, type SeatInfo } from "../game/seats";
 
 export function GameLog({ snap, seats }: { snap: Snapshot; seats: SeatInfo[] }) {
   const recent = snap.log.slice(-40).reverse();

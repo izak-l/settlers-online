@@ -294,17 +294,31 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 
 | Direction | Type | Payload |
 | --- | --- | --- |
-| C→S | `join` | lobby id (user comes from the auth token on the handshake) |
-| C→S | `action` | `Action`, client sequence number |
-| C→S | `chat` | text |
-| S→C | `welcome` | seat id or spectator, full view |
-| S→C | `state` | full `PlayerView` + that player's `legal` actions + public `scores` + server sequence number + new events |
-| S→C | `rejected` | client sequence number, reason code |
-| S→C | `lobby` | seats, ready flags, chosen map and ruleset |
+| C→S | `profile:setUsername` | username (3–20 letters, digits, `_`; unique, case-insensitive) |
+| C→S | `lobby:create` | seats (3 or 4), allow spectators |
+| C→S | `lobby:join` | lobby id (watch it; doesn't take a seat) |
+| C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
+| C→S | `lobby:ready` | lobby id, ready flag |
+| C→S | `lobby:start` | lobby id (host only; every seat filled and ready) |
+| C→S | `game:join` | game id (your seat if you have one, otherwise spectator if allowed) |
+| C→S | `game:action` | game id, `Action` |
+| C→S | `chat` | text (M6) |
+| S→C | `welcome` | your user id and username (null until picked) |
+| S→C | `lobby` | seats (username, ready, connected), status, game id once started |
+| S→C | `state` | game id, `seq`, `you` (seat or `"spectator"`), filtered `PlayerView`, your `legal` actions, public `scores`, players (username, connected), new `events`; the full `log` only on join |
 
 - v1 sends the full filtered view on every change. Board state is small (a few KB), so diffs aren't worth the complexity yet.
 - `legalActions` and `computeVP` need the full `GameState`, which clients never get, so the server computes both and sends them with the view. The client highlights moves from `legal` and never works out legality itself.
 - Each game processes actions one at a time through a per-game queue, so two clicks can't race.
+
+**As built (M4)**
+
+- Every client→server message is acknowledged: `{ ok: true, ... }` or `{ ok: false, code, message }` with a stable code (engine codes plus `UNAUTHENTICATED`, `BAD_REQUEST`, `NEED_USERNAME`, `USERNAME_TAKEN`, `NOT_FOUND`, `NOT_HOST`, `SEAT_TAKEN`, `LOBBY_STARTED`, `NOT_READY`, `SPECTATORS_DISABLED`, `SERVER_ERROR`). The acknowledgement replaces a separate `rejected` message, and ties each rejection to the request that caused it. Payloads are zod-validated in `packages/protocol`.
+- On each action the server: applies it with the engine → writes it (with its events) to `actions` → updates the room → sends each socket in the game its own `state`, built once per role. Nothing is broadcast that a restart would lose.
+- `state` carries only that action's new events; the full log comes on `game:join`, so a reconnecting client rebuilds its log from one message.
+- Rooms load on demand from the latest snapshot plus later actions, so a restarted server picks games up on the first `game:join`. Clients rejoin automatically after any reconnect.
+- **Sign-in:** the browser signs in with Supabase (email + password, Discord) and sends the access token in the Socket.IO handshake. The server verifies it against the project's signing keys (`/auth/v1/.well-known/jwks.json`, issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`), with a shared-secret fallback for legacy projects. `AUTH_MODE=dev` adds dev sign-in (token `dev:<username>`, stored per tab) for local testing; the server refuses it when `NODE_ENV=production`.
+- Lobby ids are short random strings used in invite links (`/#/lobby/<id>`). Seat *i* plays as engine seat `p<i>`. The seed comes from the OS when the host starts and stays on the server.
 
 **Hidden information**
 
@@ -330,9 +344,11 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 Postgres stores each game as a header plus an append-only action log; snapshots are only a speed cache.
 
 - `games`: id, lobby id, created/ended, map definition (inline JSON), ruleset (module ids + versions), seed, status.
-- `actions`: game id, sequence number, actor (seat or system), action JSON, timestamp.
-- `snapshots`: game id, sequence number, state JSON, written every N actions and on game end.
+- `actions`: game id, sequence number (1-based, primary key with the game id), actor (seat or system), action JSON, the events it produced (so the log survives restarts), timestamp.
+- `snapshots`: game id, sequence number, state JSON without the derived graph (`toSnapshot` / `fromSnapshot`), written every 25 actions (`SNAPSHOT_EVERY`). Writing on game end comes with the win condition (M5).
 - On server restart, rooms resume by loading the latest snapshot and replaying later actions.
+- Also stored: `profiles` (id = auth user id or `dev:<name>`, unique username), `lobbies` (seats as JSON), `game_players` (seat ↔ user). Migrations are plain SQL in `apps/server/migrations`, applied in order by `pnpm db:migrate` and on server start (behind an advisory lock).
+- The `Store` interface has a Postgres implementation and an in-memory one for tests; the same online test suite runs against both.
 - Each module has a `version`. A saved game replays with the module versions it was created with; if a version is no longer available, the game opens read-only from its last snapshot.
 - Replay viewer (later): step through the action log with full visibility after the game ends.
 

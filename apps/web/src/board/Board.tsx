@@ -1,6 +1,6 @@
 import type { Action, ActionSpec, Piece } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
-import type { BuildMode, SeatInfo } from "../game/store";
+import type { BuildMode, SeatInfo } from "../game/seats";
 import {
   HEX_SIZE,
   edgeEndpoints,

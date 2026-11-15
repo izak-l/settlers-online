@@ -117,11 +117,35 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       for (let j = 0; j < 4; j++)
         expect(spec.state!.view.zones[`hand-p${j}`]!.contents).toBeUndefined();
       expect("rng" in spec.state!.view).toBe(false);
-      // Every viewer gets one line per event (secret or public version), and the spectator
-      // never learns which resource was stolen.
-      for (const p of players) expect(p.log.length).toBe(spec.log.length);
-      expect(spec.log.length).toBeGreaterThan(20);
-      expect(spec.log.filter((l) => / stole 1 /.test(l))).toEqual([]);
+      // Everyone saw the same public events (e.g. every roll); the spectator never sees a secret:
+      // which card was stolen, or which dev card someone drew.
+      const rolls = (log: string[]) => log.filter((l) => / rolled \d+$/.test(l));
+      for (const p of players) expect(rolls(p.log)).toEqual(rolls(spec.log));
+      expect(rolls(spec.log).length).toBeGreaterThanOrEqual(10);
+      expect(spec.log.filter((l) => / stole 1 | drew /.test(l))).toEqual([]);
+    });
+
+    it("plays a whole game to a winner; everyone sees it and the game is stored as finished", async () => {
+      const { gameId, players, spec } = await setUpGame();
+      const everyone = [...players, spec];
+      for (
+        let guard = 0;
+        guard < 20_000 && everyone[0]!.state!.view.winner === undefined;
+        guard++
+      ) {
+        const actor = everyone.find((c) => (c.state?.legal.length ?? 0) > 0);
+        if (!actor) throw new Error("nobody can act");
+        const ack = await actor.act(gameId, pick(actor.state!));
+        if (!ack.ok) throw new Error(`${ack.code}: ${ack.message}`);
+        await Promise.all(everyone.map((c) => c.until(() => c.state!.seq === ack.seq)));
+      }
+      const winner = spec.state!.view.winner;
+      expect(winner).toBeDefined();
+      expect(spec.log.at(-1)).toMatch(/won the game/);
+      // After the game, every viewer sees the full score (VP cards included).
+      expect(spec.state!.scores[winner!]).toBeGreaterThanOrEqual(10);
+      for (const p of players) expect(p.state!.legal).toEqual([]);
+      expect((await store.getGame(gameId))!.game.status).toBe("finished");
     });
 
     it("rejects acting out of turn, spectators acting, and malformed actions", async () => {

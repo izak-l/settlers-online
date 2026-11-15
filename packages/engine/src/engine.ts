@@ -1,7 +1,13 @@
 import { buildGraph } from "./board/graph";
 import { nextInt, seedFromString } from "./rng";
 import type { Action, ActionSpec } from "./actions";
-import { reject, runVpSources, type ActionHandler, type RulesModule } from "./module";
+import {
+  reject,
+  runTradeRatio,
+  runVpSources,
+  type ActionHandler,
+  type RulesModule,
+} from "./module";
 import { MODULES } from "./modules";
 import type {
   Actor,
@@ -140,6 +146,15 @@ export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
     }
   }
   return result;
+}
+
+/** The bank rate `player` gets for each resource (cards given per card received). */
+export function tradeRatios(state: GameState, player: PlayerId): Record<string, number> {
+  const modules = modulesOf(state);
+  const out: Record<string, number> = {};
+  for (const r of modules.flatMap((m) => m.resources ?? []))
+    out[r] = runTradeRatio(modules, state, player, r);
+  return out;
 }
 
 /**

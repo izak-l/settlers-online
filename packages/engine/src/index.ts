@@ -10,6 +10,7 @@ export {
   viewFor,
   defaultAction,
   computeVP,
+  tradeRatios,
   toSnapshot,
   fromSnapshot,
   type StateSnapshot,
@@ -18,3 +19,4 @@ export {
   type Viewer,
 } from "./engine";
 export { COSTS as BASE_COSTS, BASE_RESOURCES, DEV_CARD_NAMES } from "./modules/base";
+export { baseInvariantViolations } from "./modules/base/invariants";

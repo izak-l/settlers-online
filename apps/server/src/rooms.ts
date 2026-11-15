@@ -6,6 +6,7 @@ import {
   fromSnapshot,
   legalActions,
   toSnapshot,
+  tradeRatios,
   viewFor,
   type Action,
   type GameEvent,
@@ -86,7 +87,9 @@ export class GameRoom {
     this.seq = seq;
     this.log.push(...res.events);
 
-    if (seq % this.snapshotEvery === 0) {
+    if (this.state.winner !== undefined) {
+      await this.store.finishGame(this.id, seq, toSnapshot(this.state));
+    } else if (seq % this.snapshotEvery === 0) {
       // A failed snapshot only costs replay time later; don't fail the action for it.
       await this.store.saveSnapshot(this.id, seq, toSnapshot(this.state)).catch((err: unknown) => {
         console.error(`snapshot failed for ${this.id}@${seq}`, err);
@@ -112,6 +115,7 @@ export class GameRoom {
       view: viewFor(this.state, you),
       legal: you === "spectator" ? [] : legalActions(this.state, you),
       scores,
+      ratios: you === "spectator" ? {} : tradeRatios(this.state, you),
       events: newEvents.filter(visible),
       ...(includeLog ? { log: this.log.filter(visible) } : {}),
       players,

@@ -44,6 +44,7 @@ export class SocketGame implements GameClient {
       view: msg.view,
       legal: msg.legal,
       scores: msg.scores,
+      ratios: msg.ratios,
       log: this.log,
       players: msg.players.map((p) => ({ id: p.seat, name: p.username, connected: p.connected })),
     };

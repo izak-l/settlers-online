@@ -71,11 +71,17 @@ export class TestClient {
   }
 }
 
-/** Prefer building, then ending the turn, then whatever is first. */
+/** A simple greedy player: build what scores, play cards, trade with the bank, then end the turn. */
 export function pick(state: GameStateMessage): Action {
+  const first = (...types: string[]) => state.legal.find((a) => types.includes(a.type));
   return (
-    state.legal.find((a) => a.type.startsWith("BUILD_")) ??
-    state.legal.find((a) => a.type === "END_TURN") ??
+    first("BUILD_CITY") ??
+    first("BUILD_SETTLEMENT") ??
+    first("BUY_DEV_CARD") ??
+    first("BUILD_ROAD") ??
+    first("PLAY_KNIGHT", "PLAY_ROAD_BUILDING", "PLAY_YEAR_OF_PLENTY", "PLAY_MONOPOLY") ??
+    first("BANK_TRADE") ??
+    first("END_TURN", "ROLL") ??
     state.legal[0]!
   );
 }

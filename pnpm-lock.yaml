@@ -333,9 +333,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/maps
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.5
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.15
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.5)(supports-color@7.2.0)
 
 packages:
 

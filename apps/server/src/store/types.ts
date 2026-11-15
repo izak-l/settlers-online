@@ -66,6 +66,8 @@ export interface Store {
   appendAction(gameId: string, action: StoredAction): Promise<void>;
   actionsAfter(gameId: string, seq: number): Promise<StoredAction[]>;
   saveSnapshot(gameId: string, seq: number, state: StateSnapshot): Promise<void>;
+  /** Mark the game finished (with a final snapshot). */
+  finishGame(gameId: string, seq: number, state: StateSnapshot): Promise<void>;
   latestSnapshot(gameId: string): Promise<{ seq: number; state: StateSnapshot } | null>;
 
   close(): Promise<void>;

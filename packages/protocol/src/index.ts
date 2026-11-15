@@ -168,8 +168,10 @@ export interface GameStateMessage {
   view: PlayerView;
   /** What `you` may legally send right now (always empty for spectators). */
   legal: ActionSpec[];
-  /** Public VP per seat. */
+  /** VP per seat as this viewer may see it (others' hidden VP cards excluded until the game ends). */
   scores: Record<PlayerId, number>;
+  /** Your bank rate per resource (4, or 3/2 with ports). Empty for spectators. */
+  ratios: Record<string, number>;
   /** Events this viewer may see from the action that produced this state. */
   events: GameEvent[];
   /** Full visible history, oldest first. Only sent when joining or reconnecting. */

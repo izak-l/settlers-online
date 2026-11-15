@@ -3,6 +3,7 @@ import { vertexId, edgeId, type Hex } from "../board";
 import type { Action } from "../actions";
 import { apply, computeVP, createGame, legalActions } from "../engine";
 import { BASE_RESOURCES, PIECE_LIMITS, mainDecision, rollDecision } from "../modules/base";
+import { baseInvariantViolations } from "../modules/base/invariants";
 import type { GameState, MapInput, PieceLocation, PlayerId, Resources } from "../types";
 
 /**
@@ -243,6 +244,7 @@ export function countPieces(state: GameState, owner: PlayerId, type: string): nu
 // ---- invariants (CLAUDE.md "Testing invariants") ----
 
 export function checkInvariants(state: GameState): void {
+  expect(baseInvariantViolations(state)).toEqual([]);
   for (const r of BASE_RESOURCES) {
     let total = state.zones["bank"]!.contents[r] ?? 0;
     for (const p of state.players) total += state.zones[`hand-${p}`]!.contents[r] ?? 0;

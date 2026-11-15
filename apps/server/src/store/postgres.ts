@@ -162,6 +162,13 @@ export class PgStore implements Store {
     );
   }
 
+  async finishGame(gameId: string, seq: number, state: StateSnapshot): Promise<void> {
+    await this.saveSnapshot(gameId, seq, state);
+    await this.pool.query("update games set status = 'finished', ended_at = now() where id = $1", [
+      gameId,
+    ]);
+  }
+
   async latestSnapshot(gameId: string): Promise<{ seq: number; state: StateSnapshot } | null> {
     const { rows } = await this.pool.query<{ seq: number; state: StateSnapshot }>(
       "select seq, state from snapshots where game_id = $1 order by seq desc limit 1",

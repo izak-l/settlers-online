@@ -65,6 +65,12 @@ export class MemoryStore implements Store {
     list.push(copy({ seq, state }));
     this.snapshots.set(gameId, list);
   }
+  async finishGame(gameId: string, seq: number, state: StateSnapshot): Promise<void> {
+    await this.saveSnapshot(gameId, seq, state);
+    const g = this.games.get(gameId);
+    if (g) g.game.status = "finished";
+  }
+
   async latestSnapshot(gameId: string) {
     const list = this.snapshots.get(gameId) ?? [];
     return list.length ? copy(list[list.length - 1]!) : null;

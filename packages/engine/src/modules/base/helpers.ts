@@ -98,6 +98,20 @@ export function handOf(state: GameState, player: PlayerId): Resources {
   return state.zones[`hand-${player}`]!.contents;
 }
 
+export function handSize(state: GameState, player: PlayerId): number {
+  return Object.values(handOf(state, player)).reduce((a, b) => a + b, 0);
+}
+
+/** One entry per card, e.g. { wood: 2, ore: 1 } → ["wood", "wood", "ore"]. */
+export function cardList(res: Resources): string[] {
+  return Object.entries(res).flatMap(([r, n]) => Array<string>(Math.max(0, n)).fill(r));
+}
+
+export function robberHex(state: GameState): string | undefined {
+  const robber = state.pieces["robber"];
+  return robber && "hex" in robber.at ? robber.at.hex : undefined;
+}
+
 export function canAfford(state: GameState, player: PlayerId, cost: Resources): boolean {
   const hand = handOf(state, player);
   return Object.entries(cost).every(([r, n]) => (hand[r] ?? 0) >= n);

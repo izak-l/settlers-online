@@ -86,9 +86,18 @@ export interface GameEvent {
   type: string;
   /** Human-readable line for the game log. */
   text: string;
-  /** Players who may see this event; omitted means everyone. */
+  /** Only these players may see this event (spectators never). Omitted means everyone. */
   visibleTo?: PlayerId[];
+  /** Everyone may see this event (spectators included) except these players. */
+  hiddenFrom?: PlayerId[];
   data?: Record<string, unknown>;
+}
+
+/** The one rule for who sees an event; used by the server and the dev sandbox. */
+export function eventVisibleTo(event: GameEvent, viewer: PlayerId | "spectator"): boolean {
+  if (event.visibleTo) return viewer !== "spectator" && event.visibleTo.includes(viewer);
+  if (event.hiddenFrom) return viewer === "spectator" || !event.hiddenFrom.includes(viewer);
+  return true;
 }
 
 export const ERROR_CODES = [
@@ -99,6 +108,7 @@ export const ERROR_CODES = [
   "PIECE_LIMIT",
   "BANK_EMPTY",
   "INVALID_TRADE",
+  "INVALID_CHOICE",
   "GAME_OVER",
   "UNKNOWN_ACTION",
 ] as const;
@@ -113,6 +123,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   PIECE_LIMIT: "You have no pieces of that type left.",
   BANK_EMPTY: "The bank has run out of that resource.",
   INVALID_TRADE: "That trade isn't valid.",
+  INVALID_CHOICE: "That choice isn't allowed.",
   GAME_OVER: "The game is over.",
   UNKNOWN_ACTION: "Unknown action.",
 };

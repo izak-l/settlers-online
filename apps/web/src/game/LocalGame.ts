@@ -2,6 +2,7 @@ import {
   apply,
   computeVP,
   createGame,
+  eventVisibleTo,
   legalActions,
   seedFromString,
   viewFor,
@@ -79,7 +80,7 @@ export class LocalGame implements GameClient {
       view: viewFor(this.state, seat),
       legal: legalActions(this.state, seat),
       scores,
-      log: this.events.filter((e) => !e.visibleTo || e.visibleTo.includes(seat)),
+      log: this.events.filter((e) => eventVisibleTo(e, seat)),
       players: this.state.players.map((id, i) => ({ id, name: this.names[i]!, connected: true })),
     };
   }

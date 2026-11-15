@@ -2,6 +2,7 @@ import {
   apply,
   computeVP,
   createGame,
+  eventVisibleTo,
   fromSnapshot,
   legalActions,
   toSnapshot,
@@ -101,8 +102,7 @@ export class GameRoom {
     players: SeatPlayer[],
     includeLog: boolean,
   ): GameStateMessage {
-    const visible = (e: GameEvent) =>
-      !e.visibleTo || (you !== "spectator" && e.visibleTo.includes(you));
+    const visible = (e: GameEvent) => eventVisibleTo(e, you);
     const scores: Record<PlayerId, number> = {};
     for (const p of this.state.players) scores[p] = computeVP(this.state, p);
     return {

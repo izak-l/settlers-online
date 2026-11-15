@@ -2,6 +2,7 @@ import { nextInt } from "../../rng";
 import { runProduce, runRollDice, type ActionHandlers } from "../../module";
 import type { GameState } from "../../types";
 import { mainDecision, rollDecision } from "./helpers";
+import { startSevenFlow } from "./robber";
 
 /** Two six-sided dice. */
 export function rollTwoDice(draft: GameState): Record<string, number> {
@@ -19,10 +20,11 @@ export const turnActions: ActionHandlers = {
       const total = Object.values(dice).reduce((a, b) => a + b, 0);
       draft.moduleState["base"] = { ...(draft.moduleState["base"] as object), lastRoll: dice };
       events.push({ type: "ROLLED", text: `${player} rolled ${total}`, data: { dice, total } });
-      // A 7 produces nothing. Discards, robber and stealing arrive in M5.
-      if (total !== 7) runProduce(modules, draft, total, events);
       draft.decisions.pop();
       draft.decisions.push(mainDecision(player));
+      // A 7 produces nothing: discards, then the robber, are resolved before the main step.
+      if (total === 7) startSevenFlow(draft, player);
+      else runProduce(modules, draft, total, events);
     },
     candidates: () => [{ type: "ROLL" }],
   },

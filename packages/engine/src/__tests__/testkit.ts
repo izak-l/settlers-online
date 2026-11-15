@@ -2,7 +2,7 @@ import { expect } from "vitest";
 import { vertexId, edgeId, type Hex } from "../board";
 import type { Action } from "../actions";
 import { apply, computeVP, createGame, legalActions } from "../engine";
-import { BASE_RESOURCES, PIECE_LIMITS, mainDecision } from "../modules/base";
+import { BASE_RESOURCES, PIECE_LIMITS, mainDecision, rollDecision } from "../modules/base";
 import type { GameState, MapInput, PieceLocation, PlayerId, Resources } from "../types";
 
 /**
@@ -91,6 +91,16 @@ export function topActor(state: GameState): PlayerId {
   return top.pendingFrom[0]!;
 }
 
+/** Resolve every decision above MAIN (discards, robber, steal) by taking the first legal action. */
+export function resolveUntilMain(state: GameState): GameState {
+  let s = state;
+  while (s.decisions.at(-1)?.kind !== "MAIN") {
+    const p = topActor(s);
+    s = act(s, p, legalActions(s, p)[0]!);
+  }
+  return s;
+}
+
 /** Play every setup step by taking the first legal action. */
 export function runSetup(state: GameState): GameState {
   let s = state;
@@ -114,6 +124,42 @@ export function inMainPhase(state: GameState, player: PlayerId = "p0"): GameStat
   s.decisions = [mainDecision(player)];
   s.turn = { number: 1, activePlayer: player };
   return s;
+}
+
+/** Skip setup: `player` is about to roll on turn 1, with no pieces placed. */
+export function inRollPhase(state: GameState, player: PlayerId = "p0"): GameState {
+  const s = clone(state);
+  s.decisions = [rollDecision(player)];
+  s.turn = { number: 1, activePlayer: player };
+  return s;
+}
+
+/** Replace a player's hand exactly (returning their old cards to the bank first). */
+export function setHand(state: GameState, player: PlayerId, res: Resources): GameState {
+  const s = clone(state);
+  const hand = s.zones[`hand-${player}`]!.contents;
+  const bank = s.zones["bank"]!.contents;
+  for (const [r, n] of Object.entries(hand)) {
+    bank[r] = (bank[r] ?? 0) + n;
+    hand[r] = 0;
+  }
+  return give(s, player, res);
+}
+
+const seedCache = new Map<number, string>();
+/** A seed whose first roll (with no setup) totals `total`. Setup never touches the RNG. */
+export function seedRolling(total: number, seats: PlayerId[] = ["p0", "p1", "p2"]): string {
+  const key = total * 10 + seats.length;
+  if (seedCache.has(key)) return seedCache.get(key)!;
+  for (let i = 0; i < 10_000; i++) {
+    const seed = `roll-${total}-${i}`;
+    const res = apply(inRollPhase(newGame(seats, seed)), "p0", { type: "ROLL" });
+    if (res.ok && res.events[0]!.data!["total"] === total) {
+      seedCache.set(key, seed);
+      return seed;
+    }
+  }
+  throw new Error(`no seed rolls ${total}`);
 }
 
 let pieceCounter = 0;

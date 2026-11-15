@@ -1,5 +1,5 @@
 import { buildGraph } from "./board/graph";
-import { seedFromString } from "./rng";
+import { nextInt, seedFromString } from "./rng";
 import type { Action, ActionSpec } from "./actions";
 import { reject, runVpSources, type ActionHandler, type RulesModule } from "./module";
 import { MODULES } from "./modules";
@@ -135,13 +135,18 @@ export function computeVP(state: GameState, player: PlayerId): number {
   return runVpSources(modulesOf(state), state, player);
 }
 
-/** Fallback move when a player's timer runs out: end the turn if possible, else the first legal action. */
+/**
+ * Fallback move when a player's timer runs out: end the turn if possible, otherwise a random
+ * legal action. "Random" reads the game RNG without advancing it, so it's deterministic for a
+ * given state; the chosen action is then logged and replayed like any other.
+ */
 export function defaultAction(state: GameState, player: PlayerId): Action {
   const top = state.decisions.at(-1);
   if (top?.allowed.includes("END_TURN")) return { type: "END_TURN" };
-  const first = legalActions(state, player)[0];
-  if (!first) throw new Error(`No legal action for ${player} during ${top?.kind ?? "nothing"}`);
-  return first;
+  const legal = legalActions(state, player);
+  if (legal.length === 0)
+    throw new Error(`No legal action for ${player} during ${top?.kind ?? "nothing"}`);
+  return legal[nextInt(state.rng, legal.length).value]!;
 }
 
 // ---------------------------------------------------------------------------

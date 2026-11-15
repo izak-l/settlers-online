@@ -3,6 +3,7 @@ import { buildActions } from "./build";
 import { BASE_RESOURCES } from "./data";
 import { countOwned } from "./helpers";
 import { produce } from "./production";
+import { robberActions } from "./robber";
 import { setupActions, setupBase } from "./setup";
 import { rollTwoDice, turnActions } from "./turn";
 
@@ -15,7 +16,7 @@ export const baseModule: RulesModule = {
   id: "base",
   version: 1,
   resources: [...BASE_RESOURCES],
-  actions: { ...setupActions, ...turnActions, ...buildActions },
+  actions: { ...setupActions, ...turnActions, ...buildActions, ...robberActions },
   hooks: {
     rollDice: rollTwoDice,
     produce,

@@ -186,8 +186,8 @@ interface Decision {
 - `GameState` stores module ids, not module code. `MODULES` in `packages/engine/src/modules/index.ts` maps ids to modules. `graph` is derived and uses `Map`/`Set`, so persistence (M4) must drop it and rebuild it with `buildGraph`.
 - Zones hold `Record<ResourceId, number>` for now; ordered card zones arrive with dev cards (M5).
 - `viewFor` returns a `PlayerView`: the state minus `rng` and `graph`, with zones redacted (`public`: contents; `count`: contents for the owner, a count for others; `owner`: contents for the owner only; `hidden`: a count only).
-- `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it takes the first legal action. Random timeout defaults (discards, robber) come in M5.
-- A roll of 7 currently produces nothing and pushes nothing; discards, robber and steal come in M5.
+- `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it picks a random legal action, reading the RNG without advancing it (so it is deterministic for a state, and the chosen action is logged and replayed like any other).
+- A roll of 7 produces nothing. It pushes `MOVE_ROBBER` above `MAIN`, and above that a single `DISCARD` decision listing everyone over 7 cards (`pendingFrom` shrinks as each discards, in any order). Moving the robber pushes `STEAL` only when two or more players can be robbed.
 
 ## 6. Rules modules and hooks
 
@@ -259,8 +259,8 @@ Bank: 19 of each resource. Dev deck: 14 Knight, 5 Victory Point, 2 Road Building
 
 - [x] Roll two dice; every hex with that token (and no robber) pays 1 per settlement, 2 per city.
 - [x] Bank shortage: if the bank can't pay everyone owed a resource, nobody gets it, unless only one player is owed it (they get what remains).
-- [ ] Roll of 7: every player with 8+ cards discards half, rounded down, simultaneously.
-- [ ] Robber must move to a different hex; active player steals one random card from a player with a building on it (if any have cards).
+- [x] Roll of 7: every player with 8+ cards discards half, rounded down, simultaneously.
+- [x] Robber must move to a different hex; active player steals one random card from a player with a building on it (if any have cards).
 
 **Building**
 

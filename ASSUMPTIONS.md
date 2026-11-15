@@ -52,3 +52,29 @@ Shortage compares the bank against the total owed of that resource from every he
 When several things are wrong, the error code reports the first failure in that order.
 
 **Test:** `build.test.ts` — "stops at 15 roads" (no free placement, still `PIECE_LIMIT`).
+
+## M5 — Robber, dev cards, trades, awards, win
+
+### A8: With exactly one player to rob, the steal happens automatically
+
+The thief has no real choice, so there's no `STEAL` step. With two or more, the thief picks.
+
+**Test:** `robber.test.ts` — "steals automatically when only one player can be robbed".
+
+### A9: The robber may move to any other land hex, including the desert
+
+Sea hexes are not allowed. Only players with a building on that hex and at least one card can be robbed; your own buildings never count.
+
+**Test:** `robber.test.ts` — "must move to a different land hex" (18 options on a 19-hex board) and "goes straight to the main step when nobody there can be robbed".
+
+### A10: Everyone else sees that a card was stolen, but not which
+
+The thief and victim get an event naming the resource. Everyone else, spectators included, gets "X stole a card from Y" (an event with `hiddenFrom: [thief, victim]`). Discards show only the count publicly.
+
+**Test:** `robber.test.ts` — "moves one random card; only thief and victim learn which".
+
+### A11: Timeout defaults pick a random legal action without advancing the RNG
+
+`defaultAction` reads the game RNG to choose among the legal actions (or a random discard), but doesn't advance it. The chosen action is logged and replayed like any other, so replays stay exact.
+
+**Test:** `robber.test.ts` — the `defaultAction` cases for discard and steal; `game.test.ts` — "returns an action apply accepts at every step of a short game".

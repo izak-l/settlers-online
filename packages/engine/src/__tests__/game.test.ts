@@ -31,6 +31,11 @@ function playScripted(
   for (let t = 0; t < turns; t++) {
     const p = s.turn.activePlayer;
     s = step(s, p, { type: "ROLL" });
+    // A 7 pushes discards, robber and steal before the main step.
+    while (s.decisions.at(-1)!.kind !== "MAIN") {
+      const who = topActor(s);
+      s = step(s, who, legalActions(s, who)[0]!);
+    }
     for (let b = 0; b < 3; b++) {
       const build = legalActions(s, p).find((a) => a.type.startsWith("BUILD_"));
       if (!build) break;

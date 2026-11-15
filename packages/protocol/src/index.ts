@@ -64,6 +64,12 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("BUILD_SETTLEMENT"), vertex: VertexOrEdge }),
   z.object({ type: z.literal("BUILD_CITY"), vertex: VertexOrEdge }),
   z.object({ type: z.literal("END_TURN") }),
+  z.object({
+    type: z.literal("DISCARD"),
+    resources: z.record(z.string().max(20), z.number().int().min(0).max(99)),
+  }),
+  z.object({ type: z.literal("MOVE_ROBBER"), hex: VertexOrEdge }),
+  z.object({ type: z.literal("STEAL"), from: z.string().min(1).max(8) }),
 ]);
 // Compile-time check that the schema and the engine agree.
 type _SchemaMatchesEngine = [z.infer<typeof ActionSchema>] extends [Action]

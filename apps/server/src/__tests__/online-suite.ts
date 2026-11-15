@@ -117,9 +117,11 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       for (let j = 0; j < 4; j++)
         expect(spec.state!.view.zones[`hand-p${j}`]!.contents).toBeUndefined();
       expect("rng" in spec.state!.view).toBe(false);
-      // Everyone saw the same public log
-      expect(spec.log).toEqual(players[0]!.log);
+      // Every viewer gets one line per event (secret or public version), and the spectator
+      // never learns which resource was stolen.
+      for (const p of players) expect(p.log.length).toBe(spec.log.length);
       expect(spec.log.length).toBeGreaterThan(20);
+      expect(spec.log.filter((l) => / stole 1 /.test(l))).toEqual([]);
     });
 
     it("rejects acting out of turn, spectators acting, and malformed actions", async () => {

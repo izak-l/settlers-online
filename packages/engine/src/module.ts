@@ -43,6 +43,11 @@ export interface Hooks {
    * true for the owner, for win checks, and once the game is over.
    */
   vpSources(state: GameState, player: PlayerId, includeHidden: boolean): number;
+  /**
+   * After every action: return the winner, or null. The first module (in ruleset order) to
+   * name one decides; the core then ends the game.
+   */
+  checkWin(state: GameState, modules: RulesModule[]): PlayerId | null;
   /** Cards of `resource` needed for one card from the bank. Lowest across modules wins. */
   tradeRatio(state: GameState, player: PlayerId, resource: string): number;
 }

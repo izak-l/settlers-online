@@ -49,6 +49,8 @@ export const mainDecision = (p: PlayerId): Decision =>
 export interface BaseModuleState {
   lastRoll?: Record<string, number>;
   playedDevThisTurn: boolean;
+  longestRoad: PlayerId | null;
+  largestArmy: PlayerId | null;
 }
 
 export function baseState(state: GameState): BaseModuleState {
@@ -129,9 +131,15 @@ export function handSize(state: GameState, player: PlayerId): number {
   return Object.values(handOf(state, player)).reduce((a, b) => a + b, 0);
 }
 
-/** One entry per card, e.g. { wood: 2, ore: 1 } → ["wood", "wood", "ore"]. */
+/**
+ * One entry per card, e.g. { wood: 2, ore: 1 } → ["ore", "wood", "wood"].
+ * Sorted by key: anything the RNG picks from must not depend on object key order, which
+ * storage doesn't preserve (Postgres jsonb sorts keys).
+ */
 export function cardList(res: Resources): string[] {
-  return Object.entries(res).flatMap(([r, n]) => Array<string>(Math.max(0, n)).fill(r));
+  return Object.keys(res)
+    .sort()
+    .flatMap((r) => Array<string>(Math.max(0, res[r] ?? 0)).fill(r));
 }
 
 export function robberHex(state: GameState): string | undefined {

@@ -112,6 +112,16 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
   const draft = cloneState(state);
   const events: GameEvent[] = [];
   handler.apply(draft, player, action, { events, modules });
+
+  for (const m of modules) {
+    const winner = m.hooks?.checkWin?.(draft, modules);
+    if (winner) {
+      draft.winner = winner;
+      draft.decisions = [];
+      events.push({ type: "GAME_WON", text: `${winner} won the game`, data: { winner } });
+      break;
+    }
+  }
   return { ok: true, state: draft, events };
 }
 

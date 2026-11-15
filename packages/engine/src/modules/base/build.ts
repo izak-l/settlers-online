@@ -1,4 +1,5 @@
 import { reject, type ActionHandlers } from "../../module";
+import { updateAwards } from "./awards";
 import { COSTS } from "./data";
 import {
   addPiece,
@@ -31,6 +32,7 @@ export const buildActions: ActionHandlers = {
       pay(draft, player, COSTS["road"]!);
       addPiece(draft, "road", player, { edge });
       events.push({ type: "BUILT_ROAD", text: `${player} built a road` });
+      updateAwards(draft, events);
     },
     candidates: (s) => allEdges(s).map((edge) => ({ type: "BUILD_ROAD", edge })),
   },
@@ -51,6 +53,7 @@ export const buildActions: ActionHandlers = {
       pay(draft, player, COSTS["settlement"]!);
       addPiece(draft, "settlement", player, { vertex });
       events.push({ type: "BUILT_SETTLEMENT", text: `${player} built a settlement` });
+      updateAwards(draft, events);
     },
     candidates: (s) => allVertices(s).map((vertex) => ({ type: "BUILD_SETTLEMENT", vertex })),
   },

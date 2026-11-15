@@ -19,6 +19,7 @@ import {
   transfer,
 } from "./helpers";
 import { moveRobberDecision } from "./robber";
+import { updateAwards } from "./awards";
 
 /**
  * Zones: `devdeck` (hidden counts; drawing at random is the same as a shuffled deck),
@@ -128,6 +129,7 @@ export const devCardActions: ActionHandlers = {
     validate: (state, player) => checkPlayable(state, player, "knight"),
     apply(draft, player, _action, { events }) {
       playCard(draft, player, "knight", events);
+      updateAwards(draft, events);
       // Same as a 7 but with no discards.
       draft.decisions.push(moveRobberDecision(player));
     },
@@ -158,6 +160,7 @@ export const devCardActions: ActionHandlers = {
     apply(draft, player, { edge }, { events }) {
       addPiece(draft, "road", player, { edge });
       events.push({ type: "BUILT_ROAD", text: `${player} built a free road` });
+      updateAwards(draft, events);
       const top = draft.decisions.at(-1)!;
       const remaining = (top.data!["remaining"] as number) - 1;
       top.data = { ...top.data, remaining };

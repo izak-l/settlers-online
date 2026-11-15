@@ -237,6 +237,9 @@ interface RulesModule {
 - `tradeRatio` (lowest across modules wins) gives the bank rate: 4, or 3 / 2 with a building on either end of a matching port edge.
 - Modules may provide `defaultAction(state, player)` for decisions they own; the core falls back to a random legal action. The base game rolls, ends the turn, and during a trade offer cancels it (offerer) or declines (everyone else). The core no longer names any base-game action.
 - **Player trades:** `OFFER_TRADE` (active player, main step only) pushes a `TRADE_OFFER` decision where everyone is pending: others `RESPOND_TRADE` (accept/decline, changeable), the offerer `CONFIRM_TRADE`s with one accepter (both sides re-checked) or `CANCEL_TRADE`s. No counter-offers in v1.
+- Anything the RNG picks from must be in a fixed order (e.g. `cardList` sorts by key). Storage doesn't preserve object key order (Postgres `jsonb` sorts keys), and replay from a snapshot must give the same result as the live game. Pinned by the key-order tests in `game.test.ts`.
+- `checkWin(state, modules)` runs in the core after every successful action; the first module to name a winner ends the game (`winner` set, decision stack emptied, a `GAME_WON` event). The base game only lets the player whose turn it is win, counting hidden VP cards, never during setup.
+- Awards live in `moduleState.base` (`longestRoad`, `largestArmy`) and are recomputed after any road, settlement or knight. One rule decides both (`awardHolder`): the holder keeps it on a tie; otherwise the unique leader at or above the threshold (5 roads / 3 knights) takes it; tied leaders mean nobody holds it. Longest road is a depth-first search over a player's roads that can end at, but not pass through, an opponent's building.
 - Costs, piece limits and the terrain → resource table are constants in the base module for now; `pieceTypes` / `costs` on the module interface wait until an expansion needs to change them.
 
 ## 7. Base game rules checklist
@@ -287,9 +290,9 @@ Bank: 19 of each resource. Dev deck: 14 Knight, 5 Victory Point, 2 Road Building
 
 **Awards and winning**
 
-- [ ] Longest Road: 5+ continuous segments, 2 VP. Ties keep the current holder. If the holder is broken and others tie for longest, nobody holds it.
-- [ ] Largest Army: 3+ knights played, 2 VP. A challenger must exceed the holder.
-- [ ] Win at `vpToWin` (10), checked only for the active player during their turn. Hidden VP cards count.
+- [x] Longest Road: 5+ continuous segments, 2 VP. Ties keep the current holder. If the holder is broken and others tie for longest, nobody holds it.
+- [x] Largest Army: 3+ knights played, 2 VP. A challenger must exceed the holder.
+- [x] Win at `vpToWin` (10), checked only for the active player during their turn. Hidden VP cards count.
 
 ## 8. Networking and hidden information
 

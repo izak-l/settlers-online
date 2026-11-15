@@ -2,7 +2,20 @@ import { describe, it, expect } from "vitest";
 import type { Action } from "../actions";
 import { apply, createGame, defaultAction, legalActions, viewFor } from "../engine";
 import type { GameState, PlayerId } from "../types";
-import { act, fixtureMap, give, inMainPhase, newGame, runSetup, topActor } from "./testkit";
+import {
+  act,
+  fixtureMap,
+  give,
+  h,
+  inMainPhase,
+  inRollPhase,
+  newGame,
+  runSetup,
+  seedRolling,
+  topActor,
+  v,
+  withPiece,
+} from "./testkit";
 
 const SEATS = ["p0", "p1", "p2", "p3"];
 
@@ -166,5 +179,40 @@ describe("snapshots", () => {
     const snap = toSnapshot(newGame());
     expect(JSON.parse(JSON.stringify(snap))).toEqual(snap);
     expect("graph" in snap).toBe(false);
+  });
+});
+
+describe("determinism doesn't depend on object key order", () => {
+  /** Rebuild every zone's contents with keys in reverse order, like a database might return them. */
+  function reorderKeys(s: GameState): GameState {
+    const copy = fromSnapshotOf(s);
+    for (const zone of Object.values(copy.zones)) {
+      zone.contents = Object.fromEntries(Object.entries(zone.contents).reverse());
+    }
+    return copy;
+  }
+  function fromSnapshotOf(s: GameState): GameState {
+    return {
+      ...JSON.parse(JSON.stringify({ ...s, graph: undefined })),
+      graph: s.graph,
+    } as GameState;
+  }
+
+  it("a steal picks the same card whatever order the victim's hand is stored in", () => {
+    // Regression: a game resumed from Postgres (jsonb sorts keys) stole a different card on replay.
+    let s = inRollPhase(newGame(["p0", "p1", "p2"], seedRolling(7)));
+    s = give(s, "p1", { wood: 1, brick: 1, sheep: 1, wheat: 1, ore: 1 });
+    s = withPiece(s, "settlement", "p1", { vertex: v(h(1, 0), h(2, 0), h(2, -1)) });
+    s = act(s, "p0", { type: "ROLL" });
+    const a = act(s, "p0", { type: "MOVE_ROBBER", hex: "1,0" });
+    const b = act(reorderKeys(s), "p0", { type: "MOVE_ROBBER", hex: "1,0" });
+    expect(b.zones["hand-p0"]!.contents).toEqual(a.zones["hand-p0"]!.contents);
+  });
+
+  it("a dev card draw is the same whatever order the deck is stored in", () => {
+    const s = give(inMainPhase(newGame()), "p0", { sheep: 1, wheat: 1, ore: 1 });
+    const a = act(s, "p0", { type: "BUY_DEV_CARD" });
+    const b = act(reorderKeys(s), "p0", { type: "BUY_DEV_CARD" });
+    expect(b.zones["devnew-p0"]!.contents).toEqual(a.zones["devnew-p0"]!.contents);
   });
 });

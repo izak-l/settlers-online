@@ -118,3 +118,19 @@ Only the active player, in their main step, can open an offer. It must give and 
 ### A18: A port counts if you have a settlement or city on either end of its edge
 
 **Test:** `trade.test.ts` — the port tests in "trading with the bank".
+
+### A19: One rule decides both awards
+
+The holder keeps an award on a tie for the lead. Otherwise the unique leader at or above the threshold (5 roads, 3 knights) takes it. If the leaders are tied, or the holder drops below the threshold with nobody else qualifying, nobody holds it. A first-time tie means nobody gets it.
+
+**Test:** `awards.test.ts` — "awardHolder (the shared rule for both awards)" and the in-play award tests.
+
+### A20: Reaching 10 VP on someone else's turn wins at the start of your own turn
+
+The win is checked after every action, for the player whose turn it is. After END_TURN that's the next player, so they win before rolling.
+
+**Test:** `awards.test.ts` — "a player with 10 VP on someone else's turn wins when their own turn starts".
+
+### A21: When the game ends, the decision stack is emptied and every further action is rejected with GAME_OVER
+
+**Test:** `awards.test.ts` — "the active player wins on reaching 10 VP, and the game stops".

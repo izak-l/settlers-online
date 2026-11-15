@@ -1,4 +1,5 @@
-import type { RulesModule } from "../../module";
+import { runVpSources, type RulesModule } from "../../module";
+import { awardVP } from "./awards";
 import { buildActions } from "./build";
 import { devCardActions, vpCards } from "./devcards";
 import { BASE_RESOURCES } from "./data";
@@ -30,10 +31,16 @@ export const baseModule: RulesModule = {
     rollDice: rollTwoDice,
     produce,
     tradeRatio,
+    /** Only the player whose turn it is can win, counting hidden VP cards. Never during setup. */
+    checkWin(state, modules) {
+      if (state.turn.number < 1) return null;
+      const p = state.turn.activePlayer;
+      return runVpSources(modules, state, p, true) >= state.options.vpToWin ? p : null;
+    },
     vpSources(state, player, includeHidden) {
       const buildings =
         countOwned(state, player, "settlement") + 2 * countOwned(state, player, "city");
-      return buildings + (includeHidden ? vpCards(state, player) : 0);
+      return buildings + awardVP(state, player) + (includeHidden ? vpCards(state, player) : 0);
     },
   },
   setup: setupBase,

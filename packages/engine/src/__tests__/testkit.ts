@@ -178,6 +178,37 @@ export function giveDev(
   return s;
 }
 
+/**
+ * A simple path of `n` edges starting at `from`, never revisiting a vertex or any vertex in `avoid`.
+ * Returns the edges and the vertices visited (in order).
+ */
+export function pathFrom(
+  state: GameState,
+  from: string,
+  n: number,
+  avoid: Set<string> = new Set(),
+): { edges: string[]; vertices: string[] } {
+  const vertices = [from];
+  const edges: string[] = [];
+  const seen = new Set([from, ...avoid]);
+  let at = from;
+  while (edges.length < n) {
+    const next = state.graph.vertices
+      .get(at)!
+      .edges.map((ed) => {
+        const [a, b] = state.graph.edges.get(ed)!.vertices;
+        return { ed, to: a === at ? b : a };
+      })
+      .find(({ to }) => !seen.has(to));
+    if (!next) throw new Error(`path from ${from} got stuck after ${edges.length} edges`);
+    edges.push(next.ed);
+    vertices.push(next.to);
+    seen.add(next.to);
+    at = next.to;
+  }
+  return { edges, vertices };
+}
+
 let pieceCounter = 0;
 export function withPiece(
   state: GameState,
@@ -229,8 +260,13 @@ export function checkInvariants(state: GameState): void {
     const vpCards =
       (state.zones[`dev-${p}`]?.contents["victoryPoint"] ?? 0) +
       (state.zones[`devnew-${p}`]?.contents["victoryPoint"] ?? 0);
+    const awards = state.moduleState["base"] as {
+      longestRoad?: string | null;
+      largestArmy?: string | null;
+    };
+    const awardVP = (awards.longestRoad === p ? 2 : 0) + (awards.largestArmy === p ? 2 : 0);
     const expectedVP =
-      countPieces(state, p, "settlement") + 2 * countPieces(state, p, "city") + vpCards;
+      countPieces(state, p, "settlement") + 2 * countPieces(state, p, "city") + vpCards + awardVP;
     expect(computeVP(state, p), `${p} VP`).toBe(expectedVP);
   }
   // Dev cards are conserved: deck + every hand (old and new) + played = 25.

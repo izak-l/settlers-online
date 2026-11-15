@@ -17,4 +17,22 @@ export const COSTS: Record<string, Resources> = {
   road: { wood: 1, brick: 1 },
   settlement: { wood: 1, brick: 1, sheep: 1, wheat: 1 },
   city: { wheat: 2, ore: 3 },
+  devCard: { sheep: 1, wheat: 1, ore: 1 },
+};
+
+export const DEV_DECK: Record<string, number> = {
+  knight: 14,
+  victoryPoint: 5,
+  roadBuilding: 2,
+  yearOfPlenty: 2,
+  monopoly: 2,
+};
+
+/** Display names are our own wording; the ids above are internal. */
+export const DEV_CARD_NAMES: Record<string, string> = {
+  knight: "Knight",
+  victoryPoint: "Victory Point",
+  roadBuilding: "Road Crew",
+  yearOfPlenty: "Bounty",
+  monopoly: "Monopoly",
 };

@@ -162,6 +162,22 @@ export function seedRolling(total: number, seats: PlayerId[] = ["p0", "p1", "p2"
   throw new Error(`no seed rolls ${total}`);
 }
 
+/** Put dev cards straight into a player's playable hand, taken from the deck. */
+export function giveDev(
+  state: GameState,
+  player: PlayerId,
+  cards: Resources,
+  zone = "dev",
+): GameState {
+  const s = clone(state);
+  for (const [c, n] of Object.entries(cards)) {
+    s.zones["devdeck"]!.contents[c] = (s.zones["devdeck"]!.contents[c] ?? 0) - n;
+    const z = s.zones[`${zone}-${player}`]!.contents;
+    z[c] = (z[c] ?? 0) + n;
+  }
+  return s;
+}
+
 let pieceCounter = 0;
 export function withPiece(
   state: GameState,
@@ -210,8 +226,20 @@ export function checkInvariants(state: GameState): void {
     for (const [type, limit] of Object.entries(PIECE_LIMITS)) {
       expect(countPieces(state, p, type), `${p} ${type} limit`).toBeLessThanOrEqual(limit);
     }
-    const expectedVP = countPieces(state, p, "settlement") + 2 * countPieces(state, p, "city");
+    const vpCards =
+      (state.zones[`dev-${p}`]?.contents["victoryPoint"] ?? 0) +
+      (state.zones[`devnew-${p}`]?.contents["victoryPoint"] ?? 0);
+    const expectedVP =
+      countPieces(state, p, "settlement") + 2 * countPieces(state, p, "city") + vpCards;
     expect(computeVP(state, p), `${p} VP`).toBe(expectedVP);
   }
+  // Dev cards are conserved: deck + every hand (old and new) + played = 25.
+  let devTotal = 0;
+  for (const zone of Object.values(state.zones)) {
+    if (zone.id === "devdeck" || /^(dev|devnew|played)-/.test(zone.id)) {
+      devTotal += Object.values(zone.contents).reduce((a, b) => a + b, 0);
+    }
+  }
+  expect(devTotal, "dev card conservation").toBe(25);
   if (state.winner === undefined) expect(state.decisions.length).toBeGreaterThan(0);
 }

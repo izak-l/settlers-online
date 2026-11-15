@@ -74,7 +74,7 @@ export class LocalGame implements GameClient {
   snapshot(): Snapshot {
     const seat = this.waitingOn();
     const scores: Record<PlayerId, number> = {};
-    for (const p of this.state.players) scores[p] = computeVP(this.state, p);
+    for (const p of this.state.players) scores[p] = computeVP(this.state, p, seat);
     return {
       seat,
       view: viewFor(this.state, seat),

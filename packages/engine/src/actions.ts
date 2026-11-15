@@ -12,7 +12,13 @@ export type Action =
   | { type: "END_TURN" }
   | { type: "DISCARD"; resources: Resources }
   | { type: "MOVE_ROBBER"; hex: HexKey }
-  | { type: "STEAL"; from: PlayerId };
+  | { type: "STEAL"; from: PlayerId }
+  | { type: "BUY_DEV_CARD" }
+  | { type: "PLAY_KNIGHT" }
+  | { type: "PLAY_ROAD_BUILDING" }
+  | { type: "PLACE_FREE_ROAD"; edge: EdgeId }
+  | { type: "PLAY_YEAR_OF_PLENTY"; resources: Resources }
+  | { type: "PLAY_MONOPOLY"; resource: string };
 
 export type ActionType = Action["type"];
 

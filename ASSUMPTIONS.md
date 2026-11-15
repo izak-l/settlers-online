@@ -78,3 +78,33 @@ The thief and victim get an event naming the resource. Everyone else, spectators
 `defaultAction` reads the game RNG to choose among the legal actions (or a random discard), but doesn't advance it. The chosen action is logged and replayed like any other, so replays stay exact.
 
 **Test:** `robber.test.ts` — the `defaultAction` cases for discard and steal; `game.test.ts` — "returns an action apply accepts at every step of a short game".
+
+### A12: The dev deck is counts per card type; buying draws one at random
+
+Same odds as drawing from a shuffled deck, with no order to store or leak.
+
+**Test:** `devcards.test.ts` — "starts with 25 hidden cards" and the BUY_DEV_CARD tests; dev cards are conserved (deck + hands + played = 25) after every action.
+
+### A13: Road Building places as many free roads as it can (up to 2)
+
+With one road piece left you place one. With nowhere legal to build, the card is still played and nothing is placed. There's no voluntary skip when a placement exists.
+
+**Test:** `devcards.test.ts` — the three Road Crew tests.
+
+### A14: Year of Plenty needs both picks to be in the bank
+
+If the bank doesn't have what you name, the play is rejected; pick something it has.
+
+**Test:** `devcards.test.ts` — "Year of Plenty can't take what the bank doesn't have".
+
+### A15: Public scores leave out VP cards until the game ends
+
+Your own view counts your VP cards. Everyone else's view of your score doesn't, until there's a winner.
+
+**Test:** `devcards.test.ts` — "a VP card counts for its owner straight away, but not in anyone else's view of the score".
+
+### A16: On timeout, a player waiting to roll rolls (rather than playing a card)
+
+`defaultAction` prefers ROLL, then END_TURN, then a random legal action.
+
+**Test:** `game.test.ts` — "returns an action apply accepts at every step of a short game".

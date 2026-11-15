@@ -23,10 +23,35 @@ export function decision(
   };
 }
 
-export const rollDecision = (p: PlayerId): Decision => decision("ROLL", p, ["ROLL"]);
+/** Dev cards can be played before rolling and during the main step. */
+export const PLAY_ACTIONS = [
+  "PLAY_KNIGHT",
+  "PLAY_ROAD_BUILDING",
+  "PLAY_YEAR_OF_PLENTY",
+  "PLAY_MONOPOLY",
+] as const;
+
+export const rollDecision = (p: PlayerId): Decision =>
+  decision("ROLL", p, ["ROLL", ...PLAY_ACTIONS]);
 
 export const mainDecision = (p: PlayerId): Decision =>
-  decision("MAIN", p, ["BUILD_ROAD", "BUILD_SETTLEMENT", "BUILD_CITY", "END_TURN"]);
+  decision("MAIN", p, [
+    "BUILD_ROAD",
+    "BUILD_SETTLEMENT",
+    "BUILD_CITY",
+    "BUY_DEV_CARD",
+    ...PLAY_ACTIONS,
+    "END_TURN",
+  ]);
+
+export interface BaseModuleState {
+  lastRoll?: Record<string, number>;
+  playedDevThisTurn: boolean;
+}
+
+export function baseState(state: GameState): BaseModuleState {
+  return state.moduleState["base"] as BaseModuleState;
+}
 
 export /** Pop the resolved decision and make whoever is next the active player. */
 function popDecision(draft: GameState): void {

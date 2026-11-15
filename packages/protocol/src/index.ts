@@ -55,6 +55,8 @@ export const UsernameSchema = z
 const Id = z.string().min(1).max(64);
 const VertexOrEdge = z.string().min(1).max(64);
 
+const ResourceCounts = z.record(z.string().max(20), z.number().int().min(0).max(99));
+
 /** Mirrors the engine's `Action` union; the engine still decides legality. */
 export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("PLACE_SETTLEMENT"), vertex: VertexOrEdge }),
@@ -66,10 +68,16 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("END_TURN") }),
   z.object({
     type: z.literal("DISCARD"),
-    resources: z.record(z.string().max(20), z.number().int().min(0).max(99)),
+    resources: ResourceCounts,
   }),
   z.object({ type: z.literal("MOVE_ROBBER"), hex: VertexOrEdge }),
   z.object({ type: z.literal("STEAL"), from: z.string().min(1).max(8) }),
+  z.object({ type: z.literal("BUY_DEV_CARD") }),
+  z.object({ type: z.literal("PLAY_KNIGHT") }),
+  z.object({ type: z.literal("PLAY_ROAD_BUILDING") }),
+  z.object({ type: z.literal("PLACE_FREE_ROAD"), edge: VertexOrEdge }),
+  z.object({ type: z.literal("PLAY_YEAR_OF_PLENTY"), resources: ResourceCounts }),
+  z.object({ type: z.literal("PLAY_MONOPOLY"), resource: z.string().min(1).max(20) }),
 ]);
 // Compile-time check that the schema and the engine agree.
 type _SchemaMatchesEngine = [z.infer<typeof ActionSchema>] extends [Action]

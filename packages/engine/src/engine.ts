@@ -130,9 +130,18 @@ export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
   return result;
 }
 
-/** Victory points, always computed from every module's vpSources hook. */
-export function computeVP(state: GameState, player: PlayerId): number {
-  return runVpSources(modulesOf(state), state, player);
+/**
+ * Victory points, always computed from every module's vpSources hook.
+ * With a `viewer`, hidden VP (cards) only count if the viewer is that player or the game is over;
+ * without one, everything counts (win checks, invariants).
+ */
+export function computeVP(
+  state: GameState,
+  player: PlayerId,
+  viewer?: PlayerId | "spectator",
+): number {
+  const includeHidden = viewer === undefined || viewer === player || state.winner !== undefined;
+  return runVpSources(modulesOf(state), state, player, includeHidden);
 }
 
 /**
@@ -142,6 +151,7 @@ export function computeVP(state: GameState, player: PlayerId): number {
  */
 export function defaultAction(state: GameState, player: PlayerId): Action {
   const top = state.decisions.at(-1);
+  if (top?.allowed.includes("ROLL")) return { type: "ROLL" };
   if (top?.allowed.includes("END_TURN")) return { type: "END_TURN" };
   const legal = legalActions(state, player);
   if (legal.length === 0)

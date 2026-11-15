@@ -16,7 +16,8 @@ import {
 /** Players holding more than this many cards discard on a 7. */
 const HAND_LIMIT = 7;
 
-const moveRobberDecision = (p: PlayerId): Decision => decision("MOVE_ROBBER", p, ["MOVE_ROBBER"]);
+export const moveRobberDecision = (p: PlayerId): Decision =>
+  decision("MOVE_ROBBER", p, ["MOVE_ROBBER"]);
 
 /**
  * After a 7: everyone over the hand limit discards half (rounded down) at the same time,

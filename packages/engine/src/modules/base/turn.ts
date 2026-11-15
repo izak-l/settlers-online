@@ -3,6 +3,7 @@ import { runProduce, runRollDice, type ActionHandlers } from "../../module";
 import type { GameState } from "../../types";
 import { mainDecision, rollDecision } from "./helpers";
 import { startSevenFlow } from "./robber";
+import { endTurnDevCards } from "./devcards";
 
 /** Two six-sided dice. */
 export function rollTwoDice(draft: GameState): Record<string, number> {
@@ -34,6 +35,7 @@ export const turnActions: ActionHandlers = {
     apply(draft, player, _action, { events }) {
       const next = draft.players[(draft.players.indexOf(player) + 1) % draft.players.length]!;
       draft.decisions.pop();
+      endTurnDevCards(draft, player);
       draft.turn = { number: draft.turn.number + 1, activePlayer: next };
       draft.decisions.push(rollDecision(next));
       events.push({ type: "TURN_ENDED", text: `${player} ended their turn` });

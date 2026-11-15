@@ -37,8 +37,11 @@ export interface Hooks {
   rollDice(draft: GameState): Dice;
   /** Every module's produce runs, in ruleset order, on a roll that isn't 7. */
   produce(draft: GameState, total: number, events: GameEvent[]): void;
-  /** Summed across modules. */
-  vpSources(state: GameState, player: PlayerId): number;
+  /**
+   * Summed across modules. `includeHidden` adds VP the player hasn't revealed (VP cards):
+   * true for the owner, for win checks, and once the game is over.
+   */
+  vpSources(state: GameState, player: PlayerId, includeHidden: boolean): number;
 }
 
 export interface RulesModule {
@@ -71,9 +74,14 @@ export function runProduce(
   for (const m of modules) m.hooks?.produce?.(draft, total, events);
 }
 
-export function runVpSources(modules: RulesModule[], state: GameState, player: PlayerId): number {
+export function runVpSources(
+  modules: RulesModule[],
+  state: GameState,
+  player: PlayerId,
+  includeHidden: boolean,
+): number {
   let vp = 0;
-  for (const m of modules) vp += m.hooks?.vpSources?.(state, player) ?? 0;
+  for (const m of modules) vp += m.hooks?.vpSources?.(state, player, includeHidden) ?? 0;
   return vp;
 }
 

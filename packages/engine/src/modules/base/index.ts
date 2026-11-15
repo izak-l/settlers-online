@@ -1,5 +1,6 @@
 import type { RulesModule } from "../../module";
 import { buildActions } from "./build";
+import { devCardActions, vpCards } from "./devcards";
 import { BASE_RESOURCES } from "./data";
 import { countOwned } from "./helpers";
 import { produce } from "./production";
@@ -7,7 +8,7 @@ import { robberActions } from "./robber";
 import { setupActions, setupBase } from "./setup";
 import { rollTwoDice, turnActions } from "./turn";
 
-export { BASE_RESOURCES, COSTS, PIECE_LIMITS } from "./data";
+export { BASE_RESOURCES, COSTS, DEV_CARD_NAMES, PIECE_LIMITS } from "./data";
 export { mainDecision, rollDecision } from "./helpers";
 export { produce } from "./production";
 
@@ -16,12 +17,20 @@ export const baseModule: RulesModule = {
   id: "base",
   version: 1,
   resources: [...BASE_RESOURCES],
-  actions: { ...setupActions, ...turnActions, ...buildActions, ...robberActions },
+  actions: {
+    ...setupActions,
+    ...turnActions,
+    ...buildActions,
+    ...robberActions,
+    ...devCardActions,
+  },
   hooks: {
     rollDice: rollTwoDice,
     produce,
-    vpSources(state, player) {
-      return countOwned(state, player, "settlement") + 2 * countOwned(state, player, "city");
+    vpSources(state, player, includeHidden) {
+      const buildings =
+        countOwned(state, player, "settlement") + 2 * countOwned(state, player, "city");
+      return buildings + (includeHidden ? vpCards(state, player) : 0);
     },
   },
   setup: setupBase,

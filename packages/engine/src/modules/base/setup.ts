@@ -16,6 +16,7 @@ import {
   rollDecision,
   transfer,
 } from "./helpers";
+import { setupDevCards } from "./devcards";
 
 export const setupSettlement = (p: PlayerId, round: number): Decision =>
   decision("PLACE_SETTLEMENT", p, ["PLACE_SETTLEMENT"], { round });
@@ -43,7 +44,8 @@ export function setupBase(draft: GameState): void {
   const start = draft.map.hexes.find((hx) => hx.terrain === draft.map.robberStart);
   if (start) draft.pieces["robber"] = { id: "robber", type: "robber", at: { hex: hexKey(start) } };
 
-  draft.moduleState["base"] = {};
+  draft.moduleState["base"] = { playedDevThisTurn: false };
+  setupDevCards(draft);
 
   // Snake order: 1→N then N→1, each placing a settlement then a road.
   const n = draft.players.length;

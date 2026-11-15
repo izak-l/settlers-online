@@ -104,7 +104,7 @@ export class GameRoom {
   ): GameStateMessage {
     const visible = (e: GameEvent) => eventVisibleTo(e, you);
     const scores: Record<PlayerId, number> = {};
-    for (const p of this.state.players) scores[p] = computeVP(this.state, p);
+    for (const p of this.state.players) scores[p] = computeVP(this.state, p, you);
     return {
       gameId: this.id,
       seq: this.seq,

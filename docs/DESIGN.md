@@ -184,7 +184,8 @@ interface Decision {
 - `turn.number` is 0 during setup and 1 on the first `ROLL`. `END_TURN` pops `MAIN`, advances the seat, and pushes the next player's `ROLL`.
 - The engine takes a `MapInput` (every pool already resolved). `@settlers/maps`' `ResolvedMap` fits it structurally; the engine doesn't depend on the maps package.
 - `GameState` stores module ids, not module code. `MODULES` in `packages/engine/src/modules/index.ts` maps ids to modules. `graph` is derived and uses `Map`/`Set`, so persistence (M4) must drop it and rebuild it with `buildGraph`.
-- Zones hold `Record<ResourceId, number>` for now; ordered card zones arrive with dev cards (M5).
+- Zones hold `Record<ItemId, number>`; there are no ordered zones. The dev deck is the hidden zone `devdeck` holding counts per card type; buying draws one at random with the game RNG, which has the same odds as a shuffled deck and has no order to leak. A player's cards are in `dev-<p>` (playable; others see a count), `devnew-<p>` (bought this turn; moved into `dev-<p>` at end of turn) and `played-<p>` (public).
+- `computeVP(state, player, viewer?)`: hidden VP (VP cards) count only for their owner, or for everyone once the game is over. The public `scores` a client receives are computed for that viewer.
 - `viewFor` returns a `PlayerView`: the state minus `rng` and `graph`, with zones redacted (`public`: contents; `count`: contents for the owner, a count for others; `owner`: contents for the owner only; `hidden`: a count only).
 - `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it picks a random legal action, reading the RNG without advancing it (so it is deterministic for a state, and the chosen action is logged and replayed like any other).
 - A roll of 7 produces nothing. It pushes `MOVE_ROBBER` above `MAIN`, and above that a single `DISCARD` decision listing everyone over 7 cards (`pendingFrom` shrinks as each discards, in any order). Moving the robber pushes `STEAL` only when two or more players can be robbed.
@@ -270,9 +271,9 @@ Bank: 19 of each resource. Dev deck: 14 Knight, 5 Victory Point, 2 Road Building
 
 **Dev cards**
 
-- [ ] Max one dev card played per turn, and not one bought that turn. VP cards are exempt.
-- [ ] Dev cards may be played before rolling.
-- [ ] Knight: move robber + steal. Road Building: 2 free roads. Year of Plenty: any 2 from bank. Monopoly: all cards of one resource from every player.
+- [x] Max one dev card played per turn, and not one bought that turn. VP cards are exempt.
+- [x] Dev cards may be played before rolling.
+- [x] Knight: move robber + steal. Road Building: 2 free roads. Year of Plenty: any 2 from bank. Monopoly: all cards of one resource from every player.
 
 **Trading**
 

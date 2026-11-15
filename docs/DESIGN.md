@@ -328,7 +328,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 
 **Accounts, lobbies, spectators and timers**
 
-- **Auth:** Supabase Auth with email + password (email confirmation and password reset included), Google and Discord. The web app signs in with the Supabase client; the game server never handles passwords. On first sign-in the user picks a unique username. Supabase's built-in email sender is rate-limited and meant for testing, so add a custom SMTP provider before inviting many friends.
+- **Auth:** Supabase Auth with email + password (email confirmation and password reset included) and Discord. Google is not set up. The web app signs in with the Supabase client; the game server never handles passwords. On first sign-in the user picks a unique username. Supabase's built-in email sender is rate-limited and meant for testing, so add a custom SMTP provider before inviting many friends.
 - The server verifies the Supabase access token (JWT) on the Socket.IO handshake and binds the socket to a `userId`.
 - **The engine stays account-agnostic.** It only knows seats (`PlayerId`). The server maps seat → `userId` in `game_players`.
 - **Tables:** `profiles` (id = Supabase auth user id, unique username, display name, avatar), `friendships` (user, friend, status), `lobbies` (id, host, visibility, settings), `game_players` (game, seat, user).

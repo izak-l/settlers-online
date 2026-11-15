@@ -12,8 +12,8 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M1 Board graph, map loader, base map generator
 - [x] M2 Engine core: decision stack, module system, setup, roll, produce, build
 - [x] M3 Board UI against a `GameClient`, with a local dev sandbox
-- [ ] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log ← in progress (built; waiting on a real Supabase sign-in check)
-- [ ] M5 Robber, dev cards, trades, awards, win
+- [x] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log
+- [ ] M5 Robber, dev cards, trades, awards, win ← next
 - [ ] M6 Friends, presence, invites, history, polish, turn timers
 - [ ] M7 Deploy to free tiers
 - [ ] M8+ Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers

@@ -372,7 +372,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
 - Clickable targets are exactly the actions in `legal`. During setup every legal placement lights up; in the main step the Road / Settlement / City buttons pick which kind, and a button is disabled when `legal` has none of that kind. Targets are keyboard-focusable buttons.
 - Not yet: lobbies and sign-in (M4); the robber, dev cards, trades and the win screen (M5); small-screen layout and animations (M6).
-- **Account and lobby screens:** sign-in (email, Google, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
+- **Account and lobby screens:** sign-in (email, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
 
 ## 11. Testing strategy
 
@@ -459,7 +459,7 @@ v1.1 ships the introductory scenario: the familiar main island plus four small i
 - Hosting: free tiers (section 12).
 - Spectators: supported in v1.
 - Turn timer: configurable per lobby; on timeout the turn ends (defaults in section 8).
-- Sign-in: Supabase Auth with email + password, Google and Discord.
+- Sign-in: Supabase Auth with email + password and Discord (Google not set up).
 - Expansion order: seafaring, knights-and-cities, traders scenarios, explorers.
 
 **Open questions**

@@ -1,5 +1,5 @@
 import pg from "pg";
-import { anyOf, devAuthenticator, type Authenticator } from "./auth";
+import { anyOf, devAuthenticator, supabaseAuthenticator, type Authenticator } from "./auth";
 import { loadEnvFiles, readConfig } from "./config";
 import { migrate } from "./db/migrate";
 import { startServer } from "./server";
@@ -19,9 +19,18 @@ if (config.DATABASE_URL) {
   console.warn("DATABASE_URL is not set: games are kept in memory and lost on restart.");
   store = new MemoryStore();
 }
-// Supabase sign-in (step 4d) plugs in here.
 const auths: Authenticator[] = [];
 if (config.AUTH_MODE === "dev") auths.push(devAuthenticator);
+if (config.SUPABASE_URL) {
+  auths.push(
+    supabaseAuthenticator({
+      url: config.SUPABASE_URL,
+      ...(config.SUPABASE_JWT_SECRET ? { jwtSecret: config.SUPABASE_JWT_SECRET } : {}),
+    }),
+  );
+}
+if (auths.length === 0)
+  throw new Error("No sign-in configured: set SUPABASE_URL (or AUTH_MODE=dev locally)");
 const auth = anyOf(...auths);
 
 const server = await startServer({ config, store, auth, port: config.PORT });

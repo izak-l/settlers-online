@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 const TerrainValue = z.enum([
-  "forest", "pasture", "fields", "hills", "mountains", "desert", "sea", "gold", "fog",
+  "forest",
+  "pasture",
+  "fields",
+  "hills",
+  "mountains",
+  "desert",
+  "sea",
+  "gold",
+  "fog",
 ]);
 
 const TerrainField = z.union([TerrainValue, z.string().startsWith("pool:")]);

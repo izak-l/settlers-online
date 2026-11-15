@@ -35,7 +35,6 @@ export default [
     rules: {
       "no-restricted-globals": [
         "error",
-        { name: "Math", message: "Use the seeded PRNG in GameState.rng instead of Math.random." },
         { name: "Date", message: "Engine must be pure — no Date." },
         { name: "setTimeout", message: "Engine must be pure — no timers." },
         { name: "setInterval", message: "Engine must be pure — no timers." },

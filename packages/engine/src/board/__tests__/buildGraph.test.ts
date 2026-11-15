@@ -10,14 +10,29 @@ function baseMapHexes(): Hex[] {
   hexes.push({ q: 0, r: 0 });
   // Ring 1
   for (const [q, r] of [
-    [1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1],
+    [1, 0],
+    [1, -1],
+    [0, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, 1],
   ] as [number, number][]) {
     hexes.push({ q, r });
   }
   // Ring 2
   for (const [q, r] of [
-    [2, 0], [2, -1], [2, -2], [1, -2], [0, -2],
-    [-1, -1], [-2, 0], [-2, 1], [-2, 2], [-1, 2], [0, 2], [1, 1],
+    [2, 0],
+    [2, -1],
+    [2, -2],
+    [1, -2],
+    [0, -2],
+    [-1, -1],
+    [-2, 0],
+    [-2, 1],
+    [-2, 2],
+    [-1, 2],
+    [0, 2],
+    [1, 1],
   ] as [number, number][]) {
     hexes.push({ q, r });
   }
@@ -129,8 +144,11 @@ describe("buildGraph — small fixture", () => {
   });
 
   it("two adjacent hexes share 2 vertices and 1 edge", () => {
-    const g = buildGraph([{ q: 0, r: 0 }, { q: 1, r: 0 }]);
+    const g = buildGraph([
+      { q: 0, r: 0 },
+      { q: 1, r: 0 },
+    ]);
     expect(g.vertices.size).toBe(10); // 6 + 6 - 2 shared
-    expect(g.edges.size).toBe(11);    // 6 + 6 - 1 shared
+    expect(g.edges.size).toBe(11); // 6 + 6 - 1 shared
   });
 });

@@ -33,7 +33,10 @@ export function validateMapDef(def: MapDef): ValidationResult {
     const poolSize = Object.values(def.pools.land).reduce((a: number, b) => a + (b ?? 0), 0);
     if (poolSize !== poolLandCount) {
       errors.push(
-        err("POOL_SIZE", `pools.land has ${poolSize} tiles but map has ${poolLandCount} pool:land hexes`),
+        err(
+          "POOL_SIZE",
+          `pools.land has ${poolSize} tiles but map has ${poolLandCount} pool:land hexes`,
+        ),
       );
     }
   }
@@ -55,10 +58,7 @@ export function validateMapDef(def: MapDef): ValidationResult {
 
   const poolPortCount = (def.ports ?? []).filter((p) => p.type === "pool:ports").length;
   if (poolPortCount > 0 && def.pools?.ports) {
-    const portPoolSize = Object.values(def.pools.ports).reduce(
-      (a: number, b) => a + (b ?? 0),
-      0,
-    );
+    const portPoolSize = Object.values(def.pools.ports).reduce((a: number, b) => a + (b ?? 0), 0);
     if (portPoolSize !== poolPortCount) {
       errors.push(
         err(
@@ -86,8 +86,12 @@ export function validateResolvedMap(map: ResolvedMap): ValidationResult {
   // --- Land connectivity: BFS from first land hex ---
   const landSet = new Set(landHexes.map(hexKey));
   const DIRECTIONS: Hex[] = [
-    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+    { q: 1, r: 0 },
+    { q: 1, r: -1 },
+    { q: 0, r: -1 },
+    { q: -1, r: 0 },
+    { q: -1, r: 1 },
+    { q: 0, r: 1 },
   ];
   const visited = new Set<string>();
   const queue: Hex[] = [landHexes[0]!];

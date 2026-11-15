@@ -7,15 +7,15 @@ export type HexKey = string;
 
 export interface VertexEntry {
   id: VertexId;
-  hexes: HexKey[];          // land/coast hexes that touch this vertex (1–3)
-  edges: EdgeId[];          // edges incident to this vertex (1–3)
-  neighbors: VertexId[];    // adjacent vertices connected by an edge
+  hexes: HexKey[]; // land/coast hexes that touch this vertex (1–3)
+  edges: EdgeId[]; // edges incident to this vertex (1–3)
+  neighbors: VertexId[]; // adjacent vertices connected by an edge
 }
 
 export interface EdgeEntry {
   id: EdgeId;
   vertices: [VertexId, VertexId];
-  hexes: HexKey[];          // land/coast hexes that share this edge (1–2)
+  hexes: HexKey[]; // land/coast hexes that share this edge (1–2)
 }
 
 export interface BoardGraph {

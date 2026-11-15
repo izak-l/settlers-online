@@ -11,8 +11,12 @@ const RED_TOKENS = new Set([6, 8]);
 const MAX_RETRIES = 1000;
 
 const DIRECTIONS: Hex[] = [
-  { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
-  { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+  { q: 1, r: 0 },
+  { q: 1, r: -1 },
+  { q: 0, r: -1 },
+  { q: -1, r: 0 },
+  { q: -1, r: 1 },
+  { q: 0, r: 1 },
 ];
 
 function expandPool<T extends string>(pool: Partial<Record<T, number>>): T[] {
@@ -23,10 +27,7 @@ function expandPool<T extends string>(pool: Partial<Record<T, number>>): T[] {
   return result;
 }
 
-function hasRedTokenViolation(
-  hexes: ResolvedHex[],
-  graph: ReturnType<typeof buildGraph>,
-): boolean {
+function hasRedTokenViolation(hexes: ResolvedHex[], graph: ReturnType<typeof buildGraph>): boolean {
   for (const e of graph.edges.values()) {
     if (e.hexes.length < 2) continue;
     const h0 = hexes.find((h) => hexKey(h) === e.hexes[0]);

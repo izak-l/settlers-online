@@ -97,9 +97,12 @@ describe("no-adjacent-red-tokens constraint — 10,000 seeds", () => {
       for (const h of landHexes) {
         if (!h.token || !RED.has(h.token)) continue;
         const neighbors = [
-          { q: h.q + 1, r: h.r }, { q: h.q + 1, r: h.r - 1 },
-          { q: h.q, r: h.r - 1 }, { q: h.q - 1, r: h.r },
-          { q: h.q - 1, r: h.r + 1 }, { q: h.q, r: h.r + 1 },
+          { q: h.q + 1, r: h.r },
+          { q: h.q + 1, r: h.r - 1 },
+          { q: h.q, r: h.r - 1 },
+          { q: h.q - 1, r: h.r },
+          { q: h.q - 1, r: h.r + 1 },
+          { q: h.q, r: h.r + 1 },
         ];
         for (const n of neighbors) {
           const nToken = tokenMap.get(`${n.q},${n.r}`);

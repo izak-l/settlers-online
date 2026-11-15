@@ -13,7 +13,9 @@
     "sim": "pnpm --filter @settlers/sim start"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",

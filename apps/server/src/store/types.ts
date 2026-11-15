@@ -1,0 +1,72 @@
+import type { Action, GameEvent, MapInput, PlayerId, StateSnapshot } from "@settlers/engine";
+
+export interface Profile {
+  /** Supabase auth user id, or "dev:<name>" in dev mode. */
+  id: string;
+  username: string | null;
+}
+
+export interface LobbySeatRecord {
+  userId: string;
+  ready: boolean;
+}
+
+export interface LobbyRecord {
+  id: string;
+  hostId: string;
+  maxSeats: number;
+  allowSpectators: boolean;
+  seats: (LobbySeatRecord | null)[];
+  status: "open" | "started";
+  gameId: string | null;
+}
+
+export interface GameRecord {
+  id: string;
+  lobbyId: string;
+  map: MapInput;
+  modules: string[];
+  seed: string;
+  seats: PlayerId[];
+  status: "active" | "finished";
+}
+
+/** Seat ↔ account mapping. The engine only ever sees the seat. */
+export interface GamePlayer {
+  seat: PlayerId;
+  userId: string;
+}
+
+export interface StoredAction {
+  /** 1-based, contiguous per game. */
+  seq: number;
+  /** Seat id, or "system". */
+  actor: string;
+  action: Action;
+  /** Events the engine emitted, kept so the log survives restarts. */
+  events: GameEvent[];
+}
+
+/** Everything the server persists. Postgres in production; in-memory for unit tests. */
+export interface Store {
+  /** Get the profile, creating an empty one on first sign-in. */
+  ensureProfile(userId: string): Promise<Profile>;
+  getProfiles(userIds: string[]): Promise<Profile[]>;
+  setUsername(userId: string, username: string): Promise<"ok" | "taken">;
+
+  createLobby(lobby: LobbyRecord): Promise<void>;
+  getLobby(id: string): Promise<LobbyRecord | null>;
+  saveLobby(lobby: LobbyRecord): Promise<void>;
+
+  /** Atomically create the game, its players, and mark the lobby started. */
+  startGame(lobby: LobbyRecord, game: GameRecord, players: GamePlayer[]): Promise<void>;
+  getGame(id: string): Promise<{ game: GameRecord; players: GamePlayer[] } | null>;
+
+  /** Must be durable before the server broadcasts the new state. */
+  appendAction(gameId: string, action: StoredAction): Promise<void>;
+  actionsAfter(gameId: string, seq: number): Promise<StoredAction[]>;
+  saveSnapshot(gameId: string, seq: number, state: StateSnapshot): Promise<void>;
+  latestSnapshot(gameId: string): Promise<{ seq: number; state: StateSnapshot } | null>;
+
+  close(): Promise<void>;
+}

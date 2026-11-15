@@ -144,3 +144,22 @@ describe("defaultAction", () => {
     expect(s.turn.number).toBeGreaterThan(1);
   });
 });
+
+describe("snapshots", () => {
+  it("round-trips through JSON and keeps playing identically", async () => {
+    const { toSnapshot, fromSnapshot } = await import("../engine");
+    const s = runSetup(newGame());
+    const restored = fromSnapshot(JSON.parse(JSON.stringify(toSnapshot(s))));
+    expect(restored).toEqual(s);
+    const a = apply(s, "p0", { type: "ROLL" });
+    const b = apply(restored, "p0", { type: "ROLL" });
+    expect(a.ok && b.ok && a.state).toEqual(b.ok && b.state);
+  });
+
+  it("contains no Map or Set, so JSON keeps everything", async () => {
+    const { toSnapshot } = await import("../engine");
+    const snap = toSnapshot(newGame());
+    expect(JSON.parse(JSON.stringify(snap))).toEqual(snap);
+    expect("graph" in snap).toBe(false);
+  });
+});

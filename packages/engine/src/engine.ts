@@ -191,3 +191,21 @@ export function viewFor(state: GameState, viewer: Viewer): PlayerView {
   for (const [id, zone] of Object.entries(zones)) redacted[id] = redactZone(zone, viewer);
   return { ...rest, viewer, zones: redacted };
 }
+
+// ---------------------------------------------------------------------------
+// Persistence
+// ---------------------------------------------------------------------------
+
+/** GameState without the derived graph: plain JSON, safe to store. */
+export type StateSnapshot = Omit<GameState, "graph">;
+
+export function toSnapshot(state: GameState): StateSnapshot {
+  const { graph: _graph, ...rest } = cloneState(state);
+  return rest;
+}
+
+/** Rebuild a full GameState (including the graph) from a stored snapshot. */
+export function fromSnapshot(snapshot: StateSnapshot): GameState {
+  const rest = JSON.parse(JSON.stringify(snapshot)) as StateSnapshot;
+  return { ...rest, graph: buildGraph(rest.map.hexes.filter((h) => h.terrain !== "sea")) };
+}

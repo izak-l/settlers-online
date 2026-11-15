@@ -147,8 +147,10 @@ export interface GameStateMessage {
   legal: ActionSpec[];
   /** Public VP per seat. */
   scores: Record<PlayerId, number>;
-  /** Every event this viewer may see, oldest first. */
-  log: GameEvent[];
+  /** Events this viewer may see from the action that produced this state. */
+  events: GameEvent[];
+  /** Full visible history, oldest first. Only sent when joining or reconnecting. */
+  log?: GameEvent[];
   players: SeatPlayer[];
 }
 

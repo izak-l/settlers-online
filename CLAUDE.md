@@ -10,7 +10,7 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 
 - [x] M0 Monorepo, CI, lint, test runner
 - [x] M1 Board graph, map loader, base map generator
-- [ ] M2 Engine core: decision stack, module system, setup, roll, produce, build
+- [x] M2 Engine core: decision stack, module system, setup, roll, produce, build
 - [ ] M3 Hot-seat UI
 - [ ] M4 Robber, dev cards, trades, awards, win
 - [ ] M5 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log

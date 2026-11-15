@@ -130,7 +130,7 @@ function viewFor(state: GameState, viewer: PlayerId | "spectator"): PlayerView;
 function defaultAction(state: GameState, playerId: PlayerId): Action;    // used on timeout
 ```
 
-- `apply` never mutates its input (use Immer or structural copies).
+- `apply` never mutates its input. It validates against the untouched state, then deep-copies it (the graph is shared, since it is never mutated) and lets the handler change the copy.
 - `events` are human-readable facts for the game log ("P2 rolled 8", "P1 stole from P3"). The log UI is built from events, never from diffing state.
 
 **State shape**
@@ -176,6 +176,18 @@ interface Decision {
 - Every action is validated against the top decision first, then by the owning module's validator.
 - Setup is just a scripted sequence of `PLACE_SETTLEMENT` / `PLACE_ROAD` decisions in snake order.
 
+**As built (M2)**
+
+- The stack is `GameState.decisions`; the last element is the top. `createGame` pushes the whole setup sequence over p0's first `ROLL`, so the stack is never empty. Placing a setup settlement writes `mustTouch` into the road decision below it.
+- `apply` checks, in order: game over → the top decision allows the action type (`WRONG_DECISION`) → the player is in `pendingFrom` (`NOT_YOUR_TURN`; the `system` actor acts for `pendingFrom[0]`) → the handler's `validate`. Build actions check piece limit, then cost, then placement.
+- `turn.number` is 0 during setup and 1 on the first `ROLL`. `END_TURN` pops `MAIN`, advances the seat, and pushes the next player's `ROLL`.
+- The engine takes a `MapInput` (every pool already resolved). `@settlers/maps`' `ResolvedMap` fits it structurally; the engine doesn't depend on the maps package.
+- `GameState` stores module ids, not module code. `MODULES` in `packages/engine/src/modules/index.ts` maps ids to modules. `graph` is derived and uses `Map`/`Set`, so persistence (M5) must drop it and rebuild it with `buildGraph`.
+- Zones hold `Record<ResourceId, number>` for now; ordered card zones arrive with dev cards (M4).
+- `viewFor` returns a `PlayerView`: the state minus `rng` and `graph`, with zones redacted (`public`: contents; `count`: contents for the owner, a count for others; `owner`: contents for the owner only; `hidden`: a count only).
+- `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it takes the first legal action. Random timeout defaults (discards, robber) come in M4.
+- A roll of 7 currently produces nothing and pushes nothing; discards, robber and steal come in M4.
+
 ## 6. Rules modules and hooks
 
 Every rule lives in a module, and the base game is itself a module. A ruleset is an ordered list of modules plus options. This proves the hook API on day one and keeps `if (expansion)` checks out of the core.
@@ -214,6 +226,13 @@ interface RulesModule {
 - Victory points are always computed from `vpSources`, never stored as a counter.
 - Dice results are an object, so an event die or a chosen roll fits later.
 
+**As built (M2)**
+
+- An action handler is `{ validate, apply, candidates }`. `validate` sees the untouched state; `apply` mutates the draft copy and pushes events. `legalActions` is `candidates` filtered by `validate`, so the UI's highlights and the server's checks can't disagree.
+- The handler for an action comes from the top decision's module first, then from the first module in ruleset order that has one.
+- Hooks implemented so far: `rollDice` (the last module that defines it wins), `produce` (every module runs, in order) and `vpSources` (summed). `setup` plays the role of `onGameStart`. The other hooks in the table are added when the milestone that needs them lands, per the seam rule in section 14.
+- Costs, piece limits and the terrain → resource table are constants in the base module for now; `pieceTypes` / `costs` on the module interface wait until an expansion needs to change them.
+
 ## 7. Base game rules checklist
 
 The base module implements the rules below. Each item needs at least one engine test; tick it off when tested.
@@ -231,22 +250,22 @@ Bank: 19 of each resource. Dev deck: 14 Knight, 5 Victory Point, 2 Road Building
 
 **Setup**
 
-- [ ] Snake order: 1→N places settlement + road, then N→1.
-- [ ] Second settlement grants one of each resource from its adjacent hexes.
-- [ ] Robber starts on the desert.
+- [x] Snake order: 1→N places settlement + road, then N→1.
+- [x] Second settlement grants one of each resource from its adjacent hexes.
+- [x] Robber starts on the desert.
 
 **Turn and production**
 
-- [ ] Roll two dice; every hex with that token (and no robber) pays 1 per settlement, 2 per city.
-- [ ] Bank shortage: if the bank can't pay everyone owed a resource, nobody gets it, unless only one player is owed it (they get what remains).
+- [x] Roll two dice; every hex with that token (and no robber) pays 1 per settlement, 2 per city.
+- [x] Bank shortage: if the bank can't pay everyone owed a resource, nobody gets it, unless only one player is owed it (they get what remains).
 - [ ] Roll of 7: every player with 8+ cards discards half, rounded down, simultaneously.
 - [ ] Robber must move to a different hex; active player steals one random card from a player with a building on it (if any have cards).
 
 **Building**
 
-- [ ] Distance rule: no settlement on a vertex adjacent to any other settlement or city.
-- [ ] Roads connect to your own road or building; settlements (after setup) connect to your own road.
-- [ ] An opponent's settlement blocks road continuation through that vertex.
+- [x] Distance rule: no settlement on a vertex adjacent to any other settlement or city.
+- [x] Roads connect to your own road or building; settlements (after setup) connect to your own road.
+- [x] An opponent's settlement blocks road continuation through that vertex.
 
 **Dev cards**
 
@@ -456,20 +475,20 @@ This doc is the spec: build milestone by milestone (section 13), and if the code
 **Conventions**
 
 - Action types and decision kinds are `SCREAMING_SNAKE` (`BUILD_ROAD`, `MOVE_ROBBER`).
-- Error codes are stable strings the UI maps to messages: `NOT_YOUR_TURN`, `WRONG_DECISION`, `CANNOT_AFFORD`, `ILLEGAL_PLACEMENT`, `PIECE_LIMIT`, `BANK_EMPTY`, `INVALID_TRADE`.
+- Error codes are stable strings the UI maps to messages: `NOT_YOUR_TURN`, `WRONG_DECISION`, `CANNOT_AFFORD`, `ILLEGAL_PLACEMENT`, `PIECE_LIMIT`, `BANK_EMPTY`, `INVALID_TRADE`, `GAME_OVER`, `UNKNOWN_ACTION`. `ERROR_MESSAGES` in the engine holds the UI copy for each.
 - Resource keys are lowercase: `wood`, `brick`, `sheep`, `wheat`, `ore`.
 - Vertex and edge IDs follow section 4; piece IDs are `${type}-${seat}-${n}`.
 - `packages/engine` exports only through `src/index.ts`; other packages never import its internals.
 
 **First session: M0–M1 tasks**
 
-- [ ] Scaffold the pnpm workspace (`packages/engine`, `packages/maps`, `packages/protocol`, `apps/server`, `apps/web`, `tools/sim`) with a strict shared `tsconfig`, Vitest and ESLint.
-- [ ] GitHub Actions workflow: install, typecheck, lint, test.
-- [ ] Axial hex math: neighbors, corner positions, vertex and edge ID functions.
-- [ ] `buildGraph(map)` with tests: 19 hexes, 54 vertices, 72 edges on the base map; adjacency sizes correct.
-- [ ] Map zod schema, validator and `base-4p.json`.
-- [ ] Seeded PRNG with serializable state; map generator that resolves pools and enforces the red-token constraint, tested over 10k seeds.
-- [ ] Throwaway SVG page in `apps/web` that renders a generated board, to check the geometry by eye.
+- [x] Scaffold the pnpm workspace (`packages/engine`, `packages/maps`, `packages/protocol`, `apps/server`, `apps/web`, `tools/sim`) with a strict shared `tsconfig`, Vitest and ESLint.
+- [x] GitHub Actions workflow: install, typecheck, lint, test.
+- [x] Axial hex math: neighbors, corner positions, vertex and edge ID functions.
+- [x] `buildGraph(map)` with tests: 19 hexes, 54 vertices, 72 edges on the base map; adjacency sizes correct.
+- [x] Map zod schema, validator and `base-4p.json`.
+- [x] Seeded PRNG with serializable state; map generator that resolves pools and enforces the red-token constraint, tested over 10k seeds.
+- [x] Throwaway SVG page in `apps/web` that renders a generated board, to check the geometry by eye.
 
 **Glossary**
 

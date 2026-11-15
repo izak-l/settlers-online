@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { RunningServer } from "../server";
-import { MemoryStore } from "../store/memory";
 import type { Store } from "../store/types";
 import { pick, startTestServer, TestClient } from "./harness";
 
@@ -214,5 +213,3 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
     });
   });
 }
-
-onlineSuite("online play (in-memory store)", async () => new MemoryStore());

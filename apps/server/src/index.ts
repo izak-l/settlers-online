@@ -1,14 +1,25 @@
+import pg from "pg";
 import { anyOf, devAuthenticator, type Authenticator } from "./auth";
 import { loadEnvFiles, readConfig } from "./config";
+import { migrate } from "./db/migrate";
 import { startServer } from "./server";
 import { MemoryStore } from "./store/memory";
+import { PgStore } from "./store/postgres";
 import type { Store } from "./store/types";
 
 loadEnvFiles();
 const config = readConfig();
 
-// Postgres (step 4c) and Supabase sign-in (step 4d) plug in here.
-const store: Store = new MemoryStore();
+let store: Store;
+if (config.DATABASE_URL) {
+  const pool = new pg.Pool({ connectionString: config.DATABASE_URL });
+  await migrate(pool);
+  store = new PgStore(pool);
+} else {
+  console.warn("DATABASE_URL is not set: games are kept in memory and lost on restart.");
+  store = new MemoryStore();
+}
+// Supabase sign-in (step 4d) plugs in here.
 const auths: Authenticator[] = [];
 if (config.AUTH_MODE === "dev") auths.push(devAuthenticator);
 const auth = anyOf(...auths);

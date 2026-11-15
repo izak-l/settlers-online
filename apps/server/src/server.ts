@@ -89,6 +89,13 @@ export async function startServer({
   /** userId → number of open sockets. Seats stay reserved at 0; this only drives "connected". */
   const presence = new Map<string, number>();
   const isConnected = (userId: string) => (presence.get(userId) ?? 0) > 0;
+  /** Work started outside a request (disconnect broadcasts); `close` waits for it. */
+  const background = new Set<Promise<void>>();
+  const inBackground = (work: () => Promise<void>) => {
+    const p = work().catch((err: unknown) => console.error(err));
+    background.add(p);
+    void p.finally(() => background.delete(p));
+  };
 
   // ---- building and sending state ----
 
@@ -295,17 +302,13 @@ export async function startServer({
       }
       presence.delete(userId);
       // Seats stay reserved; just tell everyone this player dropped.
-      void (async () => {
-        try {
-          for (const id of socket.data.lobbies) await broadcastLobby(id);
-          for (const id of socket.data.games.keys()) {
-            const room = await rooms.get(id);
-            if (room) await broadcastGame(room, []);
-          }
-        } catch (err) {
-          console.error(err);
+      inBackground(async () => {
+        for (const id of socket.data.lobbies) await broadcastLobby(id);
+        for (const id of socket.data.games.keys()) {
+          const room = await rooms.get(id);
+          if (room) await broadcastGame(room, []);
         }
-      })();
+      });
     });
   });
 
@@ -316,7 +319,9 @@ export async function startServer({
     url: `http://localhost:${actual}`,
     io,
     async close() {
-      await io.close(); // also closes the HTTP server
+      await io.close(); // also closes the HTTP server and disconnects every socket
+      // Disconnect handlers may still be broadcasting; let them finish before storage closes.
+      while (background.size > 0) await Promise.allSettled([...background]);
     },
   };
 }

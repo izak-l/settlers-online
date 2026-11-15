@@ -297,11 +297,12 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | C→S | `action` | `Action`, client sequence number |
 | C→S | `chat` | text |
 | S→C | `welcome` | seat id or spectator, full view |
-| S→C | `state` | full `PlayerView` + server sequence number + new events |
+| S→C | `state` | full `PlayerView` + that player's `legal` actions + public `scores` + server sequence number + new events |
 | S→C | `rejected` | client sequence number, reason code |
 | S→C | `lobby` | seats, ready flags, chosen map and ruleset |
 
 - v1 sends the full filtered view on every change. Board state is small (a few KB), so diffs aren't worth the complexity yet.
+- `legalActions` and `computeVP` need the full `GameState`, which clients never get, so the server computes both and sends them with the view. The client highlights moves from `legal` and never works out legality itself.
 - Each game processes actions one at a time through a per-game queue, so two clicks can't race.
 
 **Hidden information**
@@ -346,6 +347,14 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Mobile:** board pans and zooms; panels collapse into a bottom drawer.
 - **Art:** original flat SVG icons and a custom color palette. No borrowed assets.
 - **Map editor (later):** click hexes to set terrain, tokens and ports; validates with the shared map validator; exports map JSON.
+
+**As built (M3: hot-seat)**
+
+- Components only see a `GameClient` (`apps/web/src/game/LocalGame.ts`): `snapshot()` → `{ seat, view, legal, scores, log }` and `send(action)`. In M3 `LocalGame` plays the server's part in the browser; in M5 a socket client implements the same interface.
+- The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
+- Clickable targets are exactly the actions in `legal`. During setup every legal placement lights up; in the main step the Road / Settlement / City buttons pick which kind, and a button is disabled when `legal` has none of that kind. Targets are keyboard-focusable buttons.
+- A "pass the device" screen covers the board whenever the seat being waited on changes, so hands stay private.
+- Not yet: pan/zoom, the mobile drawer and animations (M6); the robber, dev cards, trades and the win screen (M4).
 - **Account and lobby screens:** sign-in (email, Google, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
 
 ## 11. Testing strategy

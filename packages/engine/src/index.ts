@@ -14,3 +14,4 @@ export {
   type ZoneView,
   type Viewer,
 } from "./engine";
+export { COSTS as BASE_COSTS, BASE_RESOURCES } from "./modules/base";

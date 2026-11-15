@@ -379,7 +379,14 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - `LocalGame` implements `GameClient` with the engine running in the tab. It powers the **dev sandbox** (`pnpm dev`, development builds only), where one person acts for whichever seat is being waited on, and the web tests. It is not a player-facing mode; production builds show a placeholder until online play lands.
 - The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
 - Clickable targets are exactly the actions in `legal`. During setup every legal placement lights up; in the main step the Road / Settlement / City buttons pick which kind, and a button is disabled when `legal` has none of that kind. Targets are keyboard-focusable buttons.
-- Not yet: lobbies and sign-in (M4); the robber, dev cards, trades and the win screen (M5); small-screen layout and animations (M6).
+- Not yet: small-screen layout and animations (M6).
+
+**As built (M5: full rules in the UI)**
+
+- Every new decision has its own view, driven by the top decision's `kind` and its `data`: a discard picker (`DISCARD`, amount from `data.amounts`), clickable robber hexes (`MOVE_ROBBER`), victim buttons (`STEAL`), free-road targets (`PLACE_FREE_ROAD`), and the open-offer view (`TRADE_OFFER`) shown to everyone, spectators included.
+- One `ResourcePicker` (+/− per resource, optional per-resource and total limits) is reused for discards, Bounty picks and trade offers. Those actions are built in the UI and validated by the server; every other button is enabled only from `legal`.
+- The dev cards panel lists your cards (cards bought this turn are marked as playable next turn) with Play buttons from `legal`; Bounty and Monopoly open a chooser. The trade panel appears only on your own main step: bank trades show your rate per resource from `ratios`, and an offer builder sends `OFFER_TRADE`.
+- The players panel shows card and dev card counts, knights played, and award badges. A win banner shows the winner and final scores (VP cards revealed).
 - **Account and lobby screens:** sign-in (email, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
 
 ## 11. Testing strategy

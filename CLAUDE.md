@@ -13,8 +13,8 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M2 Engine core: decision stack, module system, setup, roll, produce, build
 - [x] M3 Board UI against a `GameClient`, with a local dev sandbox
 - [x] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log
-- [ ] M5 Robber, dev cards, trades, awards, win ← next
-- [ ] M6 Friends, presence, invites, history, polish, turn timers
+- [x] M5 Robber, dev cards, trades, awards, win
+- [ ] M6 Friends, presence, invites, history, polish, turn timers ← next
 - [ ] M7 Deploy to free tiers
 - [ ] M8+ Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
 

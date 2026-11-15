@@ -10,7 +10,12 @@ export function TradePanel({ snap, send }: { snap: Snapshot; send(a: Action): vo
   const [offerGive, setOfferGive] = useState<Record<string, number>>({});
   const [offerWant, setOfferWant] = useState<Record<string, number>>({});
   const hand = snap.view.zones[`hand-${snap.seat}`]?.contents ?? {};
-  const canOffer = snap.view.decisions.at(-1)?.allowed.includes("OFFER_TRADE") ?? false;
+  const top = snap.view.decisions.at(-1);
+  // Only on your own main step (the step allowing offers isn't enough: it's someone's turn).
+  const canOffer =
+    !!top?.allowed.includes("OFFER_TRADE") &&
+    snap.seat !== "spectator" &&
+    top.pendingFrom.includes(snap.seat);
   const bankOk = snap.legal.some(
     (a) => a.type === "BANK_TRADE" && a.give === give && a.get === get,
   );

@@ -557,3 +557,129 @@ input {
   letter-spacing: 0.05em;
   color: var(--error);
 }
+
+/* ---- M5: pickers, dev cards, trades, awards, winner ---- */
+.small {
+  font-size: 0.8rem;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+}
+.pick {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+}
+.pm {
+  display: flex;
+  gap: 2px;
+}
+.pm button {
+  padding: 0.15rem 0.5rem;
+  min-width: 2rem;
+}
+.devcards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.devcards li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.devcards p {
+  margin: 0.15rem 0 0;
+}
+.chip-button {
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 1px #0006;
+}
+.chip-button.res-wood {
+  background: var(--r-wood);
+}
+.chip-button.res-brick {
+  background: var(--r-brick);
+}
+.chip-button.res-sheep {
+  background: var(--r-sheep);
+}
+.chip-button.res-wheat {
+  background: var(--r-wheat);
+}
+.chip-button.res-ore {
+  background: var(--r-ore);
+}
+select {
+  font: inherit;
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+details summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.responses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.responses li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.answer.accept {
+  color: #2e8b57;
+  font-weight: 600;
+}
+.answer.decline {
+  color: var(--error);
+}
+.answer.waiting {
+  color: var(--muted);
+}
+.players .name {
+  display: grid;
+}
+.meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.awards {
+  display: flex;
+  gap: 0.3rem;
+}
+.award {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #d4a017 25%, transparent);
+}
+.target-hex {
+  fill: var(--target);
+  fill-opacity: 0.55;
+  stroke: #1f2328;
+  stroke-width: 2;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.winner {
+  border-color: #d4a017;
+  background: color-mix(in srgb, #d4a017 12%, var(--surface));
+}

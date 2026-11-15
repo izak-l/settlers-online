@@ -31,6 +31,8 @@ function targets(snap: Snapshot, mode: BuildMode): ActionSpec[] {
   if (kind === "PLACE_SETTLEMENT" || kind === "PLACE_ROAD") {
     return snap.legal.filter((a) => a.type === "PLACE_SETTLEMENT" || a.type === "PLACE_ROAD");
   }
+  if (kind === "MOVE_ROBBER") return snap.legal.filter((a) => a.type === "MOVE_ROBBER");
+  if (kind === "PLACE_FREE_ROAD") return snap.legal.filter((a) => a.type === "PLACE_FREE_ROAD");
   if (kind === "MAIN" && mode) return snap.legal.filter((a) => a.type === MODE_ACTION[mode]);
   return [];
 }
@@ -200,6 +202,22 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             >
               <title>Place road here</title>
             </line>
+          );
+        }
+        if (a.type === "MOVE_ROBBER") {
+          const [q, r] = a.hex.split(",").map(Number);
+          const [x, y] = hexCenter(q!, r!);
+          return (
+            <circle
+              key={`robber-${a.hex}`}
+              className="target target-hex"
+              cx={x}
+              cy={y}
+              r={24}
+              {...activate(a, "Move the robber here")}
+            >
+              <title>Move the robber here</title>
+            </circle>
           );
         }
         if ("vertex" in a) {

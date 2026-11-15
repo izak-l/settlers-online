@@ -1,6 +1,7 @@
 import { BASE_COSTS, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
+import { DiscardPicker, StealPicker, TradeOfferView } from "./Decisions";
 
 const BUILDS: { mode: Exclude<BuildMode, null>; label: string; action: string }[] = [
   { mode: "road", label: "Road", action: "BUILD_ROAD" },
@@ -13,6 +14,10 @@ const WAITING_FOR: Record<string, string> = {
   PLACE_ROAD: "to place a road",
   ROLL: "to roll",
   MAIN: "to finish their turn",
+  DISCARD: "to discard",
+  MOVE_ROBBER: "to move the robber",
+  STEAL: "to choose who to rob",
+  PLACE_FREE_ROAD: "to place free roads",
 };
 
 function Cost({ cost }: { cost: Record<string, number> }) {
@@ -45,11 +50,15 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
   )?.lastRoll;
 
   let body: React.ReactNode = null;
-  if (!myMove) {
-    const who = seats.find((s) => s.id === top?.pendingFrom[0]);
+  if (snap.view.winner !== undefined) {
+    body = null;
+  } else if (top?.kind === "TRADE_OFFER") {
+    body = <TradeOfferView snap={snap} seats={seats} send={send} />;
+  } else if (!myMove) {
+    const waiting = top?.pendingFrom.map((id) => seats.find((s) => s.id === id)?.name ?? id) ?? [];
     body = (
       <p className="prompt muted">
-        Waiting for {who?.name ?? "the next player"} {WAITING_FOR[top?.kind ?? ""] ?? ""}…
+        Waiting for {waiting.join(", ") || "the next player"} {WAITING_FOR[top?.kind ?? ""] ?? ""}…
       </p>
     );
   } else {
@@ -66,11 +75,37 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
       case "PLACE_ROAD":
         body = <p className="prompt">Place a road touching that settlement.</p>;
         break;
+      case "PLACE_FREE_ROAD":
+        body = (
+          <p className="prompt">Place a free road ({String(top.data?.["remaining"])} left).</p>
+        );
+        break;
+      case "DISCARD":
+        body = (
+          <DiscardPicker
+            // Fresh picks for each seat's own discard (the sandbox switches seats in one tab).
+            key={`${snap.view.turn.number}-${snap.seat}-${top.pendingFrom.length}`}
+            snap={snap}
+            send={send}
+          />
+        );
+        break;
+      case "MOVE_ROBBER":
+        body = <p className="prompt">Move the robber: click a highlighted hex.</p>;
+        break;
+      case "STEAL":
+        body = <StealPicker snap={snap} seats={seats} send={send} />;
+        break;
       case "ROLL":
         body = (
-          <button className="primary big" onClick={() => send({ type: "ROLL" })}>
-            Roll dice
-          </button>
+          <>
+            <button className="primary big" onClick={() => send({ type: "ROLL" })}>
+              Roll dice
+            </button>
+            {snap.legal.some((a) => a.type.startsWith("PLAY_")) && (
+              <p className="muted small">You can play a development card before rolling.</p>
+            )}
+          </>
         );
         break;
       case "MAIN":
@@ -89,6 +124,14 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
                   <Cost cost={BASE_COSTS[b.mode]!} />
                 </button>
               ))}
+              <button
+                className="build"
+                disabled={!canDo("BUY_DEV_CARD")}
+                onClick={() => send({ type: "BUY_DEV_CARD" })}
+              >
+                <span>Dev card</span>
+                <Cost cost={BASE_COSTS["devCard"]!} />
+              </button>
             </div>
             {mode && (
               <p className="prompt">

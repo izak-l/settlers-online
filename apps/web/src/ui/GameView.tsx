@@ -4,6 +4,8 @@ import { Board } from "../board/Board";
 import type { GameClient, Snapshot } from "../game/LocalGame";
 import { errorText, seatsOf, type BuildMode } from "../game/seats";
 import { ActionBar } from "./ActionBar";
+import { DevCards } from "./DevCards";
+import { TradePanel } from "./TradePanel";
 import { GameLog } from "./GameLog";
 import { HandPanel } from "./HandPanel";
 import { PlayersPanel } from "./PlayersPanel";
@@ -41,6 +43,15 @@ export function GameView({ client }: { client: GameClient }) {
         <Board snap={snap} seats={seats} mode={mode} onAction={(a) => void send(a)} />
       </div>
       <aside className="side">
+        {snap.view.winner !== undefined && (
+          <section className="panel winner" role="status">
+            <h2>{seats.find((s) => s.id === snap.view.winner)?.name ?? snap.view.winner} wins!</h2>
+            <p className="muted">
+              Final scores: {seats.map((s) => `${s.name} ${snap.scores[s.id] ?? 0}`).join(" · ")}
+            </p>
+            <a href="#/">Back home</a>
+          </section>
+        )}
         {!playing && <p className="panel muted">You're watching. Hands are hidden.</p>}
         <PlayersPanel snap={snap} seats={seats} />
         <ActionBar
@@ -52,6 +63,8 @@ export function GameView({ client }: { client: GameClient }) {
           error={error}
         />
         {playing && <HandPanel snap={snap} />}
+        {playing && <DevCards snap={snap} send={(a) => void send(a)} />}
+        {playing && <TradePanel snap={snap} send={(a) => void send(a)} />}
         <GameLog snap={snap} seats={seats} />
       </aside>
     </main>

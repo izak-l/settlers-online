@@ -105,12 +105,13 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
   const handler = findHandler(state, top, action.type);
   if (!handler) return reject("UNKNOWN_ACTION", `No module handles ${action.type}.`);
 
-  const failure = handler.validate(state, player, action);
+  const modules = modulesOf(state);
+  const failure = handler.validate(state, player, action, { modules });
   if (failure) return failure;
 
   const draft = cloneState(state);
   const events: GameEvent[] = [];
-  handler.apply(draft, player, action, { events, modules: modulesOf(state) });
+  handler.apply(draft, player, action, { events, modules });
   return { ok: true, state: draft, events };
 }
 
@@ -120,11 +121,12 @@ export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
   if (state.winner !== undefined || !top || !top.pendingFrom.includes(player)) return [];
 
   const result: ActionSpec[] = [];
+  const modules = modulesOf(state);
   for (const type of top.allowed) {
     const handler = findHandler(state, top, type as Action["type"]);
     if (!handler) continue;
     for (const a of handler.candidates(state, player)) {
-      if (handler.validate(state, player, a) === null) result.push(a);
+      if (handler.validate(state, player, a, { modules }) === null) result.push(a);
     }
   }
   return result;
@@ -145,14 +147,14 @@ export function computeVP(
 }
 
 /**
- * Fallback move when a player's timer runs out: end the turn if possible, otherwise a random
- * legal action. "Random" reads the game RNG without advancing it, so it's deterministic for a
+ * Fallback move when a player's timer runs out: the owning module's choice (the base game rolls,
+ * ends the turn, or cancels/declines a trade), otherwise a random legal action. "Random" reads the game RNG without advancing it, so it's deterministic for a
  * given state; the chosen action is then logged and replayed like any other.
  */
 export function defaultAction(state: GameState, player: PlayerId): Action {
   const top = state.decisions.at(-1);
-  if (top?.allowed.includes("ROLL")) return { type: "ROLL" };
-  if (top?.allowed.includes("END_TURN")) return { type: "END_TURN" };
+  const preferred = top ? MODULES[top.module]?.defaultAction?.(state, player) : null;
+  if (preferred) return preferred;
   const legal = legalActions(state, player);
   if (legal.length === 0)
     throw new Error(`No legal action for ${player} during ${top?.kind ?? "nothing"}`);

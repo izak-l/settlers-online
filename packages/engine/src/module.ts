@@ -19,6 +19,7 @@ export interface ActionHandler<T extends ActionType = ActionType> {
     state: GameState,
     player: PlayerId,
     action: Extract<Action, { type: T }>,
+    ctx: { modules: RulesModule[] },
   ): Rejection | null;
   apply(
     draft: GameState,
@@ -42,6 +43,8 @@ export interface Hooks {
    * true for the owner, for win checks, and once the game is over.
    */
   vpSources(state: GameState, player: PlayerId, includeHidden: boolean): number;
+  /** Cards of `resource` needed for one card from the bank. Lowest across modules wins. */
+  tradeRatio(state: GameState, player: PlayerId, resource: string): number;
 }
 
 export interface RulesModule {
@@ -53,6 +56,11 @@ export interface RulesModule {
   hooks?: Partial<Hooks>;
   /** Runs once in createGame, in ruleset order: build zones, place starting pieces, push decisions. */
   setup?(draft: GameState): void;
+  /**
+   * What a timeout does for `player` when this module owns the top decision.
+   * Null falls back to a random legal action.
+   */
+  defaultAction?(state: GameState, player: PlayerId): Action | null;
 }
 
 // ---- hook runners ----
@@ -83,6 +91,20 @@ export function runVpSources(
   let vp = 0;
   for (const m of modules) vp += m.hooks?.vpSources?.(state, player, includeHidden) ?? 0;
   return vp;
+}
+
+export function runTradeRatio(
+  modules: RulesModule[],
+  state: GameState,
+  player: PlayerId,
+  resource: string,
+): number {
+  let best = Infinity;
+  for (const m of modules) {
+    const r = m.hooks?.tradeRatio?.(state, player, resource);
+    if (r !== undefined) best = Math.min(best, r);
+  }
+  return best;
 }
 
 export function reject(code: Rejection["code"], message: string): Rejection {

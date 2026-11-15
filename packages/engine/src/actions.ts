@@ -18,7 +18,12 @@ export type Action =
   | { type: "PLAY_ROAD_BUILDING" }
   | { type: "PLACE_FREE_ROAD"; edge: EdgeId }
   | { type: "PLAY_YEAR_OF_PLENTY"; resources: Resources }
-  | { type: "PLAY_MONOPOLY"; resource: string };
+  | { type: "PLAY_MONOPOLY"; resource: string }
+  | { type: "BANK_TRADE"; give: string; get: string }
+  | { type: "OFFER_TRADE"; give: Resources; want: Resources }
+  | { type: "RESPOND_TRADE"; accept: boolean }
+  | { type: "CONFIRM_TRADE"; with: PlayerId }
+  | { type: "CANCEL_TRADE" };
 
 export type ActionType = Action["type"];
 

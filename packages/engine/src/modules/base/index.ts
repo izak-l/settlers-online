@@ -6,6 +6,7 @@ import { countOwned } from "./helpers";
 import { produce } from "./production";
 import { robberActions } from "./robber";
 import { setupActions, setupBase } from "./setup";
+import { baseDefaultAction, tradeActions, tradeRatio } from "./trade";
 import { rollTwoDice, turnActions } from "./turn";
 
 export { BASE_RESOURCES, COSTS, DEV_CARD_NAMES, PIECE_LIMITS } from "./data";
@@ -23,10 +24,12 @@ export const baseModule: RulesModule = {
     ...buildActions,
     ...robberActions,
     ...devCardActions,
+    ...tradeActions,
   },
   hooks: {
     rollDice: rollTwoDice,
     produce,
+    tradeRatio,
     vpSources(state, player, includeHidden) {
       const buildings =
         countOwned(state, player, "settlement") + 2 * countOwned(state, player, "city");
@@ -34,4 +37,5 @@ export const baseModule: RulesModule = {
     },
   },
   setup: setupBase,
+  defaultAction: baseDefaultAction,
 };

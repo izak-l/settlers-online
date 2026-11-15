@@ -78,6 +78,15 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("PLACE_FREE_ROAD"), edge: VertexOrEdge }),
   z.object({ type: z.literal("PLAY_YEAR_OF_PLENTY"), resources: ResourceCounts }),
   z.object({ type: z.literal("PLAY_MONOPOLY"), resource: z.string().min(1).max(20) }),
+  z.object({
+    type: z.literal("BANK_TRADE"),
+    give: z.string().min(1).max(20),
+    get: z.string().min(1).max(20),
+  }),
+  z.object({ type: z.literal("OFFER_TRADE"), give: ResourceCounts, want: ResourceCounts }),
+  z.object({ type: z.literal("RESPOND_TRADE"), accept: z.boolean() }),
+  z.object({ type: z.literal("CONFIRM_TRADE"), with: z.string().min(1).max(8) }),
+  z.object({ type: z.literal("CANCEL_TRADE") }),
 ]);
 // Compile-time check that the schema and the engine agree.
 type _SchemaMatchesEngine = [z.infer<typeof ActionSchema>] extends [Action]

@@ -108,3 +108,13 @@ Your own view counts your VP cards. Everyone else's view of your score doesn't, 
 `defaultAction` prefers ROLL, then END_TURN, then a random legal action.
 
 **Test:** `game.test.ts` — "returns an action apply accepts at every step of a short game".
+
+### A17: Player trades: the active player offers; others accept or decline; no counter-offers
+
+Only the active player, in their main step, can open an offer. It must give and want at least one card each, with no resource on both sides. Responders can change their answer until the offerer confirms with one of the accepters, and both hands are re-checked at that moment. While an offer is open, the active player can't build; they confirm or cancel first.
+
+**Test:** `trade.test.ts` — "trading with players".
+
+### A18: A port counts if you have a settlement or city on either end of its edge
+
+**Test:** `trade.test.ts` — the port tests in "trading with the bank".

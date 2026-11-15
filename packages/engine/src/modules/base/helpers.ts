@@ -41,6 +41,8 @@ export const mainDecision = (p: PlayerId): Decision =>
     "BUILD_CITY",
     "BUY_DEV_CARD",
     ...PLAY_ACTIONS,
+    "BANK_TRADE",
+    "OFFER_TRADE",
     "END_TURN",
   ]);
 

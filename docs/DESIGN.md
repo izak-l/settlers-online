@@ -233,6 +233,10 @@ interface RulesModule {
 - An action handler is `{ validate, apply, candidates }`. `validate` sees the untouched state; `apply` mutates the draft copy and pushes events. `legalActions` is `candidates` filtered by `validate`, so the UI's highlights and the server's checks can't disagree.
 - The handler for an action comes from the top decision's module first, then from the first module in ruleset order that has one.
 - Hooks implemented so far: `rollDice` (the last module that defines it wins), `produce` (every module runs, in order) and `vpSources` (summed). `setup` plays the role of `onGameStart`. The other hooks in the table are added when the milestone that needs them lands, per the seam rule in section 14.
+- `validate` and `apply` both receive the active modules, so legality checks can use hooks (bank trades use `tradeRatio`).
+- `tradeRatio` (lowest across modules wins) gives the bank rate: 4, or 3 / 2 with a building on either end of a matching port edge.
+- Modules may provide `defaultAction(state, player)` for decisions they own; the core falls back to a random legal action. The base game rolls, ends the turn, and during a trade offer cancels it (offerer) or declines (everyone else). The core no longer names any base-game action.
+- **Player trades:** `OFFER_TRADE` (active player, main step only) pushes a `TRADE_OFFER` decision where everyone is pending: others `RESPOND_TRADE` (accept/decline, changeable), the offerer `CONFIRM_TRADE`s with one accepter (both sides re-checked) or `CANCEL_TRADE`s. No counter-offers in v1.
 - Costs, piece limits and the terrain → resource table are constants in the base module for now; `pieceTypes` / `costs` on the module interface wait until an expansion needs to change them.
 
 ## 7. Base game rules checklist
@@ -277,9 +281,9 @@ Bank: 19 of each resource. Dev deck: 14 Knight, 5 Victory Point, 2 Road Building
 
 **Trading**
 
-- [ ] Players trade only with the active player, during the main step.
-- [ ] No gifts: both sides must give at least one card.
-- [ ] Bank 4:1, generic port 3:1, specific port 2:1 for its resource.
+- [x] Players trade only with the active player, during the main step.
+- [x] No gifts: both sides must give at least one card.
+- [x] Bank 4:1, generic port 3:1, specific port 2:1 for its resource.
 
 **Awards and winning**
 

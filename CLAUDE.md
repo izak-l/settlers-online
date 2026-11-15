@@ -108,7 +108,8 @@ defaultAction(state, playerId): Action   // timeout fallback
 - **Engine work is test-first:** write the failing rule test, then the code. Use small hand-built fixture maps and scripted action lists.
 - **Ambiguous rule?** Pick the simplest reading, record it in `ASSUMPTIONS.md`, and pin it with a test. Don't guess silently.
 - **A fuzz failure** (`tools/sim`) becomes a permanent regression test using that seed.
-- Keep commits small, with one milestone per branch. Don't refactor unrelated code in the same change.
+- Keep commits small, with one milestone per branch (`mN`, cut from `main`). Don't refactor unrelated code in the same change.
+- **When a milestone is done** (its "Done when" passes and the definition of done above is met), merge its branch into `main` with a fast-forward, delete the branch, and start the next milestone's branch from `main`. No need to ask first.
 - When you finish a task, say what changed, what's tested, and what's left. Keep it short.
 
 ## Testing invariants (assert after every action in sim and integration tests)

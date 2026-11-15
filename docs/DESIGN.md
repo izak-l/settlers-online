@@ -8,7 +8,7 @@ Build a free, self-hosted, browser-based hex-tile trading and building game for 
 
 **Goals**
 
-- Real-time online play for 3–4 players (5–6 later), on desktop and phone browsers.
+- Real-time online play for 3–4 players (5–6 later) in desktop browsers, with a layout that still works on small screens (down to phone width). No native or mobile app.
 - A server-authoritative rules engine that is deterministic and fully tested.
 - Maps defined as data: random base boards, fixed layouts and custom maps from an editor.
 - Expansion-ready seams (modules, a decision queue, keyed resources) built in from v1. v1 ships the base game; expansions follow in order from v1.1 (section 14).
@@ -345,7 +345,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Trading:** offer builder (give / want), incoming offers with accept/decline, bank and port trades with the best ratio pre-filled.
 - **Modals driven by the decision stack:** discard picker, robber placement, steal target, Year of Plenty / Monopoly pickers.
 - **State:** Zustand store holds the view and connection status. Optimistic UI is not used; the board updates when the server confirms.
-- **Mobile:** board pans and zooms; panels collapse into a bottom drawer.
+- **Small screens:** responsive layout, not a separate mobile app. The board scales to fit, panels stack below it, tap targets stay comfortably large, and nothing scrolls sideways down to a 375px-wide window. Pan/zoom or a bottom drawer only if testing at that size shows they're needed.
 - **Art:** original flat SVG icons and a custom color palette. No borrowed assets.
 - **Map editor (later):** click hexes to set terrain, tokens and ports; validates with the shared map validator; exports map JSON.
 
@@ -355,7 +355,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - `LocalGame` implements `GameClient` with the engine running in the tab. It powers the **dev sandbox** (`pnpm dev`, development builds only), where one person acts for whichever seat is being waited on, and the web tests. It is not a player-facing mode; production builds show a placeholder until online play lands.
 - The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
 - Clickable targets are exactly the actions in `legal`. During setup every legal placement lights up; in the main step the Road / Settlement / City buttons pick which kind, and a button is disabled when `legal` has none of that kind. Targets are keyboard-focusable buttons.
-- Not yet: lobbies and sign-in (M4); the robber, dev cards, trades and the win screen (M5); pan/zoom, mobile layout and animations (M6).
+- Not yet: lobbies and sign-in (M4); the robber, dev cards, trades and the win screen (M5); small-screen layout and animations (M6).
 - **Account and lobby screens:** sign-in (email, Google, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
 
 ## 11. Testing strategy
@@ -400,7 +400,7 @@ Online play comes before the remaining rules (M4 before M5), so friends can play
 | M3 | Board UI against a `GameClient`, with a local dev sandbox | Setup and turns playable in the sandbox minus robber, dev cards, trades |
 | M4 | Socket.IO server, accounts, lobbies, spectators, views, reconnect, Postgres log | 4 signed-in players + 1 spectator play 10 turns online, each in their own browser; refresh mid-game recovers the seat |
 | M5 | Robber, dev cards, bank/port/player trades, awards, win | Every box in section 7 ticked; fuzzer runs 10k games clean; an online game finishes with a winner |
-| M6 | Friends list, presence, invites, game history; polish: log, chat, animations, mobile layout, turn timers | Friends play a full game on phones without help |
+| M6 | Friends list, presence, invites, game history; polish: log, chat, animations, small-screen layout, turn timers | Friends play a full game online without help; the layout stays usable from desktop down to a 375px-wide window |
 | M7 | Deploy | Live on free tiers; survives a server sleep mid-game |
 | M8+ | Map editor, then expansions in order: v1.1 seafaring, v1.2 knights-and-cities, v1.3 traders scenarios, v1.4 explorers (section 14) | See section 14 |
 

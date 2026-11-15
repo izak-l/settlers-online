@@ -18,6 +18,7 @@ Build a free, self-hosted, browser-based hex-tile trading and building game for 
 
 - Public matchmaking, ranked play, monetization.
 - AI opponents beyond simple random bots for testing.
+- Hot-seat or single-device play. Every player joins from their own browser; the only local mode is a developer sandbox.
 - Expansions in the v1 release itself (work starts right after, in v1.1).
 
 **Naming and IP rules**
@@ -182,11 +183,11 @@ interface Decision {
 - `apply` checks, in order: game over → the top decision allows the action type (`WRONG_DECISION`) → the player is in `pendingFrom` (`NOT_YOUR_TURN`; the `system` actor acts for `pendingFrom[0]`) → the handler's `validate`. Build actions check piece limit, then cost, then placement.
 - `turn.number` is 0 during setup and 1 on the first `ROLL`. `END_TURN` pops `MAIN`, advances the seat, and pushes the next player's `ROLL`.
 - The engine takes a `MapInput` (every pool already resolved). `@settlers/maps`' `ResolvedMap` fits it structurally; the engine doesn't depend on the maps package.
-- `GameState` stores module ids, not module code. `MODULES` in `packages/engine/src/modules/index.ts` maps ids to modules. `graph` is derived and uses `Map`/`Set`, so persistence (M5) must drop it and rebuild it with `buildGraph`.
-- Zones hold `Record<ResourceId, number>` for now; ordered card zones arrive with dev cards (M4).
+- `GameState` stores module ids, not module code. `MODULES` in `packages/engine/src/modules/index.ts` maps ids to modules. `graph` is derived and uses `Map`/`Set`, so persistence (M4) must drop it and rebuild it with `buildGraph`.
+- Zones hold `Record<ResourceId, number>` for now; ordered card zones arrive with dev cards (M5).
 - `viewFor` returns a `PlayerView`: the state minus `rng` and `graph`, with zones redacted (`public`: contents; `count`: contents for the owner, a count for others; `owner`: contents for the owner only; `hidden`: a count only).
-- `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it takes the first legal action. Random timeout defaults (discards, robber) come in M4.
-- A roll of 7 currently produces nothing and pushes nothing; discards, robber and steal come in M4.
+- `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it takes the first legal action. Random timeout defaults (discards, robber) come in M5.
+- A roll of 7 currently produces nothing and pushes nothing; discards, robber and steal come in M5.
 
 ## 6. Rules modules and hooks
 
@@ -348,13 +349,13 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Art:** original flat SVG icons and a custom color palette. No borrowed assets.
 - **Map editor (later):** click hexes to set terrain, tokens and ports; validates with the shared map validator; exports map JSON.
 
-**As built (M3: hot-seat)**
+**As built (M3: board UI)**
 
-- Components only see a `GameClient` (`apps/web/src/game/LocalGame.ts`): `snapshot()` → `{ seat, view, legal, scores, log }` and `send(action)`. In M3 `LocalGame` plays the server's part in the browser; in M5 a socket client implements the same interface.
+- Components only see a `GameClient` (`apps/web/src/game/LocalGame.ts`): `snapshot()` → `{ seat, view, legal, scores, log }` and `send(action)`. In M4 a socket client implements it for online play, and the components don't change.
+- `LocalGame` implements `GameClient` with the engine running in the tab. It powers the **dev sandbox** (`pnpm dev`, development builds only), where one person acts for whichever seat is being waited on, and the web tests. It is not a player-facing mode; production builds show a placeholder until online play lands.
 - The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
 - Clickable targets are exactly the actions in `legal`. During setup every legal placement lights up; in the main step the Road / Settlement / City buttons pick which kind, and a button is disabled when `legal` has none of that kind. Targets are keyboard-focusable buttons.
-- A "pass the device" screen covers the board whenever the seat being waited on changes, so hands stay private.
-- Not yet: pan/zoom, the mobile drawer and animations (M6); the robber, dev cards, trades and the win screen (M4).
+- Not yet: lobbies and sign-in (M4); the robber, dev cards, trades and the win screen (M5); pan/zoom, mobile layout and animations (M6).
 - **Account and lobby screens:** sign-in (email, Google, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
 
 ## 11. Testing strategy
@@ -389,14 +390,16 @@ Target cost is $0 on free tiers. The two catches are that idle servers sleep (dr
 
 Each milestone ends with something playable or testable; don't start the next until its acceptance criteria pass.
 
+Online play comes before the remaining rules (M4 before M5), so friends can play real online games early and every rule added afterwards ships straight into online play. The engine doesn't depend on the server, so the order is safe. There is no hot-seat mode.
+
 | # | Milestone | Done when |
 | --- | --- | --- |
 | M0 | Monorepo, CI, lint, test runner | `pnpm test` runs green in CI |
 | M1 | Board graph + map loader + base map generator | Graph tests pass; red-token constraint holds over 10k seeds |
 | M2 | Engine core: decision stack, module system, setup, roll, produce, build | Scripted setup + 10 turns in a test; resource conservation holds |
-| M3 | Hot-seat UI on one screen | Full game playable locally minus robber, dev cards, trades |
-| M4 | Robber, dev cards, bank/port/player trades, awards, win | Every box in section 7 ticked; fuzzer runs 10k games clean |
-| M5 | Socket.IO server, accounts, lobbies, spectators, views, reconnect, Postgres log | 4 signed-in players + 1 spectator finish a game; refresh mid-game recovers the seat |
+| M3 | Board UI against a `GameClient`, with a local dev sandbox | Setup and turns playable in the sandbox minus robber, dev cards, trades |
+| M4 | Socket.IO server, accounts, lobbies, spectators, views, reconnect, Postgres log | 4 signed-in players + 1 spectator play 10 turns online, each in their own browser; refresh mid-game recovers the seat |
+| M5 | Robber, dev cards, bank/port/player trades, awards, win | Every box in section 7 ticked; fuzzer runs 10k games clean; an online game finishes with a winner |
 | M6 | Friends list, presence, invites, game history; polish: log, chat, animations, mobile layout, turn timers | Friends play a full game on phones without help |
 | M7 | Deploy | Live on free tiers; survives a server sleep mid-game |
 | M8+ | Map editor, then expansions in order: v1.1 seafaring, v1.2 knights-and-cities, v1.3 traders scenarios, v1.4 explorers (section 14) | See section 14 |

@@ -289,7 +289,7 @@ const actions: ActionHandlers = {
       const total = Object.values(dice).reduce((a, b) => a + b, 0);
       draft.moduleState["base"] = { ...(draft.moduleState["base"] as object), lastRoll: dice };
       events.push({ type: "ROLLED", text: `${player} rolled ${total}`, data: { dice, total } });
-      // A 7 produces nothing. Discards, robber and stealing arrive in M4.
+      // A 7 produces nothing. Discards, robber and stealing arrive in M5.
       if (total !== 7) runProduce(modules, draft, total, events);
       draft.decisions.pop();
       draft.decisions.push(mainDecision(player));

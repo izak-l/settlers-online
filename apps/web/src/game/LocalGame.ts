@@ -27,15 +27,19 @@ export interface Snapshot {
 }
 
 /**
- * The UI talks only to this interface. In M3 it is `LocalGame` (hot-seat, engine in the
- * browser); in M5 a socket client implements it and the components don't change.
+ * The UI talks only to this interface. `LocalGame` implements it in the browser for the dev
+ * sandbox and tests; in M4 a socket client implements it for online play, and the
+ * components don't change.
  */
 export interface GameClient {
   snapshot(): Snapshot;
   send(action: Action): Rejection | null;
 }
 
-/** Hot-seat adapter: plays the server's role locally. Holds the only copy of GameState. */
+/**
+ * Dev sandbox / test adapter: plays the server's role locally and lets one person act for
+ * whichever seat is being waited on. Not a player-facing mode. Holds the only copy of GameState.
+ */
 export class LocalGame implements GameClient {
   private state: GameState;
   private events: GameEvent[] = [];

@@ -1,2 +1,2 @@
-// Server entry point — built in M5
+// Server entry point — built in M4 (online play)
 export {};

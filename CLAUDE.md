@@ -1,6 +1,6 @@
 # Settlers Online
 
-A free, self-hosted, browser-based hex-tile trading and building game for a private group of friends. It uses the publicly known base ruleset, and expansions are added as rules modules.
+A free, self-hosted, browser-based hex-tile trading and building game that a private group of friends play online, each in their own browser. There is no hot-seat or single-device mode. It uses the publicly known base ruleset, and expansions are added as rules modules.
 
 **The spec is `docs/DESIGN.md`.** Read it before starting any milestone. To change scope or diverge from it, follow the Docs workflow below. Never let the code and the docs silently disagree.
 
@@ -11,14 +11,14 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M0 Monorepo, CI, lint, test runner
 - [x] M1 Board graph, map loader, base map generator
 - [x] M2 Engine core: decision stack, module system, setup, roll, produce, build
-- [x] M3 Hot-seat UI
-- [ ] M4 Robber, dev cards, trades, awards, win
-- [ ] M5 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log
+- [x] M3 Board UI against a `GameClient`, with a local dev sandbox
+- [ ] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log ← next
+- [ ] M5 Robber, dev cards, trades, awards, win
 - [ ] M6 Friends, presence, invites, history, polish, turn timers
 - [ ] M7 Deploy to free tiers
 - [ ] M8+ Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
 
-Tick these off as milestones finish.
+Tick these off as milestones finish. Online play (M4) deliberately comes before the remaining rules (M5); see DESIGN.md §13.
 
 ## Repo layout
 
@@ -27,7 +27,7 @@ packages/engine     pure rules engine: board graph, state, actions, modules, vie
 packages/maps       map JSON definitions, zod schemas, validator, generators
 packages/protocol   client<->server message types + zod validation
 apps/server         Node + Socket.IO: lobbies, auth checks, presence, persistence, view filtering
-apps/web            React + Vite + Zustand, SVG board
+apps/web            React + Vite + Zustand, SVG board; talks to the game only through `GameClient`
 tools/sim           seeded bot games for fuzz testing
 docs/DESIGN.md      the system as it exists now + near-term roadmap
 docs/features/      one short spec per feature (NNN-name.md)
@@ -57,7 +57,7 @@ There is one CLAUDE.md and one DESIGN.md, always updated in place. Never create 
 
 ```
 pnpm install
-pnpm dev                          # web + server with hot reload
+pnpm dev                          # web + server with hot reload (web alone opens the dev sandbox)
 pnpm test                         # Vitest, all packages
 pnpm typecheck                    # strict tsc, all packages
 pnpm lint                         # ESLint + Prettier

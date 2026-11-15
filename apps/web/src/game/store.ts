@@ -19,13 +19,10 @@ interface Store {
   seats: SeatInfo[];
   mode: BuildMode;
   error: string | null;
-  /** Seat that must tap through the hand-off screen before seeing their hand. */
-  handoffTo: PlayerId | null;
 
   newGame(names: string[], seed: string): void;
   send(action: Action): void;
   setMode(mode: BuildMode): void;
-  confirmHandoff(): void;
   quit(): void;
 }
 
@@ -35,7 +32,6 @@ export const useGame = create<Store>()((set, get) => ({
   seats: [],
   mode: null,
   error: null,
-  handoffTo: null,
 
   newGame(names, seed) {
     const seats = names.map((name, i) => ({ id: `p${i}`, name, color: SEAT_COLORS[i]! }));
@@ -44,11 +40,11 @@ export const useGame = create<Store>()((set, get) => ({
       seed,
     );
     const snap = client.snapshot();
-    set({ client, snap, seats, mode: null, error: null, handoffTo: snap.seat });
+    set({ client, snap, seats, mode: null, error: null });
   },
 
   send(action) {
-    const { client, snap: before } = get();
+    const { client } = get();
     if (!client) return;
     const rejection = client.send(action);
     if (rejection) {
@@ -56,24 +52,15 @@ export const useGame = create<Store>()((set, get) => ({
       return;
     }
     const snap = client.snapshot();
-    set({
-      snap,
-      mode: null,
-      error: null,
-      handoffTo: before && snap.seat !== before.seat ? snap.seat : null,
-    });
+    set({ snap, mode: null, error: null });
   },
 
   setMode(mode) {
     set({ mode: get().mode === mode ? null : mode, error: null });
   },
 
-  confirmHandoff() {
-    set({ handoffTo: null });
-  },
-
   quit() {
-    set({ client: null, snap: null, seats: [], mode: null, error: null, handoffTo: null });
+    set({ client: null, snap: null, seats: [], mode: null, error: null });
   },
 }));
 

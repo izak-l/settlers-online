@@ -1,5 +1,5 @@
 import type { Action, GameEvent, MapInput, PlayerId, StateSnapshot } from "@settlers/engine";
-import type { GameSummary } from "@settlers/protocol";
+import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 
 export interface Profile {
   /** Supabase auth user id, or "dev:<name>" in dev mode. */
@@ -95,6 +95,10 @@ export interface Store {
   saveSnapshot(gameId: string, seq: number, state: StateSnapshot): Promise<void>;
   /** Mark the game finished, with a final snapshot and the result. */
   finishGame(gameId: string, seq: number, state: StateSnapshot, result: GameResult): Promise<void>;
+  /** Store a chat message; returns it with its id, time and the sender's username. */
+  addChat(gameId: string, channel: ChatChannel, userId: string, text: string): Promise<ChatMessage>;
+  /** The last `limit` messages in these channels, oldest first. */
+  recentChat(gameId: string, channels: ChatChannel[], limit: number): Promise<ChatMessage[]>;
   /** Games `userId` sat in, newest first. */
   gamesForUser(userId: string, limit: number): Promise<GameSummary[]>;
   latestSnapshot(gameId: string): Promise<{ seq: number; state: StateSnapshot } | null>;

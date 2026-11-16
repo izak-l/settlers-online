@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import { Server, type Socket } from "socket.io";
 import type { GameEvent } from "@settlers/engine";
 import {
+  ChatSendSchema,
   CreateLobbySchema,
   FriendRequestSchema,
   FriendRespondSchema,
@@ -16,6 +17,7 @@ import {
   TakeSeatSchema,
   UserRefSchema,
   type Ack,
+  type ChatChannel,
   type ClientToServerEvents,
   type GameStateMessage,
   type LobbyState,
@@ -100,6 +102,11 @@ export async function startServer({
   /** gameId → the pending timeout for that game's running clock. */
   const timeouts = new Map<string, ReturnType<typeof setTimeout>>();
   let closing = false;
+  /** userId → times of recent chat messages, for the rate limit. */
+  const chatTimes = new Map<string, number[]>();
+  const CHAT_LIMIT = { messages: 5, perMs: 10_000, history: 100 };
+  const channelsFor = (role: Role): ChatChannel[] =>
+    role === "spectator" ? ["players", "spectators"] : ["players"];
   const friends = new FriendService(store, new KeyedQueue());
   /** Who is online and where. Seats stay reserved while offline; this only drives "connected". */
   const presence = new PresenceTracker();
@@ -351,6 +358,11 @@ export async function startServer({
           await socket.join(`game:${room.id}`);
           socket.emit("state", room.messageFor(role, [], await seatPlayers(room), true));
         });
+        socket.emit("chat", {
+          gameId: room.id,
+          messages: await store.recentChat(room.id, channelsFor(role), CHAT_LIMIT.history),
+          replace: true,
+        });
         // Let everyone else see that this player is connected.
         if (role !== "spectator") await broadcastGame(room, []);
         await tellFriends(
@@ -461,6 +473,30 @@ export async function startServer({
           await sendFriends(p.data.userId);
         }
         return ack;
+      }),
+    );
+
+    socket.on("chat:send", (payload, reply) =>
+      respond(reply, async () => {
+        const p = ChatSendSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST", p.error.issues[0]?.message);
+        const { gameId, text } = p.data;
+        const role = socket.data.games.get(gameId);
+        if (!role) return fail("NOT_FOUND");
+
+        const now = Date.now();
+        const recent = (chatTimes.get(userId) ?? []).filter((t) => now - t < CHAT_LIMIT.perMs);
+        if (recent.length >= CHAT_LIMIT.messages) return fail("RATE_LIMITED");
+        chatTimes.set(userId, [...recent, now]);
+
+        const channel: ChatChannel = role === "spectator" ? "spectators" : "players";
+        const msg = await store.addChat(gameId, channel, userId, text);
+        for (const s of await io.in(`game:${gameId}`).fetchSockets()) {
+          const theirs = s.data.games.get(gameId);
+          if (theirs && channelsFor(theirs).includes(channel))
+            s.emit("chat", { gameId, messages: [msg], replace: false });
+        }
+        return { ok: true };
       }),
     );
 

@@ -1,5 +1,5 @@
 import type { Action, GameEvent } from "@settlers/engine";
-import type { GameStateMessage } from "@settlers/protocol";
+import type { ChatMessage, GameStateMessage } from "@settlers/protocol";
 import type { AppSocket } from "../net/socket";
 import type { GameClient, SendError, Snapshot } from "./LocalGame";
 
@@ -13,6 +13,27 @@ export class SocketGame implements GameClient {
   private listeners = new Set<(snap: Snapshot) => void>();
   private onState = (msg: GameStateMessage) => this.receive(msg);
   private onConnect = () => void this.join();
+  private messages: ChatMessage[] = [];
+  private chatListeners = new Set<(messages: ChatMessage[]) => void>();
+  private onChat = (u: { gameId: string; messages: ChatMessage[]; replace: boolean }) => {
+    if (u.gameId !== this.gameId) return;
+    this.messages = u.replace ? u.messages : [...this.messages, ...u.messages];
+    for (const l of this.chatListeners) l(this.messages);
+  };
+
+  readonly chat = {
+    subscribe: (listener: (messages: ChatMessage[]) => void) => {
+      this.chatListeners.add(listener);
+      listener(this.messages);
+      return () => void this.chatListeners.delete(listener);
+    },
+    send: async (text: string): Promise<SendError | null> => {
+      const ack = await this.socket
+        .timeout(10_000)
+        .emitWithAck("chat:send", { gameId: this.gameId, text });
+      return ack.ok ? null : { code: ack.code, message: ack.message };
+    },
+  };
 
   /** Last join failure (e.g. not found, spectators disabled), for the UI. */
   joinError: SendError | null = null;
@@ -23,6 +44,7 @@ export class SocketGame implements GameClient {
     private onJoinError: (err: SendError) => void = () => undefined,
   ) {
     socket.on("state", this.onState);
+    socket.on("chat", this.onChat);
     // Rejoin after every reconnect; the server then resends the full state and log.
     socket.on("connect", this.onConnect);
     if (socket.connected) void this.join();
@@ -76,6 +98,8 @@ export class SocketGame implements GameClient {
   dispose(): void {
     if (this.socket.connected) void this.socket.emitWithAck("game:leave", { gameId: this.gameId });
     this.socket.off("state", this.onState);
+    this.socket.off("chat", this.onChat);
+    this.chatListeners.clear();
     this.socket.off("connect", this.onConnect);
     this.listeners.clear();
   }

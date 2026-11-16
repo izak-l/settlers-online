@@ -14,7 +14,7 @@ async function freshStore(): Promise<PgStore> {
   const pool = new pg.Pool({ connectionString: url });
   await migrate(pool, () => undefined);
   await pool.query(
-    "truncate profiles, lobbies, games, game_players, actions, snapshots, friendships cascade",
+    "truncate profiles, lobbies, games, game_players, actions, snapshots, friendships, chat_messages cascade",
   );
   return new PgStore(pool);
 }

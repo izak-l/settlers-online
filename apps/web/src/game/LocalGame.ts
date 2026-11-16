@@ -15,6 +15,7 @@ import {
   type PlayerView,
 } from "@settlers/engine";
 import { BASE_4P, generateMap } from "@settlers/maps";
+import type { ChatMessage } from "@settlers/protocol";
 
 export interface SnapshotPlayer {
   id: PlayerId;
@@ -52,6 +53,11 @@ export interface GameClient {
   subscribe(listener: (snap: Snapshot) => void): () => void;
   send(action: Action): Promise<SendError | null>;
   dispose(): void;
+  /** In-game chat; online games only (the dev sandbox has none). */
+  chat?: {
+    subscribe(listener: (messages: ChatMessage[]) => void): () => void;
+    send(text: string): Promise<SendError | null>;
+  };
 }
 
 /**

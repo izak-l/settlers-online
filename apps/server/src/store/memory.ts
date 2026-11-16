@@ -1,5 +1,5 @@
 import type { StateSnapshot } from "@settlers/engine";
-import type { GameSummary } from "@settlers/protocol";
+import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 import type {
   FriendshipRecord,
   GameResult,
@@ -25,6 +25,7 @@ export class MemoryStore implements Store {
   private actions = new Map<string, StoredAction[]>();
   private snapshots = new Map<string, { seq: number; state: StateSnapshot }[]>();
   private friendships: FriendshipRecord[] = [];
+  private chat: (ChatMessage & { gameId: string })[] = [];
 
   async ensureProfile(userId: string): Promise<Profile> {
     if (!this.profiles.has(userId)) this.profiles.set(userId, { id: userId, username: null });
@@ -120,6 +121,31 @@ export class MemoryStore implements Store {
     if (g) g.game.status = "finished";
     const meta = this.gameMeta.get(gameId);
     if (meta) Object.assign(meta, { endedAt: new Date().toISOString(), result: copy(result) });
+  }
+
+  async addChat(
+    gameId: string,
+    channel: ChatChannel,
+    userId: string,
+    text: string,
+  ): Promise<ChatMessage> {
+    const msg = {
+      id: this.chat.length + 1,
+      channel,
+      userId,
+      username: this.profiles.get(userId)?.username ?? "?",
+      text,
+      at: new Date().toISOString(),
+    };
+    this.chat.push({ ...msg, gameId });
+    return copy(msg);
+  }
+
+  async recentChat(gameId: string, channels: ChatChannel[], limit: number) {
+    return this.chat
+      .filter((m) => m.gameId === gameId && channels.includes(m.channel))
+      .slice(-limit)
+      .map(({ gameId: _g, ...m }) => copy(m));
   }
 
   async gamesForUser(userId: string, limit: number): Promise<GameSummary[]> {

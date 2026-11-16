@@ -276,6 +276,37 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(await store.actionsAfter(gameId, 0)).toEqual([]);
     });
 
+    it("chat: players talk to everyone, spectators only to spectators; history on rejoin", async () => {
+      const { gameId, players, spec } = await setUpGame();
+      const watcher2 = await connect("dev:Watcher2");
+      await watcher2.socket.emitWithAck("game:join", { gameId });
+      const say = (c: TestClient, text: string) =>
+        c.socket.emitWithAck("chat:send", { gameId, text });
+      const texts = (c: TestClient) => c.chat.map((m) => `${m.username}: ${m.text}`);
+
+      expect(await say(players[0]!, "  good luck all  ")).toEqual({ ok: true });
+      expect(await say(spec, "Ada is going to win")).toEqual({ ok: true });
+      await watcher2.until(() => watcher2.chat.length === 2);
+      await players[3]!.until(() => players[3]!.chat.length === 1);
+      expect(texts(watcher2)).toEqual(["Ada: good luck all", "Watcher: Ada is going to win"]);
+      expect(texts(players[3]!)).toEqual(["Ada: good luck all"]);
+      expect(watcher2.chat.map((m) => m.channel)).toEqual(["players", "spectators"]);
+
+      // Rejoining sends the visible history.
+      const again = await connect("dev:Dia");
+      await again.socket.emitWithAck("game:join", { gameId });
+      await again.until(() => again.chat.length === 1);
+      expect(texts(again)).toEqual(["Ada: good luck all"]);
+
+      // Limits: empty, too long, too fast, not in the game.
+      expect(await say(players[1]!, "   ")).toMatchObject({ code: "BAD_REQUEST" });
+      expect(await say(players[1]!, "x".repeat(301))).toMatchObject({ code: "BAD_REQUEST" });
+      for (let i = 0; i < 5; i++) expect((await say(players[1]!, `msg ${i}`)).ok).toBe(true);
+      expect(await say(players[1]!, "one too many")).toMatchObject({ code: "RATE_LIMITED" });
+      const outsider = await connect("dev:Eve");
+      expect(await say(outsider, "hi")).toMatchObject({ code: "NOT_FOUND" });
+    });
+
     it("lobby rules: seats can't be stolen, unknown lobbies 404, usernames are unique", async () => {
       const ada = await connect("dev:Ada");
       const bob = await connect("dev:Bo_b");

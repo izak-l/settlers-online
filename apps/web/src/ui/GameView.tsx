@@ -65,7 +65,7 @@ export function GameView({ client }: { client: GameClient }) {
         {playing && <HandPanel snap={snap} />}
         {playing && <DevCards snap={snap} send={(a) => void send(a)} />}
         {playing && <TradePanel snap={snap} send={(a) => void send(a)} />}
-        <GameLog snap={snap} seats={seats} />
+        <GameLog snap={snap} seats={seats} client={client} />
       </aside>
     </main>
   );

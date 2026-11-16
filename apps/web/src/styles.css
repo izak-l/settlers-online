@@ -813,3 +813,62 @@ button.danger {
 .timer.urgent .timer-bar span {
   background: var(--error);
 }
+
+/* ---- M6: log and chat ---- */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  min-height: 44px;
+}
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.unread {
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.7rem;
+}
+.log li.turn-end {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
+  color: var(--muted);
+}
+.log .from-spectator {
+  opacity: 0.8;
+  font-style: italic;
+}
+.chat-text {
+  overflow-wrap: anywhere;
+}
+.chat-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+}
+.chat-form .error {
+  flex-basis: 100%;
+}

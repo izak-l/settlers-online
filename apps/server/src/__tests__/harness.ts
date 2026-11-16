@@ -1,6 +1,7 @@
 import { io as connectSocket, type Socket } from "socket.io-client";
 import type { Action } from "@settlers/engine";
 import type {
+  ChatMessage,
   ClientToServerEvents,
   FriendsState,
   GameStateMessage,
@@ -39,6 +40,7 @@ export class TestClient {
   presence = new Map<string, Presence>();
   invites: InviteMessage[] = [];
   closedInvites: string[] = [];
+  chat: ChatMessage[] = [];
 
   private constructor(readonly socket: Socket<ServerToClientEvents, ClientToServerEvents>) {
     socket.on("welcome", (me) => (this.me = me));
@@ -52,6 +54,7 @@ export class TestClient {
     socket.on("presence", (u) => this.presence.set(u.userId, u.presence));
     socket.on("invite", (i) => this.invites.push(i));
     socket.on("invite:closed", (u) => this.closedInvites.push(u.lobbyId));
+    socket.on("chat", (c) => (this.chat = c.replace ? c.messages : [...this.chat, ...c.messages]));
   }
 
   static async connect(url: string, token: string): Promise<TestClient> {

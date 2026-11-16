@@ -1,6 +1,6 @@
 import type { StateSnapshot } from "@settlers/engine";
 import pg from "pg";
-import type { GameSummary } from "@settlers/protocol";
+import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 import type {
   FriendshipRecord,
   GameResult,
@@ -35,6 +35,24 @@ const toLobby = (r: LobbyRow): LobbyRecord => ({
   seats: r.seats,
   status: r.status,
   gameId: r.game_id,
+});
+
+interface ChatRow {
+  id: string; // bigserial comes back as a string
+  channel: ChatChannel;
+  user_id: string;
+  text: string;
+  created_at: Date;
+  username: string | null;
+}
+
+const toChat = (r: ChatRow): ChatMessage => ({
+  id: Number(r.id),
+  channel: r.channel,
+  userId: r.user_id,
+  username: r.username ?? "?",
+  text: r.text,
+  at: r.created_at.toISOString(),
 });
 
 export class PgStore implements Store {
@@ -257,6 +275,36 @@ export class PgStore implements Store {
          final_scores = $3::jsonb where id = $1`,
       [gameId, result.winner, json(result.scores)],
     );
+  }
+
+  async addChat(
+    gameId: string,
+    channel: ChatChannel,
+    userId: string,
+    text: string,
+  ): Promise<ChatMessage> {
+    const { rows } = await this.pool.query<ChatRow>(
+      `with m as (
+         insert into chat_messages (game_id, channel, user_id, text) values ($1, $2, $3, $4)
+         returning id, channel, user_id, text, created_at
+       )
+       select m.*, p.username from m join profiles p on p.id = m.user_id`,
+      [gameId, channel, userId, text],
+    );
+    return toChat(rows[0]!);
+  }
+
+  async recentChat(gameId: string, channels: ChatChannel[], limit: number) {
+    const { rows } = await this.pool.query<ChatRow>(
+      `select * from (
+         select c.id, c.channel, c.user_id, c.text, c.created_at, p.username
+           from chat_messages c join profiles p on p.id = c.user_id
+          where c.game_id = $1 and c.channel = any($2)
+          order by c.id desc limit $3
+       ) recent order by id`,
+      [gameId, channels, limit],
+    );
+    return rows.map(toChat);
   }
 
   async gamesForUser(userId: string, limit: number): Promise<GameSummary[]> {

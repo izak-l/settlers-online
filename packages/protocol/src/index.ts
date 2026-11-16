@@ -28,6 +28,7 @@ export const PROTOCOL_ERROR_CODES = [
   "ALREADY_FRIENDS",
   "NOT_FRIENDS",
   "FRIEND_OFFLINE",
+  "RATE_LIMITED",
   "SERVER_ERROR",
 ] as const;
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[number];
@@ -48,6 +49,7 @@ export const PROTOCOL_ERROR_MESSAGES: Record<ProtocolErrorCode, string> = {
   ALREADY_FRIENDS: "You're already friends, or a request is already waiting.",
   NOT_FRIENDS: "You can only do that with a friend.",
   FRIEND_OFFLINE: "That friend isn't online right now.",
+  RATE_LIMITED: "Slow down a little and try again in a few seconds.",
   SERVER_ERROR: "Something went wrong on the server.",
 };
 
@@ -132,6 +134,11 @@ export const FriendRequestSchema = z.object({ username: UsernameSchema });
 export const FriendRespondSchema = z.object({ userId: Id, accept: z.boolean() });
 export const UserRefSchema = z.object({ userId: Id });
 export const InviteSchema = z.object({ lobbyId: Id, userId: Id });
+export const CHAT_MAX_LENGTH = 300;
+export const ChatSendSchema = z.object({
+  gameId: Id,
+  text: z.string().trim().min(1, "Type a message first.").max(CHAT_MAX_LENGTH),
+});
 
 export type SetUsername = z.infer<typeof SetUsernameSchema>;
 /** What the client may send (turnSeconds optional); the server sees it with the default applied. */
@@ -147,6 +154,7 @@ export type FriendRequest = z.infer<typeof FriendRequestSchema>;
 export type FriendRespond = z.infer<typeof FriendRespondSchema>;
 export type UserRef = z.infer<typeof UserRefSchema>;
 export type Invite = z.infer<typeof InviteSchema>;
+export type ChatSend = z.infer<typeof ChatSendSchema>;
 
 // ---------------------------------------------------------------------------
 // Server → client payloads (trusted; typed only)
@@ -251,6 +259,18 @@ export interface GameSummary {
   scores: Record<PlayerId, number> | null;
 }
 
+export type ChatChannel = "players" | "spectators";
+
+export interface ChatMessage {
+  id: number;
+  channel: ChatChannel;
+  userId: string;
+  username: string;
+  text: string;
+  /** ISO timestamp. */
+  at: string;
+}
+
 export interface InviteMessage {
   lobbyId: string;
   from: UserSummary;
@@ -281,6 +301,7 @@ export interface ClientToServerEvents {
   "friends:remove": (payload: UserRef, reply: Reply) => void;
   "lobby:invite": (payload: Invite, reply: Reply) => void;
   /** Your most recent games, newest first. */
+  "chat:send": (payload: ChatSend, reply: Reply) => void;
   "games:history": (payload: Record<string, never>, reply: Reply<{ games: GameSummary[] }>) => void;
 }
 
@@ -294,4 +315,6 @@ export interface ServerToClientEvents {
   invite: (invite: InviteMessage) => void;
   /** The lobby you were invited to has started; drop the invite. */
   "invite:closed": (update: { lobbyId: string }) => void;
+  /** New chat messages; `replace` (on joining) means this is the whole visible history. */
+  chat: (update: { gameId: string; messages: ChatMessage[]; replace: boolean }) => void;
 }

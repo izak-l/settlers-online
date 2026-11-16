@@ -1,4 +1,5 @@
 import { computeVP, viewFor } from "../../engine";
+import { MODULES } from "../index";
 import type { GameState } from "../../types";
 import { awardVP } from "./awards";
 import { BANK_START, BASE_RESOURCES, DEV_DECK, PIECE_LIMITS } from "./data";
@@ -16,6 +17,14 @@ export function baseInvariantViolations(
   opts: { views?: boolean } = {},
 ): string[] {
   const out: string[] = [];
+  // Other modules' own checks, and the VP they add (each recounted by that module).
+  const extraVP: Record<string, number> = {};
+  for (const id of state.modules) {
+    const checked = MODULES[id]?.invariants?.(state);
+    if (!checked) continue;
+    out.push(...checked.violations);
+    for (const [p, vp] of Object.entries(checked.vp)) extraVP[p] = (extraVP[p] ?? 0) + vp;
+  }
 
   for (const r of BASE_RESOURCES) {
     let total = state.zones["bank"]!.contents[r] ?? 0;
@@ -46,10 +55,11 @@ export function baseInvariantViolations(
       countOwned(state, p, "settlement") +
       2 * countOwned(state, p, "city") +
       vpCards(state, p) +
-      awardVP(state, p);
+      awardVP(state, p) +
+      (extraVP[p] ?? 0);
     const vp = computeVP(state, p);
     if (vp !== expected)
-      out.push(`${p} VP ${vp}, expected ${expected} from pieces, cards and awards`);
+      out.push(`${p} VP ${vp}, expected ${expected} from pieces, cards, awards and modules`);
   }
 
   if (state.winner === undefined && state.decisions.length === 0)

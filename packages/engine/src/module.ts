@@ -99,6 +99,12 @@ export interface RulesModule {
   /** Runs once in createGame, in ruleset order: build zones, place starting pieces, push decisions. */
   setup?(draft: GameState): void;
   /**
+   * Checks that must hold after every action when this module is on (tests and the fuzzer).
+   * Returns violations; also reports the VP this module adds, recounted independently, so the
+   * shared VP check can add it.
+   */
+  invariants?(state: GameState): { violations: string[]; vp: Record<PlayerId, number> };
+  /**
    * What a timeout does for `player` when this module owns the top decision.
    * Null falls back to a random legal action.
    */

@@ -18,9 +18,15 @@ export type Resources = Record<ResourceId, number>;
 export interface MapInput {
   id: string;
   vpToWin: number;
-  hexes: { q: number; r: number; terrain: string; token?: number }[];
+  /** `region` labels an area of the map (e.g. "main"); modules give it meaning (spec 015). */
+  hexes: { q: number; r: number; terrain: string; token?: number; region?: string }[];
   ports: { edgeId: EdgeId; type: string }[];
   robberStart?: string;
+  /**
+   * Scenario settings, read and checked by the modules that use them (e.g. seafaring's island
+   * bonus and pirate start). The core only carries it.
+   */
+  scenario?: Record<string, unknown>;
   /** Base-game parts this map turns on or off (spec 014). */
   features?: FeatureOverrides;
 }

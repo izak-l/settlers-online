@@ -269,7 +269,8 @@ export function checkInvariants(state: GameState): void {
     const awardVP = (awards.longestRoad === p ? 2 : 0) + (awards.largestArmy === p ? 2 : 0);
     const expectedVP =
       countPieces(state, p, "settlement") + 2 * countPieces(state, p, "city") + vpCards + awardVP;
-    expect(computeVP(state, p), `${p} VP`).toBe(expectedVP);
+    // With other modules, their VP is checked (recounted) by baseInvariantViolations above.
+    if (state.modules.length === 1) expect(computeVP(state, p), `${p} VP`).toBe(expectedVP);
   }
   // Dev cards are conserved: deck + every hand (old and new) + played = 25.
   let devTotal = 0;

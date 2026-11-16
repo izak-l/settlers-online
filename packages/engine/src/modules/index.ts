@@ -1,6 +1,7 @@
 import type { RulesModule } from "../module";
 import type { ModuleId } from "../types";
 import { baseModule } from "./base";
+import { seafaringModule } from "./seafaring";
 
 /**
  * Every module the engine knows, by id. GameState stores only module ids (so it stays
@@ -8,6 +9,7 @@ import { baseModule } from "./base";
  */
 export const MODULES: Record<ModuleId, RulesModule> = {
   base: baseModule,
+  seafaring: seafaringModule,
 };
 
 /** The ids of every registered module, base first. Maps may only name these. */

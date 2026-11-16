@@ -406,7 +406,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
 - **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan when zoomed). On wide screens the layout uses the extra width instead of a fixed maximum.
 - **Sound (M7):** short original sound effects for key moments (dice, building, your turn, trades, robber, win, chat), with a mute toggle and volume remembered per browser. Off-screen tabs don't play sounds for other players' routine moves.
-- **Maps (M8a):** maps are JSON files in the catalog, chosen by the lobby host on the lobby screen. **Map editor (M8b, after the expansions):** click hexes to set terrain, tokens and ports; validates with the shared map validator; saves to "My maps" and exports map JSON.
+- **Maps (M8a):** maps are JSON files in the catalog, chosen by the lobby host on the lobby screen. **Map editor (M8b, after the expansions):** click hexes to set terrain, tokens and ports; validates with the shared map validator; saves to "My maps" and exports map JSON. For seafaring maps it also draws the frame and lets the author pick the starting area (one or more landmasses, or "players pick home islands in setup"); see spec 015.
 
 **As built (M3: board UI)**
 
@@ -543,20 +543,9 @@ Expansions are added as modules on top of `base`; each row lists what the module
 
 **Rule for adding a seam:** only generalize the core when a module actually needs it, and add a test in the base module proving nothing changed.
 
-**First seafaring scenario (assumptions to check against the rulebook)**
+**Seafaring scenarios**
 
-v1.1 ships the introductory scenario: the familiar main island plus four small islands, so players learn ships without extra scenario rules.
-
-- **Map:** main island laid out like the base board; four small islands, each one sea hex away. 3–4 players. Fixed layout entered as map JSON; no fog hexes yet.
-- **Win:** 13 VP.
-- **Setup:** starting settlements only on the main island.
-- **Island bonus:** a player's first settlement on each small island earns special VP. The amount is a map setting, defaulting to 2 (sources differ between 1 and 2 by edition).
-- **Gold hexes** (on small islands): each payout is any resource the player picks, resolved as a pending decision.
-- **Pirate and robber** are both in play. On a 7 or a Knight the player picks which to move. The pirate sits on a sea hex, steals from a player with a ship next to it, and blocks building or moving ships next to it.
-- **Ships:** cost 1 wood + 1 sheep, 15 per player, placed on edges that touch sea. A ship line starts at your coastal settlement or city or extends your ships. Roads and ships connect only through your own settlement or city.
-- **Moving ships:** one per turn, only the open end of a route, not a ship built this turn, and never a ship in a closed route between two of your buildings.
-- **Longest Road becomes Longest Trade Route**, counting roads and ships together.
-- **Road Building** lets you place two roads, two ships, or one of each.
+Seafaring follows the published rulebook (2025 edition): eight scenarios plus a simplified random "new world", each with 3- and 4-player maps and fixed or variable setup, picked in the lobby. Scenarios 1–4 are data on the `seafaring` module; 5–8 are small modules on top of it. The plan, rules and readings are in specs 015–017 (018–022 to come) and decision record 0001.
 
 **Decisions**
 
@@ -570,7 +559,7 @@ v1.1 ships the introductory scenario: the familiar main island plus four small i
 
 **Open questions**
 
-- [ ] Exact hex, token and port layout for the first seafaring scenario (enter it from the rulebook as a catalog map JSON).
+- [ ] Seafaring scenario layouts: to be transcribed from the rulebook diagrams (spec 015).
 
 ## 15. Notes for Claude Code
 

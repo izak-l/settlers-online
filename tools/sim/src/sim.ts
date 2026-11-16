@@ -1,4 +1,5 @@
 import {
+  type FeatureOverrides,
   apply,
   baseInvariantViolations,
   BASE_RESOURCES,
@@ -162,7 +163,7 @@ function sortKeys(value: unknown): unknown {
  */
 export function playGame(
   seed: string,
-  opts: { seats?: number; maxTurns?: number; map?: string } = {},
+  opts: { seats?: number; maxTurns?: number; map?: string; features?: FeatureOverrides } = {},
 ): GameResult {
   const seats = Array.from({ length: opts.seats ?? 4 }, (_, i) => `p${i}`);
   const maxTurns = opts.maxTurns ?? 400;
@@ -170,7 +171,12 @@ export function playGame(
   const def = findMap(mapId)?.def;
   if (!def) throw new Error(`Unknown map: ${mapId}`);
   const { map } = generateMap(def, seedFromString(`${seed}:map`));
-  const start = createGame(map, { modules: def.modules }, seats, seed);
+  const start = createGame(
+    map,
+    { modules: def.modules, ...(opts.features ? { options: { features: opts.features } } : {}) },
+    seats,
+    seed,
+  );
   const bots = new BotRng(seedFromString(`${seed}:bots`));
 
   const log: { player: PlayerId; action: Action }[] = [];

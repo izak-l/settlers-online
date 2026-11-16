@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { mergeFeatures } from "@settlers/engine";
 import { mapsForSeats } from "@settlers/maps";
 import type { LobbyState } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { MapPreview } from "../board/MapPreview";
 import { SEAT_COLORS, errorText } from "../game/seats";
+import { HouseRules } from "./HouseRules";
+import { toggleRule } from "./features";
 import { MapPicker, mapSummary } from "./MapPicker";
 
 /**
@@ -185,6 +188,27 @@ export function LobbyScreen({ id }: { id: string }) {
           call(socket.emitWithAck("lobby:map", { lobbyId: id, map: { builtin: mapId } }))
         }
       />
+
+      <HouseRules
+        features={lobby.features}
+        editable={isHost && lobby.status === "open"}
+        onToggle={(feature, on) =>
+          void call(
+            socket.emitWithAck("lobby:features", {
+              lobbyId: id,
+              features: toggleRule(
+                mergeFeatures(lobby.map.def.features),
+                lobby.houseRules,
+                feature,
+                on,
+              ),
+            }),
+          )
+        }
+      />
+      {isHost && lobby.status === "open" && (
+        <p className="muted small">Changing house rules asks everyone to ready up again.</p>
+      )}
 
       <ol className="seats">
         {lobby.seats.map((s, i) => (

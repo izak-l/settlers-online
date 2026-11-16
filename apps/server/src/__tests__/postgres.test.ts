@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pg from "pg";
+import type { LobbyRecord } from "../store/types";
 import { BASE_4P, findMap } from "@settlers/maps";
 import { loadEnvFiles } from "../config";
 import { migrate } from "../db/migrate";
@@ -43,6 +44,7 @@ if (!url) {
           status: "open",
           gameId: null,
           map: BASE_4P,
+          features: {},
         });
         const game = {
           id: "00000000-0000-0000-0000-000000000001",
@@ -65,6 +67,7 @@ if (!url) {
             status: "started",
             gameId: game.id,
             map: BASE_4P,
+            features: {},
           },
           game,
           [{ seat: "p0", userId: "u1" }],
@@ -92,12 +95,15 @@ if (!url) {
           status: "open" as const,
           gameId: null,
           map: findMap("grand-diamond")!.def,
+          features: { devCards: false } as LobbyRecord["features"],
         };
         await store.createLobby(lobby);
         expect(await store.getLobby("L2")).toEqual(lobby);
         lobby.map = BASE_4P;
+        lobby.features = { robber: false };
         await store.saveLobby(lobby);
         expect((await store.getLobby("L2"))!.map).toEqual(BASE_4P);
+        expect((await store.getLobby("L2"))!.features).toEqual({ robber: false });
       } finally {
         await store.close();
       }
@@ -117,6 +123,7 @@ if (!url) {
           status: "open",
           gameId: null,
           map: BASE_4P,
+          features: {},
         });
         const pool = new pg.Pool({ connectionString: url });
         await pool.query("update lobbies set map = null where id = 'L3'");

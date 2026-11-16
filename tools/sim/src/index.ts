@@ -2,9 +2,13 @@ import { availableParallelism } from "node:os";
 import { parseArgs } from "node:util";
 import { Worker } from "node:worker_threads";
 import { DEFAULT_MAP_ID, findMap, MAP_CATALOG } from "@settlers/maps";
+import { FEATURE_IDS, type FeatureId, type FeatureOverrides } from "@settlers/engine";
 import type { GameResult } from "./sim";
 
-/** pnpm sim --games 10000 --seed 1 [--map base-4p] [--seats N] [--max-turns 400] [--workers N] */
+/**
+ * pnpm sim --games 10000 --seed 1 [--map base-4p] [--seats N] [--max-turns 400] [--workers N]
+ *   [--features devCards=off,robber=off]
+ */
 const { values } = parseArgs({
   options: {
     games: { type: "string", default: "100" },
@@ -14,8 +18,26 @@ const { values } = parseArgs({
     seats: { type: "string" },
     "max-turns": { type: "string", default: "400" },
     workers: { type: "string" },
+    /** Base-game switches (spec 014), e.g. "devCards=off,robber=off". */
+    features: { type: "string", default: "" },
   },
 });
+
+function parseFeatures(text: string): FeatureOverrides {
+  const out: FeatureOverrides = {};
+  for (const part of text.split(",").filter(Boolean)) {
+    const [id, value] = part.split("=");
+    if (!FEATURE_IDS.includes(id as FeatureId) || (value !== "on" && value !== "off")) {
+      console.error(
+        `Bad --features entry "${part}". Use e.g. devCards=off (${FEATURE_IDS.join(", ")}).`,
+      );
+      process.exit(1);
+    }
+    out[id as FeatureId] = value === "on";
+  }
+  return out;
+}
+const features = parseFeatures(values.features);
 
 interface Failure {
   seed: string;
@@ -51,7 +73,7 @@ await Promise.all(
     const mine = seeds.filter((_, i) => i % workers === w);
     return new Promise<void>((resolve, reject) => {
       const worker = new Worker(new URL("./worker-entry.mjs", import.meta.url), {
-        workerData: { seeds: mine, seats, maxTurns, map: map.id },
+        workerData: { seeds: mine, seats, maxTurns, map: map.id, features },
       });
       worker.on(
         "message",
@@ -75,7 +97,7 @@ const secs = (performance.now() - started) / 1000;
 const won = results.filter((r) => r.winner !== null);
 const avgTurns = won.reduce((a, r) => a + r.turns, 0) / Math.max(1, won.length);
 console.log(
-  `\n${games} ${seats}-player games on ${map.name} (${map.id}), ${workers} workers, in ${secs.toFixed(1)}s: ${won.length} won, ` +
+  `\n${games} ${seats}-player games on ${map.name} (${map.id})${values.features ? ` [${values.features}]` : ""}, ${workers} workers, in ${secs.toFixed(1)}s: ${won.length} won, ` +
     `${results.length - won.length} hit the ${maxTurns}-turn cap, ${failures.length} failed. ` +
     `Average winning game: ${avgTurns.toFixed(0)} turns.`,
 );

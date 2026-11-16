@@ -3,11 +3,13 @@ import type {
   Action,
   ActionSpec,
   ErrorCode,
+  FeatureOverrides,
+  Features,
   GameEvent,
   PlayerId,
   PlayerView,
 } from "@settlers/engine";
-import type { MapDef } from "@settlers/maps";
+import { FeaturesSchema, type MapDef } from "@settlers/maps";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -128,6 +130,11 @@ export const LobbyRefSchema = z.object({ lobbyId: Id });
 export const MapChoiceSchema = z.object({ builtin: Id }).strict();
 /** Host only, while the lobby is open. Clears every ready flag. */
 export const SetLobbyMapSchema = z.object({ lobbyId: Id, map: MapChoiceSchema });
+/**
+ * Host only, while open: the lobby's house rules (spec 014), each overriding the map's value.
+ * Sent whole: a switch left out goes back to the map's value. Clears every ready flag.
+ */
+export const SetLobbyFeaturesSchema = z.object({ lobbyId: Id, features: FeaturesSchema });
 export const TakeSeatSchema = z.object({
   lobbyId: Id,
   /** Seat index, or null to stand up. */
@@ -154,6 +161,7 @@ export type CreateLobbyParsed = z.infer<typeof CreateLobbySchema>;
 export type LobbyRef = z.infer<typeof LobbyRefSchema>;
 export type MapChoice = z.infer<typeof MapChoiceSchema>;
 export type SetLobbyMap = z.infer<typeof SetLobbyMapSchema>;
+export type SetLobbyFeatures = z.infer<typeof SetLobbyFeaturesSchema>;
 export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
 export type JoinGame = z.infer<typeof JoinGameSchema>;
@@ -203,6 +211,10 @@ export interface LobbyState {
   turnSeconds: number;
   seats: (LobbySeat | null)[];
   map: LobbyMap;
+  /** The switches the game will start with: the map's, then the host's house rules. */
+  features: Features;
+  /** Just the host's overrides, for the house-rules toggles. */
+  houseRules: FeatureOverrides;
   status: "open" | "started";
   /** Set once the host starts the game. */
   gameId: string | null;
@@ -313,6 +325,7 @@ export interface ClientToServerEvents {
   "lobby:seat": (payload: TakeSeat, reply: Reply) => void;
   "lobby:ready": (payload: SetReady, reply: Reply) => void;
   "lobby:map": (payload: SetLobbyMap, reply: Reply) => void;
+  "lobby:features": (payload: SetLobbyFeatures, reply: Reply) => void;
   "lobby:start": (payload: LobbyRef, reply: Reply<{ gameId: string }>) => void;
   "game:join": (payload: JoinGame, reply: Reply<{ you: PlayerId | "spectator" }>) => void;
   "game:action": (payload: GameAction, reply: Reply<{ seq: number }>) => void;

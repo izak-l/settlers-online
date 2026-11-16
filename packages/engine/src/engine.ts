@@ -9,7 +9,7 @@ import {
   type RulesModule,
 } from "./module";
 import { MODULES } from "./modules";
-import { BASE_FEATURES } from "./types";
+import { mergeFeatures } from "./types";
 import type {
   Actor,
   ApplyResult,
@@ -78,7 +78,7 @@ export function createGame(
     options: {
       vpToWin: ruleset.options?.vpToWin ?? map.vpToWin,
       // Defaults, then the map, then the ruleset (the lobby's house rules) win.
-      features: { ...BASE_FEATURES, ...map.features, ...ruleset.options?.features },
+      features: mergeFeatures(map.features, ruleset.options?.features),
     },
     rng: seedFromString(seed),
     map,

@@ -55,6 +55,18 @@ export const PoolsSchema = z.object({
 
 const ConstraintName = z.enum(["no-adjacent-red-tokens"]);
 
+/** Base-game feature switches (spec 014); omitted ones stay on. */
+export const FeaturesSchema = z
+  .object({
+    devCards: z.boolean(),
+    robber: z.boolean(),
+    longestRoad: z.boolean(),
+    largestArmy: z.boolean(),
+    ports: z.boolean(),
+  })
+  .partial()
+  .strict();
+
 export const MapDefSchema = z.object({
   id: z.string().min(1).max(64),
   /** Display name and one-line description, in our own words. Required for catalog maps. */
@@ -78,6 +90,7 @@ export const MapDefSchema = z.object({
   ports: z.array(PortDefSchema).max(MAP_LIMITS.hexes).optional(),
   robberStart: z.string().optional(),
   constraints: z.array(ConstraintName).optional(),
+  features: FeaturesSchema.optional(),
   modules: z.array(z.string()),
 });
 
@@ -109,5 +122,6 @@ export interface ResolvedMap {
   hexes: ResolvedHex[];
   ports: ResolvedPort[];
   robberStart?: string;
+  features?: z.infer<typeof FeaturesSchema>;
   modules: string[];
 }

@@ -12,6 +12,7 @@ import {
   InviteSchema,
   JoinGameSchema,
   LobbyRefSchema,
+  SetLobbyFeaturesSchema,
   SetLobbyMapSchema,
   SetReadySchema,
   SetUsernameSchema,
@@ -31,7 +32,7 @@ import type { Authenticator } from "./auth";
 import type { Config } from "./config";
 import { fail } from "./errors";
 import { FriendService } from "./friends";
-import { LobbyService } from "./lobbies";
+import { effectiveFeatures, LobbyService } from "./lobbies";
 import { PresenceTracker } from "./presence";
 import { KeyedQueue } from "./queue";
 import { RoomManager, type GameRoom, type Role } from "./rooms";
@@ -151,6 +152,8 @@ export async function startServer({
         vpToWin: lobby.map.vpToWin,
         def: lobby.map,
       },
+      features: effectiveFeatures(lobby),
+      houseRules: lobby.features,
       status: lobby.status,
       gameId: lobby.gameId,
     };
@@ -342,6 +345,16 @@ export async function startServer({
         const p = SetLobbyMapSchema.safeParse(payload);
         if (!p.success) return fail("BAD_REQUEST");
         const ack = await lobbies.setMap(p.data.lobbyId, userId, p.data.map);
+        if (ack.ok) await broadcastLobby(p.data.lobbyId);
+        return ack;
+      }),
+    );
+
+    socket.on("lobby:features", (payload, reply) =>
+      respond(reply, async () => {
+        const p = SetLobbyFeaturesSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const ack = await lobbies.setFeatures(p.data.lobbyId, userId, p.data.features);
         if (ack.ok) await broadcastLobby(p.data.lobbyId);
         return ack;
       }),

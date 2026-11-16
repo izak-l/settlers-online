@@ -27,11 +27,11 @@ Parts of the base game can be turned off, by a map or by the lobby host as a hou
 
 ## Engine changes
 
-- `GameOptions.features: Record<FeatureId, boolean>`; `FeatureId` and `BASE_FEATURES` (all `true`) exported from the engine. `createGame` fills `options.features` from the defaults, then the map, then `ruleset.options.features`.
+- `GameOptions.features: Features`; `FEATURE_IDS`, `FeatureId`, `Features`, `FeatureOverrides`, `BASE_FEATURES` (all `true`) and `mergeFeatures` exported from the engine. `createGame` fills `options.features` from the defaults, then the map, then `ruleset.options.features`.
 - `MapInput` gets an optional `features`.
-- Base module: a `featureOn(state, id)` helper in `modules/base/helpers.ts`, used by:
-  - `setup.ts`: no robber piece (`robber`), no dev deck zone (`devCards`);
-  - `helpers.ts`: `rollDecision` / `mainDecision` leave out `BUY_DEV_CARD` and the play actions (`devCards`); the decision builders take the state;
+- Base module: a `featureOn(state, id)` helper in `modules/base/helpers.ts` (a missing `features` option, from games saved before switches existed, means on), used by:
+  - `setup.ts`: no robber piece (`robber`);
+  - `devcards.ts`: buying and playing dev cards is rejected (`WRONG_DECISION`) with `devCards` off, so they drop out of `legalActions`. The decision lists and the deck zones are unchanged, which keeps the dev-card conservation invariant;
   - `robber.ts`: `startSevenFlow` pushes `MOVE_ROBBER` only with `robber` on;
   - `devcards.ts`: a knight with `robber` off only counts towards the army;
   - `awards.ts`: `updateAwards` and `awardVP` skip a switched-off award;
@@ -43,8 +43,8 @@ Parts of the base game can be turned off, by a map or by the lobby host as a hou
 
 - `packages/maps`: optional `features` on `MapDefSchema` and `ResolvedMap`; the generator copies it through.
 - `packages/protocol`: `lobby:features` (`{ lobbyId, features: Partial<Record<FeatureId, boolean>> }`, host only); `LobbyState` carries the effective switches.
-- `apps/server`: migration `008_lobby_features.sql` adds `lobbies.features jsonb` (null = map defaults). Changing switches clears every ready flag, like changing the map. Changing the map keeps the lobby's own overrides. On start the server passes them as `RulesetDef.options.features`.
-- `apps/web`: a "House rules" group of toggles on the lobby screen (host only; others see a summary such as "No dev cards"). In game, the dev card panel, award badges and port signs are hidden when their switch is off. The dev sandbox gets the same toggles.
+- `apps/server`: migration `008_lobby_features.sql` adds `lobbies.features jsonb` (empty = the map's switches). Changing switches clears every ready flag, like changing the map. Changing the map keeps the lobby's own overrides. On start the server folds the effective switches into the resolved map's `features`, so the stored game carries them and `games` needs no new column. `LobbyState` has `features` (effective) and `houseRules` (the host's overrides).
+- `apps/web`: a "House rules" group of toggles on the lobby screen (host only; others see a summary such as "No development cards, no robber"). The web sends only switches that differ from the map. In game, the dev card buy button and harbor signs are hidden when switched off; award badges and dev cards never appear because nobody can hold them. The dev sandbox has the same toggles.
 - `tools/sim`: `--features devCards=off,robber=off` runs the fuzzer with switches off.
 
 ## Test plan
@@ -62,4 +62,4 @@ Parts of the base game can be turned off, by a map or by the lobby host as a hou
 
 ## Status
 
-Draft
+Shipped (M10a, on `m10`)

@@ -178,7 +178,8 @@ export function Board({ snap, seats, mode, onAction }: Props) {
           })}
 
         {/* Ports: a pier from the coast edge out to a sign with the rate and resource */}
-        {view.map.ports.map((port) => {
+        {/* With harbors switched off (spec 014) the map keeps its ports but they aren't drawn. */}
+        {(view.options.features?.ports === false ? [] : view.map.ports).map((port) => {
           const [mx, my] = edgeMidpoint(port.edgeId);
           const land = port.edgeId.split("|").find((k) => landKeys.has(k)) ?? "0,0";
           const [lq, lr] = land.split(",").map(Number);

@@ -146,14 +146,16 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
                   <Cost cost={BASE_COSTS[b.mode]!} />
                 </button>
               ))}
-              <button
-                className="build"
-                disabled={!canDo("BUY_DEV_CARD")}
-                onClick={() => send({ type: "BUY_DEV_CARD" })}
-              >
-                <span>Dev card</span>
-                <Cost cost={BASE_COSTS["devCard"]!} />
-              </button>
+              {snap.view.options.features?.devCards !== false && (
+                <button
+                  className="build"
+                  disabled={!canDo("BUY_DEV_CARD")}
+                  onClick={() => send({ type: "BUY_DEV_CARD" })}
+                >
+                  <span>Dev card</span>
+                  <Cost cost={BASE_COSTS["devCard"]!} />
+                </button>
+              )}
             </div>
             {mode && (
               <p className="prompt">

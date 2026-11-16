@@ -188,3 +188,29 @@ Lobbies created before migration 007 have no stored map; they read as the defaul
 The token pool must hold exactly one token per `pool:tokens` hex, minus fixed deserts on those hexes, minus the deserts in `pools.land`. This assumes every random land hex asks for a random token, which is true of every map so far; the 1,000-seed catalog test catches a map where it isn't.
 
 **Test:** `validator.test.ts` — "accepts the base map…", "rejects a token pool one short/long", "does not count a literal desert hex…".
+
+## Spec 014 — Feature switches (M10a)
+
+### A30: With the robber off, a 7 still makes big hands discard
+
+A 7 produces nothing and everyone over 7 cards discards half, as usual; then play goes straight to the main step (no robber move, no steal). A Knight still counts towards Largest Army but moves nothing.
+
+**Test:** `features.test.ts` — "a 7 still makes big hands discard, then goes straight to the main step", "a knight counts towards the army but moves nothing".
+
+### A31: With dev cards off, Largest Army can't be earned either
+
+Nobody can play a knight, so the army award is never held, whatever its own switch says. The dev deck stays in the state (untouched), so the card-conservation invariant still holds.
+
+**Test:** `features.test.ts` — "can't buy or play development cards".
+
+### A32: Switching harbors off keeps the ports in the map
+
+Bank trades are all 4:1 and the board doesn't draw the harbors, but the map's ports stay in the state, so a switch never changes the board itself.
+
+**Test:** `features.test.ts` — "every bank rate is 4 even on a port".
+
+### A33: House rules travel inside the stored map
+
+The server folds the lobby's switches into the resolved map's `features` when the game starts, so `games` needs no new column and replays read them from the stored map. Games saved before switches existed have no `features` and play with everything on.
+
+**Test:** `features.test.ts` — "treat a missing features option … as all on"; the online suite's "house rules" test.

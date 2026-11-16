@@ -318,6 +318,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
 | C→S | `lobby:ready` | lobby id, ready flag |
 | C→S | `lobby:map` | lobby id, `{ builtin: mapId }` (host only, while open; the map must allow the seat count; clears ready flags) |
+| C→S | `lobby:features` | lobby id, house rules: feature switches overriding the map's (host only, while open; clears ready flags) |
 | C→S | `lobby:start` | lobby id (host only; every seat filled and ready) |
 | C→S | `game:join` | game id (your seat if you have one, otherwise spectator if allowed) |
 | C→S | `game:action` | game id, `Action` |
@@ -372,6 +373,11 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **Invites** go only to online friends, from someone in the open lobby. They live in server memory per lobby and are withdrawn (`invite:closed`) when it starts.
 - **Turn timers** (`timers.ts`): the clock key is the turn number plus the waited-on player, or the depth of a `timer: "short"` decision. The turn clock covers the whole turn and pauses while a short clock runs. Clocks live in server memory: they run only while a seated player has the game open, and start from full when someone returns or the server restarts. A timeout runs in the game's queue and does nothing if any action landed since it was armed.
 - **Chat:** stored in `chat_messages`. Players post to `players` (everyone reads it), spectators to `spectators` (only spectators read it). 5 messages per 10 seconds per user.
+
+**House rules (spec 014)**
+
+- Five base-game switches, all on by default: `devCards`, `robber`, `longestRoad`, `largestArmy`, `ports`. A map may set them (`features` in its JSON); the lobby host may override them (`lobby:features`, which clears ready flags and survives a map change). `createGame` merges defaults → map → ruleset options into `options.features`.
+- The server folds the effective switches into the resolved map it stores, so replays need nothing else. Base checks them with `featureOn`: dev card actions are rejected when off; no robber piece and no robber step after a 7 or Knight; a switched-off award is never held; harbors off means 4:1 everywhere.
 
 **One- and two-player games (spec 010)**
 

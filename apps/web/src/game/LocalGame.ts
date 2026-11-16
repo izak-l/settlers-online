@@ -9,6 +9,7 @@ import {
   viewFor,
   type Action,
   type ActionSpec,
+  type FeatureOverrides,
   type GameEvent,
   type GameState,
   type PlayerId,
@@ -73,10 +74,16 @@ export class LocalGame implements GameClient {
     private names: string[],
     seed: string,
     def: MapDef = DEFAULT_MAP_DEF,
+    features?: FeatureOverrides,
   ) {
     const { map } = generateMap(def, seedFromString(`${seed}:map`));
     const seats = names.map((_, i) => `p${i}`);
-    this.state = createGame(map, { modules: def.modules }, seats, seed);
+    this.state = createGame(
+      map,
+      { modules: def.modules, ...(features ? { options: { features } } : {}) },
+      seats,
+      seed,
+    );
   }
 
   private waitingOn(): PlayerId {

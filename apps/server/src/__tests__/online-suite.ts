@@ -257,6 +257,57 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(history.games[0]!.mapName).toBe("Grand Diamond");
     });
 
+    it("house rules: the host switches features off; the game starts with them", async () => {
+      const [ada, bo] = await Promise.all(["dev:Ada", "dev:Bo_b"].map(connect));
+      const created = await ada!.socket.emitWithAck("lobby:create", {
+        maxSeats: 2,
+        allowSpectators: false,
+      });
+      if (!created.ok) throw new Error(created.code);
+      const lobbyId = created.lobby.id;
+      expect(created.lobby.features).toMatchObject({ devCards: true, robber: true });
+      expect(created.lobby.houseRules).toEqual({});
+
+      expect((await bo!.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
+      expect((await bo!.socket.emitWithAck("lobby:seat", { lobbyId, seat: 1 })).ok).toBe(true);
+      for (const p of [ada!, bo!])
+        expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
+
+      const set = (who: TestClient, features: unknown) =>
+        // Malformed payloads are part of the test.
+        who.socket.emitWithAck("lobby:features", { lobbyId, features } as never);
+      expect(await set(bo!, { devCards: false })).toMatchObject({ ok: false, code: "NOT_HOST" });
+      expect(await set(ada!, { flying: true })).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+      expect(await set(ada!, { devCards: false, robber: false })).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.features.devCards === false);
+      expect(bo!.lobby!.houseRules).toEqual({ devCards: false, robber: false });
+      expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false]);
+
+      // House rules survive a map change.
+      expect(
+        await ada!.socket.emitWithAck("lobby:map", { lobbyId, map: { builtin: "grand-diamond" } }),
+      ).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.map.id === "grand-diamond");
+      expect(bo!.lobby!.features.robber).toBe(false);
+
+      for (const p of [ada!, bo!])
+        expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
+      const started = await ada!.socket.emitWithAck("lobby:start", { lobbyId });
+      if (!started.ok) throw new Error(started.code);
+      expect(await set(ada!, {})).toMatchObject({ ok: false, code: "LOBBY_STARTED" });
+
+      expect((await ada!.socket.emitWithAck("game:join", { gameId: started.gameId })).ok).toBe(
+        true,
+      );
+      await ada!.until(() => ada!.state !== null);
+      expect(ada!.state!.view.options.features).toMatchObject({
+        devCards: false,
+        robber: false,
+        ports: true,
+      });
+      expect(ada!.state!.view.pieces["robber"]).toBeUndefined();
+    });
+
     it("maps: a map that doesn't allow the lobby's seat count is refused", async () => {
       const ada = await connect("dev:Ada");
       const created = await ada.socket.emitWithAck("lobby:create", {

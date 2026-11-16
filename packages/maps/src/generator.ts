@@ -206,6 +206,7 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       hexes: [...landHexes, ...seaHexes],
       ports,
       ...(def.robberStart !== undefined ? { robberStart: def.robberStart } : {}),
+      ...(def.features !== undefined ? { features: def.features } : {}),
       modules: def.modules,
     },
     rng: r,

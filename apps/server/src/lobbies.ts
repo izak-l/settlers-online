@@ -1,10 +1,21 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { MODULE_IDS, seedFromString } from "@settlers/engine";
+import {
+  mergeFeatures,
+  MODULE_IDS,
+  seedFromString,
+  type FeatureOverrides,
+  type Features,
+} from "@settlers/engine";
 import { DEFAULT_MAP_DEF, findMap, generateMap } from "@settlers/maps";
 import type { Ack, CreateLobbyParsed, MapChoice } from "@settlers/protocol";
 import { fail } from "./errors";
 import type { KeyedQueue } from "./queue";
 import type { GamePlayer, GameRecord, LobbyRecord, Store } from "./store/types";
+
+/** The switches a lobby's game will start with: all on, then the map's, then the house rules. */
+export function effectiveFeatures(lobby: LobbyRecord): Features {
+  return mergeFeatures(lobby.map.features, lobby.features);
+}
 
 /** Lobby rules: who sits where, readiness, and starting the game. Every change runs on the lobby's queue. */
 export class LobbyService {
@@ -26,6 +37,7 @@ export class LobbyService {
       status: "open",
       gameId: null,
       map: DEFAULT_MAP_DEF,
+      features: {},
     };
     await this.store.createLobby(lobby);
     return lobby;
@@ -88,6 +100,23 @@ export class LobbyService {
     });
   }
 
+  /**
+   * Host only, while open: replace the house rules (switches overriding the map's). They
+   * survive a map change. Everyone has to ready up again.
+   */
+  setFeatures(lobbyId: string, userId: string, features: FeatureOverrides): Promise<Ack> {
+    return this.queue.run(`lobby:${lobbyId}`, async () => {
+      const lobby = await this.store.getLobby(lobbyId);
+      if (!lobby) return fail("NOT_FOUND");
+      if (lobby.hostId !== userId) return fail("NOT_HOST");
+      if (lobby.status !== "open") return fail("LOBBY_STARTED");
+      lobby.features = { ...features };
+      lobby.seats = lobby.seats.map((s) => (s ? { ...s, ready: false } : null));
+      await this.store.saveLobby(lobby);
+      return { ok: true };
+    });
+  }
+
   /** Host only. Every seat must be filled and ready. Seat i plays as engine seat "p<i>". */
   start(lobbyId: string, userId: string): Promise<Ack<{ gameId: string }>> {
     return this.queue.run(`lobby:${lobbyId}`, async () => {
@@ -105,7 +134,9 @@ export class LobbyService {
 
       // The server isn't bound by engine purity: the seed comes from the OS.
       const seed = randomBytes(16).toString("hex");
-      const { map } = generateMap(def, seedFromString(`${seed}:map`));
+      const generated = generateMap(def, seedFromString(`${seed}:map`)).map;
+      // The house rules ride on the stored map, so the game (and every replay) starts with them.
+      const map = { ...generated, features: effectiveFeatures(lobby) };
       const players: GamePlayer[] = lobby.seats.map((s, i) => ({
         seat: `p${i}`,
         userId: s!.userId,

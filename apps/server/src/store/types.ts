@@ -1,4 +1,11 @@
-import type { Action, GameEvent, MapInput, PlayerId, StateSnapshot } from "@settlers/engine";
+import type {
+  Action,
+  FeatureOverrides,
+  GameEvent,
+  MapInput,
+  PlayerId,
+  StateSnapshot,
+} from "@settlers/engine";
 import type { MapDef } from "@settlers/maps";
 import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 
@@ -25,6 +32,8 @@ export interface LobbyRecord {
   gameId: string | null;
   /** A copy of the chosen map's definition; the game starts from it. */
   map: MapDef;
+  /** The host's house rules (spec 014): switches overriding the map's. Empty = the map's. */
+  features: FeatureOverrides;
 }
 
 export interface GameRecord {

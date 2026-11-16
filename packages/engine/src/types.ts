@@ -22,19 +22,21 @@ export interface MapInput {
   ports: { edgeId: EdgeId; type: string }[];
   robberStart?: string;
   /** Base-game parts this map turns on or off (spec 014). */
-  features?: Partial<Record<FeatureId, boolean>>;
+  features?: FeatureOverrides;
 }
 
 export interface RulesetDef {
   /** Module ids in the order their hooks run. */
   modules: ModuleId[];
-  options?: { vpToWin?: number; features?: Partial<Features> };
+  options?: { vpToWin?: number; features?: FeatureOverrides };
 }
 
 /** Parts of the base game that a map, the lobby or a module can switch off (spec 014). */
 export const FEATURE_IDS = ["devCards", "robber", "longestRoad", "largestArmy", "ports"] as const;
 export type FeatureId = (typeof FEATURE_IDS)[number];
 export type Features = Record<FeatureId, boolean>;
+/** Some switches set, others left to an earlier source (map JSON, lobby house rules). */
+export type FeatureOverrides = { [K in FeatureId]?: boolean | undefined };
 
 /** Every feature on: the plain base game. */
 export const BASE_FEATURES: Features = {
@@ -44,6 +46,18 @@ export const BASE_FEATURES: Features = {
   largestArmy: true,
   ports: true,
 };
+
+/** Later sources win; a switch a source leaves out (or sets to undefined) keeps the earlier value. */
+export function mergeFeatures(...sources: (FeatureOverrides | undefined)[]): Features {
+  const out: Features = { ...BASE_FEATURES };
+  for (const src of sources) {
+    for (const id of FEATURE_IDS) {
+      const value = src?.[id];
+      if (value !== undefined) out[id] = value;
+    }
+  }
+  return out;
+}
 
 export interface GameOptions {
   vpToWin: number;

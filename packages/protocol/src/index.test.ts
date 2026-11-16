@@ -4,6 +4,7 @@ import {
   CreateLobbySchema,
   GameActionSchema,
   PROTOCOL_ERROR_MESSAGES,
+  SetLobbyFeaturesSchema,
   SetLobbyMapSchema,
   UsernameSchema,
 } from "./index";
@@ -58,6 +59,16 @@ describe("protocol schemas", () => {
     for (const map of [{}, { builtin: "" }, { builtin: "x".repeat(65) }, "base-4p", null]) {
       expect(SetLobbyMapSchema.safeParse({ lobbyId: "abc", map }).success).toBe(false);
     }
+  });
+
+  it("accepts house rules and rejects unknown switches", () => {
+    const ok = (features: unknown) =>
+      SetLobbyFeaturesSchema.safeParse({ lobbyId: "abc", features }).success;
+    expect(ok({})).toBe(true);
+    expect(ok({ devCards: false, robber: true, ports: false })).toBe(true);
+    expect(ok({ flying: true })).toBe(false);
+    expect(ok({ devCards: "no" })).toBe(false);
+    expect(ok(null)).toBe(false);
   });
 
   it("has a UI message for UNKNOWN_MAP", () => {

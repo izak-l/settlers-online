@@ -154,3 +154,11 @@ While a decision the engine marks `timer: "short"` (discards) is on top, the tur
 When no seated player has the game open, the clock stops, so an abandoned game doesn't play itself. When someone comes back (or the server restarts and the game loads), the current clock starts again from full.
 
 **Test:** `online-suite.ts` — the "nobody home" and restart parts of the turn timer test; `timers.test.ts` — "starts from full after a reset".
+
+## Spec 010 — One- and two-player games
+
+### A25: Base rules are the same at every player count; a solo player can't offer trades
+
+1 and 2 players use the normal base rules (no two-player variant, no neutral player). Setup is still a snake, so a solo player places both settlements and roads in a row. Offering a trade needs at least one other player; bank and port trades always work.
+
+**Test:** `players.test.ts` — "setup is a snake of one…", "can't offer a trade with nobody to trade with…", "setup snakes 1, 2, 2, 1"; `sim.test.ts` — the one- and two-player batches (seed `1-1` was a bot offering trades solo).

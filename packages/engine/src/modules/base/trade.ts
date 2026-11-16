@@ -50,6 +50,8 @@ function checkOffer(
   give: Resources,
   want: Resources,
 ): Rejection | null {
+  if (state.players.length < 2)
+    return reject("INVALID_TRADE", "There's nobody else to trade with. Try the bank.");
   const g = clean(give);
   const w = clean(want);
   if (!g || !w) return reject("INVALID_TRADE", "Offers can only contain resources.");

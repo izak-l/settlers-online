@@ -8,7 +8,7 @@ Build a free, self-hosted, browser-based hex-tile trading and building game for 
 
 **Goals**
 
-- Real-time online play for 3–4 players (5–6 later) in desktop browsers, with a layout that still works on small screens (down to phone width). No native or mobile app.
+- Real-time online play for 1–4 players (5–6 later) in desktop browsers, with a layout that still works on small screens (down to phone width). No native or mobile app.
 - A server-authoritative rules engine that is deterministic and fully tested.
 - Maps defined as data: random base boards, fixed layouts and custom maps from an editor.
 - Expansion-ready seams (modules, a decision queue, keyed resources) built in from v1. v1 is the base game; expansions follow in order from v1.1 (section 14). Everything is built and played locally first; deploying to free tiers comes last (M9+).
@@ -303,7 +303,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | Direction | Type | Payload |
 | --- | --- | --- |
 | C→S | `profile:setUsername` | username (3–20 letters, digits, `_`; unique, case-insensitive) |
-| C→S | `lobby:create` | seats (3 or 4), allow spectators, turn timer (0, 30, 60, 90, 120 s) |
+| C→S | `lobby:create` | seats (1–4), allow spectators, turn timer (0, 30, 60, 90, 120 s) |
 | C→S | `lobby:join` | lobby id (watch it; doesn't take a seat) |
 | C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
 | C→S | `lobby:ready` | lobby id, ready flag |
@@ -362,6 +362,11 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **Turn timers** (`timers.ts`): the clock key is the turn number plus the waited-on player, or the depth of a `timer: "short"` decision. The turn clock covers the whole turn and pauses while a short clock runs. Clocks live in server memory: they run only while a seated player has the game open, and start from full when someone returns or the server restarts. A timeout runs in the game's queue and does nothing if any action landed since it was armed.
 - **Chat:** stored in `chat_messages`. Players post to `players` (everyone reads it), spectators to `spectators` (only spectators read it). 5 messages per 10 seconds per user.
 
+**One- and two-player games (spec 010)**
+
+- Lobbies (and the dev sandbox) take 1–4 seats; `lobbies.max_seats` allows 1–6 (migration 006). The same base rules apply at every count: one player places both setup settlements and roads in a row, and a 7 moves the robber with nobody to rob.
+- The one rule that depends on the count: `OFFER_TRADE` needs another player (`INVALID_TRADE` otherwise), so a solo game never opens an offer nobody can answer; the web hides the offer builder in that case. Bank and port trades are unchanged.
+
 ## 9. Persistence, versioning and replay
 
 Postgres stores each game as a header plus an append-only action log; snapshots are only a speed cache.
@@ -405,7 +410,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - One `ResourcePicker` (+/− per resource, optional per-resource and total limits) is reused for discards, Bounty picks and trade offers. Those actions are built in the UI and validated by the server; every other button is enabled only from `legal`.
 - The dev cards panel lists your cards (cards bought this turn are marked as playable next turn) with Play buttons from `legal`; Bounty and Monopoly open a chooser. The trade panel appears only on your own main step: bank trades show your rate per resource from `ratios`, and an offer builder sends `OFFER_TRADE`.
 - The players panel shows card and dev card counts, knights played, and award badges. A win banner shows the winner and final scores (VP cards revealed).
-- **Account and lobby screens:** sign-in (email, Discord), pick a username, create a lobby (3 or 4 seats, spectators on or off), join by invite link, and the lobby's seats and ready flags. Friends, presence and game history land in M6.
+- **Account and lobby screens:** sign-in (email, Discord), pick a username, create a lobby (3 or 4 seats at the time; 1–4 since spec 010; spectators on or off), join by invite link, and the lobby's seats and ready flags. Friends, presence and game history land in M6.
 
 **As built (M6: social screens and polish)**
 

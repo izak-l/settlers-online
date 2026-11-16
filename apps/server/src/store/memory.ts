@@ -1,4 +1,5 @@
 import type { StateSnapshot } from "@settlers/engine";
+import { mapName } from "@settlers/maps";
 import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 import type {
   FriendshipRecord,
@@ -165,6 +166,7 @@ export class MemoryStore implements Store {
           seat: p.seat,
           username: this.profiles.get(p.userId)?.username ?? "?",
         })),
+        mapName: mapName(game.map.id),
         winner: meta.result?.winner ?? null,
         scores: meta.result ? copy(meta.result.scores) : null,
       };

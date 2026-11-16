@@ -33,3 +33,11 @@ export function findMap(id: string): CatalogMap | undefined {
 export function mapsForSeats(seats: number): CatalogMap[] {
   return MAP_CATALOG.filter((m) => seats >= m.def.players.min && seats <= m.def.players.max);
 }
+
+/** A built-in map's display name, or the id itself for a map no longer in the catalog. */
+export function mapName(id: string): string {
+  return findMap(id)?.name ?? id;
+}
+
+/** The default map's definition (the random base board). */
+export const DEFAULT_MAP_DEF: MapDef = findMap(DEFAULT_MAP_ID)!.def;

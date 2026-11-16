@@ -1,4 +1,5 @@
 import type { Action, GameEvent, MapInput, PlayerId, StateSnapshot } from "@settlers/engine";
+import type { MapDef } from "@settlers/maps";
 import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 
 export interface Profile {
@@ -22,6 +23,8 @@ export interface LobbyRecord {
   seats: (LobbySeatRecord | null)[];
   status: "open" | "started";
   gameId: string | null;
+  /** A copy of the chosen map's definition; the game starts from it. */
+  map: MapDef;
 }
 
 export interface GameRecord {

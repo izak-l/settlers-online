@@ -7,6 +7,7 @@ import type {
   PlayerId,
   PlayerView,
 } from "@settlers/engine";
+import type { MapDef } from "@settlers/maps";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -29,6 +30,7 @@ export const PROTOCOL_ERROR_CODES = [
   "NOT_FRIENDS",
   "FRIEND_OFFLINE",
   "RATE_LIMITED",
+  "UNKNOWN_MAP",
   "SERVER_ERROR",
 ] as const;
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[number];
@@ -50,6 +52,7 @@ export const PROTOCOL_ERROR_MESSAGES: Record<ProtocolErrorCode, string> = {
   NOT_FRIENDS: "You can only do that with a friend.",
   FRIEND_OFFLINE: "That friend isn't online right now.",
   RATE_LIMITED: "Slow down a little and try again in a few seconds.",
+  UNKNOWN_MAP: "That map isn't available.",
   SERVER_ERROR: "Something went wrong on the server.",
 };
 
@@ -121,6 +124,10 @@ export const CreateLobbySchema = z.object({
     .default(0),
 });
 export const LobbyRefSchema = z.object({ lobbyId: Id });
+/** Where a lobby's map comes from. M8b adds `{ mine: id }` for maps saved in the editor. */
+export const MapChoiceSchema = z.object({ builtin: Id }).strict();
+/** Host only, while the lobby is open. Clears every ready flag. */
+export const SetLobbyMapSchema = z.object({ lobbyId: Id, map: MapChoiceSchema });
 export const TakeSeatSchema = z.object({
   lobbyId: Id,
   /** Seat index, or null to stand up. */
@@ -145,6 +152,8 @@ export type SetUsername = z.infer<typeof SetUsernameSchema>;
 export type CreateLobby = z.input<typeof CreateLobbySchema>;
 export type CreateLobbyParsed = z.infer<typeof CreateLobbySchema>;
 export type LobbyRef = z.infer<typeof LobbyRefSchema>;
+export type MapChoice = z.infer<typeof MapChoiceSchema>;
+export type SetLobbyMap = z.infer<typeof SetLobbyMapSchema>;
 export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
 export type JoinGame = z.infer<typeof JoinGameSchema>;
@@ -173,6 +182,18 @@ export interface LobbySeat {
   connected: boolean;
 }
 
+/** The map a lobby will be played on: a copy taken when the host picked it. */
+export interface LobbyMap {
+  /** Catalog id for built-in maps. */
+  id: string;
+  name: string;
+  description: string;
+  players: { min: number; max: number };
+  vpToWin: number;
+  /** The unresolved definition, for the preview. */
+  def: MapDef;
+}
+
 export interface LobbyState {
   id: string;
   hostId: string;
@@ -181,6 +202,7 @@ export interface LobbyState {
   /** 0 = no turn timer. */
   turnSeconds: number;
   seats: (LobbySeat | null)[];
+  map: LobbyMap;
   status: "open" | "started";
   /** Set once the host starts the game. */
   gameId: string | null;
@@ -254,6 +276,8 @@ export interface GameSummary {
   /** Your seat in this game. */
   you: PlayerId;
   players: { seat: PlayerId; username: string }[];
+  /** The map's display name (its id if it is no longer in the catalog). */
+  mapName: string;
   winner: PlayerId | null;
   /** Full final VP per seat (VP cards included); null while the game runs. */
   scores: Record<PlayerId, number> | null;
@@ -288,6 +312,7 @@ export interface ClientToServerEvents {
   "lobby:join": (payload: LobbyRef, reply: Reply<{ lobby: LobbyState }>) => void;
   "lobby:seat": (payload: TakeSeat, reply: Reply) => void;
   "lobby:ready": (payload: SetReady, reply: Reply) => void;
+  "lobby:map": (payload: SetLobbyMap, reply: Reply) => void;
   "lobby:start": (payload: LobbyRef, reply: Reply<{ gameId: string }>) => void;
   "game:join": (payload: JoinGame, reply: Reply<{ you: PlayerId | "spectator" }>) => void;
   "game:action": (payload: GameAction, reply: Reply<{ seq: number }>) => void;

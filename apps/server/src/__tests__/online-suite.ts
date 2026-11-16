@@ -190,6 +190,88 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(ada.state!.view.players).toEqual(["p0"]);
     });
 
+    it("maps: the host picks a built-in map; the game starts from it with its modules", async () => {
+      const [ada, bo] = await Promise.all(["dev:Ada", "dev:Bo_b"].map(connect));
+      const created = await ada!.socket.emitWithAck("lobby:create", {
+        maxSeats: 2,
+        allowSpectators: false,
+      });
+      if (!created.ok) throw new Error(created.code);
+      const lobbyId = created.lobby.id;
+      expect(created.lobby.map).toMatchObject({ id: "base-4p", name: "Standard Island" });
+
+      expect((await bo!.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
+      expect((await bo!.socket.emitWithAck("lobby:seat", { lobbyId, seat: 1 })).ok).toBe(true);
+      for (const p of [ada!, bo!])
+        expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
+
+      const choose = (who: TestClient, map: unknown) =>
+        // Malformed payloads are part of the test.
+        who.socket.emitWithAck("lobby:map", { lobbyId, map } as never);
+      expect(await choose(bo!, { builtin: "grand-diamond" })).toMatchObject({
+        ok: false,
+        code: "NOT_HOST",
+      });
+      expect(await choose(ada!, { builtin: "no-such-map" })).toMatchObject({
+        ok: false,
+        code: "UNKNOWN_MAP",
+      });
+      expect(await choose(ada!, "grand-diamond")).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+
+      // Choosing a map clears the ready flags and everyone sees the new map.
+      expect(await choose(ada!, { builtin: "grand-diamond" })).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.map.id === "grand-diamond");
+      expect(bo!.lobby!.map).toMatchObject({
+        name: "Grand Diamond",
+        players: { min: 2, max: 4 },
+        vpToWin: 12,
+      });
+      expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false]);
+      expect(await ada!.socket.emitWithAck("lobby:start", { lobbyId })).toMatchObject({
+        ok: false,
+        code: "NOT_READY",
+      });
+
+      for (const p of [ada!, bo!])
+        expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
+      const started = await ada!.socket.emitWithAck("lobby:start", { lobbyId });
+      if (!started.ok) throw new Error(started.code);
+      expect(await choose(ada!, { builtin: "base-4p" })).toMatchObject({
+        ok: false,
+        code: "LOBBY_STARTED",
+      });
+
+      const stored = await store.getGame(started.gameId);
+      expect(stored!.game.map.id).toBe("grand-diamond");
+      expect(stored!.game.map.hexes.filter((h) => h.terrain !== "sea")).toHaveLength(49);
+      expect(stored!.game.modules).toEqual(["base"]);
+
+      expect((await ada!.socket.emitWithAck("game:join", { gameId: started.gameId })).ok).toBe(
+        true,
+      );
+      await ada!.until(() => ada!.state !== null);
+      expect(ada!.state!.view.map.id).toBe("grand-diamond");
+
+      const history = await ada!.socket.emitWithAck("games:history", {});
+      if (!history.ok) throw new Error(history.code);
+      expect(history.games[0]!.mapName).toBe("Grand Diamond");
+    });
+
+    it("maps: a map that doesn't allow the lobby's seat count is refused", async () => {
+      const ada = await connect("dev:Ada");
+      const created = await ada.socket.emitWithAck("lobby:create", {
+        maxSeats: 1,
+        allowSpectators: false,
+      });
+      if (!created.ok) throw new Error(created.code);
+      const ack = await ada.socket.emitWithAck("lobby:map", {
+        lobbyId: created.lobby.id,
+        map: { builtin: "grand-diamond" },
+      });
+      expect(ack).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+      if (!ack.ok) expect(ack.message).toMatch(/2.4 players/);
+    });
+
     it("history lists games in progress, newest first", async () => {
       const first = await setUpGame();
       const again = await first.players[0]!.socket.emitWithAck("lobby:create", {
@@ -199,9 +281,9 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       if (!again.ok) throw new Error(again.code);
       const history = await first.players[0]!.socket.emitWithAck("games:history", {});
       if (!history.ok) throw new Error(history.code);
-      expect(history.games.map((g) => [g.gameId, g.status, g.winner, g.scores])).toEqual([
-        [first.gameId, "active", null, null],
-      ]);
+      expect(history.games.map((g) => [g.gameId, g.status, g.mapName, g.winner, g.scores])).toEqual(
+        [[first.gameId, "active", "Standard Island", null, null]],
+      );
     });
 
     it("rejects acting out of turn, spectators acting, and malformed actions", async () => {

@@ -12,6 +12,7 @@ import {
   InviteSchema,
   JoinGameSchema,
   LobbyRefSchema,
+  SetLobbyMapSchema,
   SetReadySchema,
   SetUsernameSchema,
   TakeSeatSchema,
@@ -142,6 +143,14 @@ export async function startServer({
             }
           : null,
       ),
+      map: {
+        id: lobby.map.id,
+        name: lobby.map.name ?? lobby.map.id,
+        description: lobby.map.description ?? "",
+        players: lobby.map.players,
+        vpToWin: lobby.map.vpToWin,
+        def: lobby.map,
+      },
       status: lobby.status,
       gameId: lobby.gameId,
     };
@@ -323,6 +332,16 @@ export async function startServer({
         const p = SetReadySchema.safeParse(payload);
         if (!p.success) return fail("BAD_REQUEST");
         const ack = await lobbies.setReady(p.data.lobbyId, userId, p.data.ready);
+        if (ack.ok) await broadcastLobby(p.data.lobbyId);
+        return ack;
+      }),
+    );
+
+    socket.on("lobby:map", (payload, reply) =>
+      respond(reply, async () => {
+        const p = SetLobbyMapSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const ack = await lobbies.setMap(p.data.lobbyId, userId, p.data.map);
         if (ack.ok) await broadcastLobby(p.data.lobbyId);
         return ack;
       }),

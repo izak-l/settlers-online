@@ -87,4 +87,4 @@ Review notes for when they move into the catalog:
 
 ## Status
 
-In progress (M8a, on `m8`)
+Shipped (M8a). The editor continues in M8b (spec 013).

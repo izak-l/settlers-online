@@ -18,8 +18,8 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] 1–4 player games (docs/features/010-one-and-two-player-games.md)
 - [x] M7 UI overhaul: cards instead of counts, original art, a resizable/zoomable board, sounds (specs 006–009)
 - [x] M9 Deploy: Cloudflare Pages + Oracle ARM VM (docs/features/012-deploy.md; runbook docs/DEPLOY.md)
-- [ ] M8a Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md; drafts in packages/maps/maps/drafts/) ← now, on `m8`
-- [ ] M8b Map editor: a Maps tab to draw, save and pick your own maps (spec 013, written before coding; branch `m8b` after M8a merges)
+- [x] M8a Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md; drafts in packages/maps/maps/drafts/)
+- [ ] M8b Map editor: a Maps tab to draw, save and pick your own maps (spec 013, to be written and reviewed before coding; branch `m8b` after `m8` merges) ← next
 - [ ] M10 Base-game feature switches, then seafaring
 - [ ] M11 Knights-and-cities
 - [ ] M12 Traders scenarios

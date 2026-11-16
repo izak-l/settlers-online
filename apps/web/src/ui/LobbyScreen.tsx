@@ -1,8 +1,67 @@
 import { useEffect, useState } from "react";
+import { mapsForSeats } from "@settlers/maps";
 import type { LobbyState } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
+import { MapPreview } from "../board/MapPreview";
 import { SEAT_COLORS, errorText } from "../game/seats";
+import { MapPicker, mapSummary } from "./MapPicker";
+
+/**
+ * The lobby's map: everyone sees it; the host can change it while the lobby is open.
+ * Only maps that allow this many seats are offered (the server checks too).
+ */
+function LobbyMap({
+  lobby,
+  isHost,
+  onChoose,
+}: {
+  lobby: LobbyState;
+  isHost: boolean;
+  onChoose: (id: string) => Promise<void>;
+}) {
+  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { map } = lobby;
+  const options = mapsForSeats(lobby.maxSeats);
+  const canPick = isHost && lobby.status === "open" && options.length > 1;
+
+  return (
+    <section className="stack">
+      <h3>Map</h3>
+      <div className="lobby-map">
+        <MapPreview def={map.def} />
+        <div className="stack">
+          <strong>{map.name}</strong>
+          <span className="small">{map.description}</span>
+          <span className="muted small">{mapSummary(map.def)}</span>
+          {canPick && (
+            <button className="link" onClick={() => setPicking((p) => !p)}>
+              {picking ? "Close" : "Change map"}
+            </button>
+          )}
+        </div>
+      </div>
+      {canPick && picking && (
+        <>
+          <p className="muted small">Changing the map asks everyone to ready up again.</p>
+          <MapPicker
+            options={options}
+            value={map.id}
+            disabled={busy}
+            onChange={(id) => {
+              setBusy(true);
+              void onChoose(id).finally(() => {
+                setBusy(false);
+                setPicking(false);
+              });
+            }}
+          />
+        </>
+      )}
+    </section>
+  );
+}
 
 /** Online friends who aren't seated here yet, each with an Invite button. */
 function InviteFriends({ lobby }: { lobby: LobbyState }) {
@@ -118,6 +177,14 @@ export function LobbyScreen({ id }: { id: string }) {
           ? `${lobby.turnSeconds} seconds per turn, 30 seconds to discard. When time runs out, a default move is made.`
           : "off"}
       </p>
+
+      <LobbyMap
+        lobby={lobby}
+        isHost={isHost}
+        onChoose={(mapId) =>
+          call(socket.emitWithAck("lobby:map", { lobbyId: id, map: { builtin: mapId } }))
+        }
+      />
 
       <ol className="seats">
         {lobby.seats.map((s, i) => (

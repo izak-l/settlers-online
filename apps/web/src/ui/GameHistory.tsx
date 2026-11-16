@@ -22,7 +22,7 @@ function GameRow({ game }: { game: GameSummary }) {
           ))}
         </span>
         <span className="meta">
-          {dateText(game.createdAt)} ·{" "}
+          {game.mapName} · {dateText(game.createdAt)} ·{" "}
           {finished
             ? game.winner === game.you
               ? "You won"

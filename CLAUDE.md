@@ -15,10 +15,11 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log
 - [x] M5 Robber, dev cards, trades, awards, win
 - [x] M6 Friends, presence, invites, history, polish, turn timers (specs 001–005 in docs/features/)
-- [ ] M7 Deploy to free tiers ← next
-- [ ] M8+ Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
+- [ ] M7 UI overhaul: individual cards instead of counts, better graphics, a resizable/zoomable board, sounds ← next
+- [ ] M8 Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
+- [ ] M9+ Deploy to free tiers
 
-Tick these off as milestones finish. Online play (M4) deliberately comes before the remaining rules (M5); see DESIGN.md §13.
+Tick these off as milestones finish. Online play (M4) deliberately comes before the remaining rules (M5), and deployment comes last so everything is developed and played locally first; see DESIGN.md §13.
 
 ## Repo layout
 

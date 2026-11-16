@@ -11,7 +11,7 @@ Build a free, self-hosted, browser-based hex-tile trading and building game for 
 - Real-time online play for 3–4 players (5–6 later) in desktop browsers, with a layout that still works on small screens (down to phone width). No native or mobile app.
 - A server-authoritative rules engine that is deterministic and fully tested.
 - Maps defined as data: random base boards, fixed layouts and custom maps from an editor.
-- Expansion-ready seams (modules, a decision queue, keyed resources) built in from v1. v1 ships the base game; expansions follow in order from v1.1 (section 14).
+- Expansion-ready seams (modules, a decision queue, keyed resources) built in from v1. v1 is the base game; expansions follow in order from v1.1 (section 14). Everything is built and played locally first; deploying to free tiers comes last (M9+).
 - Accounts from v1: sign-in, friends list, online status, private lobbies and game history. Plus reconnect, save/resume, replays and spectators.
 
 **Non-goals for v1**
@@ -19,7 +19,6 @@ Build a free, self-hosted, browser-based hex-tile trading and building game for 
 - Public matchmaking, ranked play, monetization.
 - AI opponents beyond simple random bots for testing.
 - Hot-seat or single-device play. Every player joins from their own browser; the only local mode is a developer sandbox.
-- Expansions in the v1 release itself (work starts right after, in v1.1).
 
 **Naming and IP rules**
 
@@ -388,6 +387,9 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **State:** Zustand store holds the view and connection status. Optimistic UI is not used; the board updates when the server confirms.
 - **Small screens:** responsive layout, not a separate mobile app. The board scales to fit, panels stack below it, tap targets stay comfortably large, and nothing scrolls sideways down to a 375px-wide window. Pan/zoom or a bottom drawer only if testing at that size shows they're needed.
 - **Art:** original flat SVG icons and a custom color palette. No borrowed assets.
+- **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
+- **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan when zoomed). On wide screens the layout uses the extra width instead of a fixed maximum.
+- **Sound (M7):** short original sound effects for key moments (dice, building, your turn, trades, robber, win, chat), with a mute toggle and volume remembered per browser. Off-screen tabs don't play sounds for other players' routine moves.
 - **Map editor (later):** click hexes to set terrain, tokens and ports; validates with the shared map validator; exports map JSON.
 
 **As built (M3: board UI)**
@@ -432,6 +434,8 @@ The engine is tested hardest, because a rules bug ruins a game and the engine is
 
 ## 12. Hosting and ops
 
+Deployment is M9+: the game is built and played locally through the UI overhaul (M7) and the expansions (M8) first. Deploying is mostly account and hosting setup.
+
 Target cost is $0 on free tiers. The two catches are that idle servers sleep (dropping sockets until the next visit wakes them) and their local disks don't persist, so the server keeps no state on disk.
 
 - **Frontend:** Cloudflare Pages (static build of `apps/web`).
@@ -447,6 +451,8 @@ Each milestone ends with something playable or testable; don't start the next un
 
 Online play comes before the remaining rules (M4 before M5), so friends can play real online games early and every rule added afterwards ships straight into online play. The engine doesn't depend on the server, so the order is safe. There is no hot-seat mode.
 
+Deployment moved to the end (M9+): after the M6 playtest, the priority is making the game feel good (M7) and adding the expansions (M8), developed and played locally. Deploying is mostly setup outside the codebase and can happen whenever it's wanted.
+
 | # | Milestone | Done when |
 | --- | --- | --- |
 | M0 | Monorepo, CI, lint, test runner | `pnpm test` runs green in CI |
@@ -456,8 +462,9 @@ Online play comes before the remaining rules (M4 before M5), so friends can play
 | M4 | Socket.IO server, accounts, lobbies, spectators, views, reconnect, Postgres log | 4 signed-in players + 1 spectator play 10 turns online, each in their own browser; refresh mid-game recovers the seat |
 | M5 | Robber, dev cards, bank/port/player trades, awards, win | Every box in section 7 ticked; fuzzer runs 10k games clean; an online game finishes with a winner |
 | M6 | Friends list, presence, invites, game history; polish: log, chat, animations, small-screen layout, turn timers | Friends play a full game online without help; the layout stays usable from desktop down to a 375px-wide window |
-| M7 | Deploy | Live on free tiers; survives a server sleep mid-game |
-| M8+ | Map editor, then expansions in order: v1.1 seafaring, v1.2 knights-and-cities, v1.3 traders scenarios, v1.4 explorers (section 14) | See section 14 |
+| M7 | UI overhaul: individual resource and dev cards instead of counts, better board and piece graphics, a board that resizes to fill the window and can be zoomed, sound effects (section 10) | Hands, discards, trades and card plays all use cards; the board fills the available space from a 375px window to a large desktop; sounds play for key events and can be muted; friends find a full game smooth in a playtest |
+| M8 | Map editor, then expansions in order: v1.1 seafaring, v1.2 knights-and-cities, v1.3 traders scenarios, v1.4 explorers (section 14) | See section 14 |
+| M9+ | Deploy to free tiers (section 12) | Live on free tiers; survives a server sleep mid-game |
 
 ## 14. Expansion roadmap and open questions
 

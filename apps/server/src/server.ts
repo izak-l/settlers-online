@@ -423,6 +423,10 @@ export async function startServer({
       }),
     );
 
+    socket.on("games:history", (_payload, reply) =>
+      respond(reply, async () => ({ ok: true, games: await store.gamesForUser(userId, 20) })),
+    );
+
     socket.on("lobby:invite", (payload, reply) =>
       respond(reply, async () => {
         const p = InviteSchema.safeParse(payload);

@@ -92,7 +92,12 @@ export class GameRoom {
     this.log.push(...res.events);
 
     if (this.state.winner !== undefined) {
-      await this.store.finishGame(this.id, seq, toSnapshot(this.state));
+      const scores: Record<PlayerId, number> = {};
+      for (const p of this.state.players) scores[p] = computeVP(this.state, p);
+      await this.store.finishGame(this.id, seq, toSnapshot(this.state), {
+        winner: this.state.winner,
+        scores,
+      });
     } else if (seq % this.snapshotEvery === 0) {
       // A failed snapshot only costs replay time later; don't fail the action for it.
       await this.store.saveSnapshot(this.id, seq, toSnapshot(this.state)).catch((err: unknown) => {

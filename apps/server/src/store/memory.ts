@@ -1,6 +1,8 @@
 import type { StateSnapshot } from "@settlers/engine";
+import type { GameSummary } from "@settlers/protocol";
 import type {
   FriendshipRecord,
+  GameResult,
   GamePlayer,
   GameRecord,
   LobbyRecord,
@@ -16,6 +18,10 @@ export class MemoryStore implements Store {
   private profiles = new Map<string, Profile>();
   private lobbies = new Map<string, LobbyRecord>();
   private games = new Map<string, { game: GameRecord; players: GamePlayer[] }>();
+  private gameMeta = new Map<
+    string,
+    { createdAt: string; endedAt: string | null; result: GameResult | null; order: number }
+  >();
   private actions = new Map<string, StoredAction[]>();
   private snapshots = new Map<string, { seq: number; state: StateSnapshot }[]>();
   private friendships: FriendshipRecord[] = [];
@@ -74,6 +80,12 @@ export class MemoryStore implements Store {
 
   async startGame(lobby: LobbyRecord, game: GameRecord, players: GamePlayer[]): Promise<void> {
     this.games.set(game.id, copy({ game, players }));
+    this.gameMeta.set(game.id, {
+      createdAt: new Date().toISOString(),
+      endedAt: null,
+      result: null,
+      order: this.gameMeta.size,
+    });
     this.lobbies.set(lobby.id, copy(lobby));
   }
   async getGame(id: string) {
@@ -97,10 +109,40 @@ export class MemoryStore implements Store {
     list.push(copy({ seq, state }));
     this.snapshots.set(gameId, list);
   }
-  async finishGame(gameId: string, seq: number, state: StateSnapshot): Promise<void> {
+  async finishGame(
+    gameId: string,
+    seq: number,
+    state: StateSnapshot,
+    result: GameResult,
+  ): Promise<void> {
     await this.saveSnapshot(gameId, seq, state);
     const g = this.games.get(gameId);
     if (g) g.game.status = "finished";
+    const meta = this.gameMeta.get(gameId);
+    if (meta) Object.assign(meta, { endedAt: new Date().toISOString(), result: copy(result) });
+  }
+
+  async gamesForUser(userId: string, limit: number): Promise<GameSummary[]> {
+    const mine = [...this.games.values()]
+      .filter((g) => g.players.some((p) => p.userId === userId))
+      .sort((a, b) => this.gameMeta.get(b.game.id)!.order - this.gameMeta.get(a.game.id)!.order)
+      .slice(0, limit);
+    return mine.map(({ game, players }) => {
+      const meta = this.gameMeta.get(game.id)!;
+      return {
+        gameId: game.id,
+        status: game.status,
+        createdAt: meta.createdAt,
+        endedAt: meta.endedAt,
+        you: players.find((p) => p.userId === userId)!.seat,
+        players: players.map((p) => ({
+          seat: p.seat,
+          username: this.profiles.get(p.userId)?.username ?? "?",
+        })),
+        winner: meta.result?.winner ?? null,
+        scores: meta.result ? copy(meta.result.scores) : null,
+      };
+    });
   }
 
   async latestSnapshot(gameId: string) {

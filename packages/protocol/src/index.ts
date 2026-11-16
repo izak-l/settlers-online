@@ -222,6 +222,21 @@ export interface FriendsState {
   outgoing: UserSummary[];
 }
 
+/** One row of "Your games". */
+export interface GameSummary {
+  gameId: string;
+  status: "active" | "finished";
+  /** ISO timestamps. */
+  createdAt: string;
+  endedAt: string | null;
+  /** Your seat in this game. */
+  you: PlayerId;
+  players: { seat: PlayerId; username: string }[];
+  winner: PlayerId | null;
+  /** Full final VP per seat (VP cards included); null while the game runs. */
+  scores: Record<PlayerId, number> | null;
+}
+
 export interface InviteMessage {
   lobbyId: string;
   from: UserSummary;
@@ -251,6 +266,8 @@ export interface ClientToServerEvents {
   /** Remove a friend, or withdraw / decline a request. */
   "friends:remove": (payload: UserRef, reply: Reply) => void;
   "lobby:invite": (payload: Invite, reply: Reply) => void;
+  /** Your most recent games, newest first. */
+  "games:history": (payload: Record<string, never>, reply: Reply<{ games: GameSummary[] }>) => void;
 }
 
 export interface ServerToClientEvents {

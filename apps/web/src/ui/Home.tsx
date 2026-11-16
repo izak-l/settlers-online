@@ -3,6 +3,7 @@ import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { errorText } from "../game/seats";
 import { Friends } from "./Friends";
+import { GameHistory } from "./GameHistory";
 
 /** Accept a full invite link or just the lobby id. */
 function lobbyIdFrom(input: string): string {
@@ -85,6 +86,7 @@ export function Home() {
         )}
       </div>
       <Friends />
+      <GameHistory />
     </div>
   );
 }

@@ -762,3 +762,9 @@ button.danger {
   border-radius: 12px;
   box-shadow: 0 6px 24px #0003;
 }
+.history .me {
+  font-weight: 700;
+}
+.history .row {
+  gap: 0.2rem 0.75rem;
+}

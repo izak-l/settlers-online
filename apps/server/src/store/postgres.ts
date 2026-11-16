@@ -1,7 +1,9 @@
 import type { StateSnapshot } from "@settlers/engine";
 import pg from "pg";
+import type { GameSummary } from "@settlers/protocol";
 import type {
   FriendshipRecord,
+  GameResult,
   GamePlayer,
   GameRecord,
   LobbyRecord,
@@ -217,11 +219,53 @@ export class PgStore implements Store {
     );
   }
 
-  async finishGame(gameId: string, seq: number, state: StateSnapshot): Promise<void> {
+  async finishGame(
+    gameId: string,
+    seq: number,
+    state: StateSnapshot,
+    result: GameResult,
+  ): Promise<void> {
     await this.saveSnapshot(gameId, seq, state);
-    await this.pool.query("update games set status = 'finished', ended_at = now() where id = $1", [
-      gameId,
-    ]);
+    await this.pool.query(
+      `update games set status = 'finished', ended_at = now(), winner_seat = $2,
+         final_scores = $3::jsonb where id = $1`,
+      [gameId, result.winner, json(result.scores)],
+    );
+  }
+
+  async gamesForUser(userId: string, limit: number): Promise<GameSummary[]> {
+    const { rows } = await this.pool.query<{
+      id: string;
+      status: GameSummary["status"];
+      created_at: Date;
+      ended_at: Date | null;
+      you: string;
+      players: { seat: string; username: string | null }[];
+      winner_seat: string | null;
+      final_scores: Record<string, number> | null;
+    }>(
+      `select g.id, g.status, g.created_at, g.ended_at, me.seat as you, g.winner_seat,
+              g.final_scores,
+              (select json_agg(json_build_object('seat', gp.seat, 'username', p.username)
+                               order by gp.seat)
+                 from game_players gp join profiles p on p.id = gp.user_id
+                where gp.game_id = g.id) as players
+         from game_players me join games g on g.id = me.game_id
+        where me.user_id = $1
+        order by g.created_at desc
+        limit $2`,
+      [userId, limit],
+    );
+    return rows.map((r) => ({
+      gameId: r.id,
+      status: r.status,
+      createdAt: r.created_at.toISOString(),
+      endedAt: r.ended_at?.toISOString() ?? null,
+      you: r.you,
+      players: r.players.map((p) => ({ seat: p.seat, username: p.username ?? "?" })),
+      winner: r.winner_seat,
+      scores: r.final_scores,
+    }));
   }
 
   async latestSnapshot(gameId: string): Promise<{ seq: number; state: StateSnapshot } | null> {

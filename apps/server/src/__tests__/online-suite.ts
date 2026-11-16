@@ -146,6 +146,41 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(spec.state!.scores[winner!]).toBeGreaterThanOrEqual(10);
       for (const p of players) expect(p.state!.legal).toEqual([]);
       expect((await store.getGame(gameId))!.game.status).toBe("finished");
+
+      // History: each player sees the finished game with the winner and full scores.
+      const history = await players[1]!.socket.emitWithAck("games:history", {});
+      if (!history.ok) throw new Error(history.code);
+      expect(history.games).toHaveLength(1);
+      expect(history.games[0]).toMatchObject({
+        gameId,
+        status: "finished",
+        you: "p1",
+        winner,
+        players: [
+          { seat: "p0", username: "Ada" },
+          { seat: "p1", username: "Bo_b" },
+          { seat: "p2", username: "Cyd" },
+          { seat: "p3", username: "Dia" },
+        ],
+      });
+      expect(history.games[0]!.scores![winner!]).toBeGreaterThanOrEqual(10);
+      expect(history.games[0]!.endedAt).not.toBeNull();
+      // A spectator has no games of their own.
+      expect(await spec.socket.emitWithAck("games:history", {})).toEqual({ ok: true, games: [] });
+    });
+
+    it("history lists games in progress, newest first", async () => {
+      const first = await setUpGame();
+      const again = await first.players[0]!.socket.emitWithAck("lobby:create", {
+        maxSeats: 3,
+        allowSpectators: false,
+      });
+      if (!again.ok) throw new Error(again.code);
+      const history = await first.players[0]!.socket.emitWithAck("games:history", {});
+      if (!history.ok) throw new Error(history.code);
+      expect(history.games.map((g) => [g.gameId, g.status, g.winner, g.scores])).toEqual([
+        [first.gameId, "active", null, null],
+      ]);
     });
 
     it("rejects acting out of turn, spectators acting, and malformed actions", async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MAP_CATALOG } from "@settlers/maps";
 import { playGame } from "./sim";
 
 /**
@@ -28,4 +29,20 @@ describe("fuzz: random bots", () => {
     const winners = Array.from({ length: 10 }, (_, i) => playGame(`ci-win-${i}`).winner);
     expect(winners.filter((w) => w !== null).length).toBeGreaterThan(5);
   }, 120_000);
+
+  it("10 games on each other catalog map run clean (both ends of its player range)", () => {
+    for (const m of MAP_CATALOG.filter((m) => m.id !== "base-4p")) {
+      for (let i = 0; i < 5; i++) {
+        playGame(`ci-${m.id}-${i}`, { seats: m.def.players.min, map: m.id });
+        playGame(`ci-${m.id}-max-${i}`, { seats: m.def.players.max, map: m.id });
+      }
+    }
+  });
+
+  it("plays on the chosen map and refuses an unknown one", () => {
+    expect(playGame("map-check", { seats: 2, map: "grand-diamond", maxTurns: 1 }).map).toBe(
+      "grand-diamond",
+    );
+    expect(() => playGame("x", { map: "no-such-map" })).toThrow(/Unknown map/);
+  });
 });

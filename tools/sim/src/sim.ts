@@ -13,10 +13,12 @@ import {
   type PlayerId,
   type RngState,
 } from "@settlers/engine";
-import { BASE_4P, generateMap } from "@settlers/maps";
+import { DEFAULT_MAP_ID, findMap, generateMap } from "@settlers/maps";
 
 export interface GameResult {
   seed: string;
+  /** Catalog id of the map played. */
+  map: string;
   winner: PlayerId | null;
   turns: number;
   actions: number;
@@ -160,12 +162,15 @@ function sortKeys(value: unknown): unknown {
  */
 export function playGame(
   seed: string,
-  opts: { seats?: number; maxTurns?: number } = {},
+  opts: { seats?: number; maxTurns?: number; map?: string } = {},
 ): GameResult {
   const seats = Array.from({ length: opts.seats ?? 4 }, (_, i) => `p${i}`);
   const maxTurns = opts.maxTurns ?? 400;
-  const { map } = generateMap(BASE_4P, seedFromString(`${seed}:map`));
-  const start = createGame(map, { modules: ["base"] }, seats, seed);
+  const mapId = opts.map ?? DEFAULT_MAP_ID;
+  const def = findMap(mapId)?.def;
+  if (!def) throw new Error(`Unknown map: ${mapId}`);
+  const { map } = generateMap(def, seedFromString(`${seed}:map`));
+  const start = createGame(map, { modules: def.modules }, seats, seed);
   const bots = new BotRng(seedFromString(`${seed}:bots`));
 
   const log: { player: PlayerId; action: Action }[] = [];
@@ -240,5 +245,11 @@ export function playGame(
     }
   }
 
-  return { seed, winner: state.winner ?? null, turns: state.turn.number, actions: log.length };
+  return {
+    seed,
+    map: mapId,
+    winner: state.winner ?? null,
+    turns: state.turn.number,
+    actions: log.length,
+  };
 }

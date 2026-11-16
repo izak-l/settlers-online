@@ -2,14 +2,15 @@ import { parentPort, workerData } from "node:worker_threads";
 import { playGame, SimFailure } from "./sim";
 
 /** Plays the seeds it's given and reports each result (or failure) back to the main thread. */
-const { seeds, seats, maxTurns } = workerData as {
+const { seeds, seats, maxTurns, map } = workerData as {
   seeds: string[];
   seats: number;
   maxTurns: number;
+  map: string;
 };
 for (const seed of seeds) {
   try {
-    parentPort!.postMessage({ ok: true, result: playGame(seed, { seats, maxTurns }) });
+    parentPort!.postMessage({ ok: true, result: playGame(seed, { seats, maxTurns, map }) });
   } catch (err) {
     const f =
       err instanceof SimFailure

@@ -339,9 +339,9 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **Auth:** Supabase Auth with email + password (email confirmation and password reset included) and Discord. Google is not set up. The web app signs in with the Supabase client; the game server never handles passwords. On first sign-in the user picks a unique username. Supabase's built-in email sender is rate-limited and meant for testing, so add a custom SMTP provider before inviting many friends.
 - The server verifies the Supabase access token (JWT) on the Socket.IO handshake and binds the socket to a `userId`.
 - **The engine stays account-agnostic.** It only knows seats (`PlayerId`). The server maps seat → `userId` in `game_players`.
-- **Tables:** `profiles` (id = Supabase auth user id, unique username, display name, avatar), `friendships` (user, friend, status), `lobbies` (id, host, visibility, settings), `game_players` (game, seat, user).
+- **Tables:** see section 9. Profiles hold only an id and a unique username (no display names or avatars).
 - **Presence:** connected sockets mark a user online / in lobby / in game; friends get presence updates.
-- **Lobbies:** private by default, joined by invite link or a friend invite. The host picks map, modules, player count, timer and whether spectators are allowed.
+- **Lobbies:** private, joined by invite link or a friend invite. The host picks the player count, the turn timer and whether spectators are allowed (map and modules are fixed to the random base board for now).
 - **Reconnect:** signing in again reclaims your seat; seats stay reserved while disconnected.
 - **Spectators:** get `viewFor("spectator")`, which shows public information only (hand counts, no contents). Spectator chat is a separate channel. Full reveal is available in the replay after the game ends.
 - **Turn timer:** configurable per lobby (off, or N seconds per turn, with a shorter timer for discards). On timeout the turn ends. If a decision is still pending, the server first applies a default: random discards, robber to a random legal hex with a random steal, open trade offers cancelled, unplaced free roads forfeited.
@@ -387,7 +387,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - One `ResourcePicker` (+/− per resource, optional per-resource and total limits) is reused for discards, Bounty picks and trade offers. Those actions are built in the UI and validated by the server; every other button is enabled only from `legal`.
 - The dev cards panel lists your cards (cards bought this turn are marked as playable next turn) with Play buttons from `legal`; Bounty and Monopoly open a chooser. The trade panel appears only on your own main step: bank trades show your rate per resource from `ratios`, and an offer builder sends `OFFER_TRADE`.
 - The players panel shows card and dev card counts, knights played, and award badges. A win banner shows the winner and final scores (VP cards revealed).
-- **Account and lobby screens:** sign-in (email, Discord), pick a username, friends list with presence, lobby setup, and a spectate button on friends' live games.
+- **Account and lobby screens:** sign-in (email, Discord), pick a username, create a lobby (3 or 4 seats, spectators on or off), join by invite link, and the lobby's seats and ready flags. Friends, presence and game history land in M6.
 
 ## 11. Testing strategy
 

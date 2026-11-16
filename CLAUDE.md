@@ -14,7 +14,12 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M3 Board UI against a `GameClient`, with a local dev sandbox
 - [x] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log
 - [x] M5 Robber, dev cards, trades, awards, win
-- [ ] M6 Friends, presence, invites, history, polish, turn timers ← next
+- [ ] M6 Friends, presence, invites, history, polish, turn timers ← in progress on `m6`
+  - [ ] M6b–c [001 friends and invites](docs/features/001-friends-and-invites.md)
+  - [ ] M6d [002 game history](docs/features/002-game-history.md)
+  - [ ] M6e [003 turn timers](docs/features/003-turn-timers.md)
+  - [ ] M6f [004 log and chat](docs/features/004-log-and-chat.md)
+  - [ ] M6g [005 small screens and animations](docs/features/005-small-screens-and-animations.md)
 - [ ] M7 Deploy to free tiers
 - [ ] M8+ Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
 

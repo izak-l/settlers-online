@@ -548,6 +548,12 @@ Expansions are added as modules on top of `base`; each row lists what the module
 - **Maps before seafaring.** Seafaring is mostly fixed scenario maps. They are written as JSON in the map catalog (M8a), checked in CI and previewed in the dev sandbox; the in-app editor (M8b, after the expansions) will open and export the same JSON.
 - Module ids stay internal. Display names and all scenario text in the UI are our own wording.
 
+**As built (M10c, seafaring)**
+
+- `modules/seafaring/`: ships (`BUILD_SHIP`, `PLACE_SHIP` in setup, `PLACE_FREE_SHIP` with Road Crew, `MOVE_SHIP` once per turn from an open end, not on the turn built), gold (`GOLD_CHOICE`, everyone owed picks at once like discards; also a second starting settlement next to gold), the pirate (`MOVE_PIRATE` to a sea hex or the frame; steals from ship owners; blocks ships on its hex's edges), regions and home regions, island bonus VP (computed), Longest Trade Route. All through the M10b seams; no seafaring checks in the core or base.
+- Scenarios live in `packages/maps/scenarios/<id>/<3p|4p>-<fixed|variable>.json`, built from text layouts in `scenarios/build.ts` and checked against the rulebook's component tables. `SCENARIO_CATALOG` groups them; the lobby sends `{ scenario, setup }` and the server stores the map for its seat count. Map JSON gains hex `region` labels, a strict `scenario` block and a robber start given as a hex.
+- The web board draws the frame and island outlines, ships and the pirate; a Road / Ship switch picks between them on coast edges in setup and with Road Crew; moving a ship is two taps. `pnpm sim --scenario <id>` fuzzes a scenario and reports how often ships, gold, the pirate and island bonuses came up.
+
 **Rule for adding a seam:** only generalize the core when a module actually needs it, and add a test in the base module proving nothing changed.
 
 **Seafaring scenarios**

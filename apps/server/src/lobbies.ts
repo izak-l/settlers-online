@@ -6,7 +6,7 @@ import {
   type FeatureOverrides,
   type Features,
 } from "@settlers/engine";
-import { DEFAULT_MAP_DEF, findMap, generateMap } from "@settlers/maps";
+import { DEFAULT_MAP_DEF, findMap, generateMap, scenarioMap } from "@settlers/maps";
 import type { Ack, CreateLobbyParsed, MapChoice } from "@settlers/protocol";
 import { fail } from "./errors";
 import type { KeyedQueue } from "./queue";
@@ -87,7 +87,10 @@ export class LobbyService {
       if (!lobby) return fail("NOT_FOUND");
       if (lobby.hostId !== userId) return fail("NOT_HOST");
       if (lobby.status !== "open") return fail("LOBBY_STARTED");
-      const def = findMap(choice.builtin)?.def;
+      const def =
+        "builtin" in choice
+          ? findMap(choice.builtin)?.def
+          : scenarioMap(choice.scenario, lobby.maxSeats, choice.setup);
       if (!def) return fail("UNKNOWN_MAP");
       const { min, max } = def.players;
       if (lobby.maxSeats < min || lobby.maxSeats > max) {

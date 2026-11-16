@@ -1,3 +1,4 @@
+import { routeAwardNameFor } from "@settlers/engine";
 import { Icon } from "../art/icons";
 import { CardFan } from "../cards/CardFan";
 import type { Snapshot } from "../game/LocalGame";
@@ -41,7 +42,8 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
                   <span className="awards">
                     {base.longestRoad === s.id && (
                       <span className="award">
-                        <Icon name="roadBuilding" size={12} /> Longest Road
+                        <Icon name="roadBuilding" size={12} />{" "}
+                        {routeAwardNameFor(snap.view.modules)}
                       </span>
                     )}
                     {base.largestArmy === s.id && (

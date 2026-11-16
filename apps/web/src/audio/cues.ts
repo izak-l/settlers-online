@@ -49,6 +49,12 @@ const EVENT_CUE: Record<string, Cue> = {
   BUILT_CITY: "city",
   BOUGHT_DEV_CARD: "devcard",
   MOVED_ROBBER: "robber",
+  // Seafaring: ships sound like building, the pirate like the robber, a new island like an award.
+  BUILT_SHIP: "build",
+  PLACED_SHIP: "build",
+  MOVED_SHIP: "build",
+  MOVED_PIRATE: "robber",
+  ISLAND_SETTLED: "award",
   AWARD: "award",
   GAME_WON: "win",
 };

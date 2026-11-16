@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Action, ActionSpec, Piece } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
@@ -13,7 +13,16 @@ import {
   type Point,
 } from "./geometry";
 import { Icon } from "../art/icons";
-import { Building, RobberFigure, Road, TerrainArt, TerrainDefs, Token } from "../art/board";
+import {
+  Building,
+  PirateShip,
+  RobberFigure,
+  Road,
+  Ship,
+  TerrainArt,
+  TerrainDefs,
+  Token,
+} from "../art/board";
 import { BoardControls } from "./BoardControls";
 import { useViewport } from "./useViewport";
 import { hitRadius, type Box } from "./viewport";
@@ -29,19 +38,55 @@ const MODE_ACTION: Record<Exclude<BuildMode, null>, ActionSpec["type"]> = {
   road: "BUILD_ROAD",
   settlement: "BUILD_SETTLEMENT",
   city: "BUILD_CITY",
+  ship: "BUILD_SHIP",
+  move: "MOVE_SHIP",
 };
 
-/** Which legal actions to show as clickable targets right now. */
-function targets(snap: Snapshot, mode: BuildMode): ActionSpec[] {
-  const kind = snap.view.decisions.at(-1)?.kind;
-  if (kind === "PLACE_SETTLEMENT" || kind === "PLACE_ROAD") {
-    return snap.legal.filter((a) => a.type === "PLACE_SETTLEMENT" || a.type === "PLACE_ROAD");
+const OF_KIND: Record<string, ActionSpec["type"][]> = {
+  PLACE_SETTLEMENT: ["PLACE_SETTLEMENT"],
+  PLACE_ROAD: ["PLACE_ROAD", "PLACE_SHIP"],
+  MOVE_ROBBER: ["MOVE_ROBBER", "MOVE_PIRATE"],
+  PLACE_FREE_ROAD: ["PLACE_FREE_ROAD", "PLACE_FREE_SHIP"],
+};
+
+/**
+ * Which legal actions to show as clickable targets right now. Moving a ship takes two taps:
+ * first one of your movable ships (`moveFrom` unset), then where it goes.
+ */
+function targets(snap: Snapshot, mode: BuildMode, moveFrom: string | null): ActionSpec[] {
+  const kind = snap.view.decisions.at(-1)?.kind ?? "";
+  // Setup and Road Crew: a coast edge may take a road or a ship, so the action bar's Road / Ship
+  // switch decides which are shown (roads unless "ship" is picked, or no road is possible).
+  if (kind === "PLACE_ROAD" || kind === "PLACE_FREE_ROAD") {
+    const road = kind === "PLACE_ROAD" ? "PLACE_ROAD" : "PLACE_FREE_ROAD";
+    const ship = kind === "PLACE_ROAD" ? "PLACE_SHIP" : "PLACE_FREE_SHIP";
+    const roads = snap.legal.filter((a) => a.type === road);
+    const ships = snap.legal.filter((a) => a.type === ship);
+    return mode === "ship" || roads.length === 0 ? ships : roads;
   }
-  if (kind === "MOVE_ROBBER") return snap.legal.filter((a) => a.type === "MOVE_ROBBER");
-  if (kind === "PLACE_FREE_ROAD") return snap.legal.filter((a) => a.type === "PLACE_FREE_ROAD");
-  if (kind === "MAIN" && mode) return snap.legal.filter((a) => a.type === MODE_ACTION[mode]);
-  return [];
+  if (OF_KIND[kind]) {
+    // The pirate can also leave the board (hex null): that's a button, not a board target.
+    return snap.legal.filter(
+      (a) => OF_KIND[kind]!.includes(a.type) && !(a.type === "MOVE_PIRATE" && a.hex === null),
+    );
+  }
+  if (kind !== "MAIN" || !mode) return [];
+  if (mode === "move") {
+    const moves = snap.legal.filter((a) => a.type === "MOVE_SHIP");
+    if (moveFrom) return moves.filter((a) => a.from === moveFrom);
+    // One target per movable ship: its own edge, as a "from" pick.
+    const seen = new Set<string>();
+    return moves.filter((a) => !seen.has(a.from) && !!seen.add(a.from));
+  }
+  return snap.legal.filter((a) => a.type === MODE_ACTION[mode]);
 }
+
+const EDGE_LABEL: Partial<Record<ActionSpec["type"], string>> = {
+  PLACE_SHIP: "Place ship here",
+  BUILD_SHIP: "Build ship here",
+  PLACE_FREE_SHIP: "Place ship here",
+  MOVE_SHIP: "Move the ship here",
+};
 
 const FRESH_MS = 700;
 
@@ -60,10 +105,13 @@ function useFreshKeys(keys: string[]): Set<string> {
 
 /**
  * The land plus enough sea for the port labels; the outer sea is cropped, so the land is as
- * large as possible at zoom 1 (it matters most on narrow screens).
+ * large as possible at zoom 1 (it matters most on narrow screens). With ships (`wholeMap`) the
+ * sea is part of play, so every hex inside the frame is shown.
  */
-function fitBox(hexes: Snapshot["view"]["map"]["hexes"]): Box {
-  const centers = hexes.filter((h) => h.terrain !== "sea").map((h) => hexCenter(h.q, h.r));
+function fitBox(hexes: Snapshot["view"]["map"]["hexes"], wholeMap: boolean): Box {
+  const centers = hexes
+    .filter((h) => wholeMap || h.terrain !== "sea")
+    .map((h) => hexCenter(h.q, h.r));
   const padX = HEX_SIZE * 1.85;
   const padY = HEX_SIZE * 1.6;
   const x = Math.min(...centers.map((c) => c[0])) - padX;
@@ -84,7 +132,11 @@ export function Board({ snap, seats, mode, onAction }: Props) {
     view.map.hexes.filter((h) => h.terrain !== "sea").map((h) => `${h.q},${h.r}`),
   );
 
-  const fit = useMemo(() => fitBox(view.map.hexes), [view.map.hexes]);
+  // With a sea graph (ships), the sea is playable: show all of it, with the frame around it.
+  const seaInPlay = view.map.hexes.some(
+    (h) => h.terrain === "sea" && graph.hexKeys.has(`${h.q},${h.r}`),
+  );
+  const fit = useMemo(() => fitBox(view.map.hexes, seaInPlay), [view.map.hexes, seaInPlay]);
   const vp = useViewport(fit);
   const hit = hitRadius(vp.scale);
 
@@ -95,14 +147,38 @@ export function Board({ snap, seats, mode, onAction }: Props) {
   const at = <K extends "vertex" | "edge" | "hex">(p: Piece, k: K): string | undefined =>
     k in p.at ? (p.at as Record<K, string>)[k] : undefined;
 
-  const shown = targets(snap, mode);
+  // Moving a ship: the ship picked first. Forgotten whenever the mode or the position changes.
+  const [moveFrom, setMoveFrom] = useState<string | null>(null);
+  useEffect(() => setMoveFrom(null), [mode, view]);
+  const shown = targets(snap, mode, mode === "move" ? moveFrom : null);
+  const pick = (a: ActionSpec) => {
+    if (a.type === "MOVE_SHIP" && moveFrom === null) setMoveFrom(a.from);
+    else onAction(a);
+  };
+
+  /** Region outlines (islands that earn a bonus): edges between a labelled area and anything else. */
+  const regionOf = new Map<string, string>(
+    view.map.hexes.flatMap((h): [string, string][] =>
+      h.region && h.region !== "main" ? [[`${h.q},${h.r}`, h.region]] : [],
+    ),
+  );
+  const regionEdges = regionOf.size
+    ? [...graph.edges.values()].filter((e) => {
+        const [a, b] = [
+          regionOf.get(e.hexes[0]!),
+          e.hexes[1] ? regionOf.get(e.hexes[1]) : undefined,
+        ];
+        return (a || b) && a !== b;
+      })
+    : [];
+  const frameEdges = seaInPlay ? [...graph.edges.values()].filter((e) => e.hexes.length === 1) : [];
 
   /** Targets are buttons: clickable, focusable, and triggered by Enter or Space. */
   const activate = (a: ActionSpec, label: string, [x, y]: Point) => ({
     role: "button",
     tabIndex: 0,
     "aria-label": label,
-    onClick: () => onAction(a),
+    onClick: () => pick(a),
     // Keyboard users tabbing through targets: pan a target into view when zoomed in.
     // Only for keyboard focus: a mouse press also focuses, and must not move the board.
     onFocus: (ev: React.FocusEvent<Element>) => {
@@ -111,7 +187,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
     onKeyDown: (ev: React.KeyboardEvent) => {
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
-        onAction(a);
+        pick(a);
       }
     },
   });
@@ -177,6 +253,20 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             );
           })}
 
+        {/* Islands that earn a bonus are outlined; the frame closes the map off. */}
+        {regionEdges.map((e) => {
+          const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, e.id);
+          return (
+            <line key={`region-${e.id}`} className="region-edge" x1={x1} y1={y1} x2={x2} y2={y2} />
+          );
+        })}
+        {frameEdges.map((e) => {
+          const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, e.id);
+          return (
+            <line key={`frame-${e.id}`} className="frame-edge" x1={x1} y1={y1} x2={x2} y2={y2} />
+          );
+        })}
+
         {/* Ports: a pier from the coast edge out to a sign with the rate and resource */}
         {/* With harbors switched off (spec 014) the map keeps its ports but they aren't drawn. */}
         {(view.options.features?.ports === false ? [] : view.map.ports).map((port) => {
@@ -238,6 +328,23 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             );
           })}
 
+        {/* Ships, along their edge; a ship picked to move is highlighted */}
+        {pieces
+          .filter((p) => p.type === "ship")
+          .map((p) => {
+            const edge = at(p, "edge")!;
+            const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, edge);
+            const angle = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+            const cls = ["piece", fresh.has(pieceKey(p)) && "fresh", moveFrom === edge && "moving"]
+              .filter(Boolean)
+              .join(" ");
+            return (
+              <g key={p.id} className={cls}>
+                <Ship at={edgeMidpoint(edge)} angle={angle} color={colorOf(p.owner)} />
+              </g>
+            );
+          })}
+
         {/* Settlements and cities */}
         {pieces
           .filter((p) => p.type === "settlement" || p.type === "city")
@@ -270,17 +377,38 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             );
           })}
 
+        {/* Pirate */}
+        {pieces
+          .filter((p) => p.type === "pirate")
+          .map((p) => {
+            const [q, r] = at(p, "hex")!.split(",").map(Number);
+            const [cx, cy] = hexCenter(q!, r!);
+            return (
+              <g key={p.id} className="pirate" style={{ transform: `translate(${cx}px, ${cy}px)` }}>
+                <PirateShip />
+              </g>
+            );
+          })}
+
         {/* Clickable targets for legal moves */}
         {shown.map((a) => {
-          if ("edge" in a) {
-            const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, a.edge);
+          // Moving a ship: first tap one of your ships (its own edge), then a free edge.
+          const edgeOf =
+            "edge" in a ? a.edge : a.type === "MOVE_SHIP" ? (moveFrom ? a.to : a.from) : null;
+          if (edgeOf) {
+            const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, edgeOf);
+            const isShip = a.type.includes("SHIP");
+            const label =
+              a.type === "MOVE_SHIP" && !moveFrom
+                ? "Move this ship"
+                : (EDGE_LABEL[a.type] ?? "Place road here");
             return (
               <g
-                key={`${a.type}-${a.edge}`}
-                className="target"
-                {...activate(a, "Place road here", edgeMidpoint(a.edge))}
+                key={`${a.type}-${edgeOf}-${a.type === "MOVE_SHIP" ? a.from : ""}`}
+                className={isShip ? "target ship-target" : "target"}
+                {...activate(a, label, edgeMidpoint(edgeOf))}
               >
-                <title>Place road here</title>
+                <title>{label}</title>
                 {/* A wide invisible stroke makes the tap area comfortable on touch screens. */}
                 <line
                   className="hit"
@@ -294,19 +422,23 @@ export function Board({ snap, seats, mode, onAction }: Props) {
               </g>
             );
           }
-          if (a.type === "MOVE_ROBBER") {
+          if ((a.type === "MOVE_ROBBER" || a.type === "MOVE_PIRATE") && a.hex) {
             const [q, r] = a.hex.split(",").map(Number);
             const [x, y] = hexCenter(q!, r!);
+            const label =
+              a.type === "MOVE_PIRATE" ? "Move the pirate here" : "Move the robber here";
             return (
               <circle
-                key={`robber-${a.hex}`}
-                className="target target-hex"
+                key={`${a.type}-${a.hex}`}
+                className={
+                  a.type === "MOVE_PIRATE" ? "target target-hex pirate-target" : "target target-hex"
+                }
                 cx={x}
                 cy={y}
                 r={24}
-                {...activate(a, "Move the robber here", [x, y])}
+                {...activate(a, label, [x, y])}
               >
-                <title>Move the robber here</title>
+                <title>{label}</title>
               </circle>
             );
           }

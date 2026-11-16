@@ -32,6 +32,7 @@ import type { Authenticator } from "./auth";
 import type { Config } from "./config";
 import { fail } from "./errors";
 import { FriendService } from "./friends";
+import { scenarioOfMap } from "@settlers/maps";
 import { effectiveFeatures, LobbyService } from "./lobbies";
 import { PresenceTracker } from "./presence";
 import { KeyedQueue } from "./queue";
@@ -125,6 +126,12 @@ export async function startServer({
 
   // ---- building and sending state ----
 
+  /** For a scenario's map: which scenario and setup mode, so the lobby can show the choice. */
+  function scenarioChoice(mapId: string): Pick<LobbyState["map"], "scenario"> {
+    const found = scenarioOfMap(mapId);
+    return found ? { scenario: { id: found.scenario.id, setup: found.setup } } : {};
+  }
+
   async function lobbyState(lobby: LobbyRecord): Promise<LobbyState> {
     const ids = lobby.seats.flatMap((s) => (s ? [s.userId] : []));
     const names = new Map((await store.getProfiles(ids)).map((p) => [p.id, p.username ?? "?"]));
@@ -151,6 +158,7 @@ export async function startServer({
         players: lobby.map.players,
         vpToWin: lobby.map.vpToWin,
         def: lobby.map,
+        ...scenarioChoice(lobby.map.id),
       },
       features: effectiveFeatures(lobby),
       houseRules: lobby.features,

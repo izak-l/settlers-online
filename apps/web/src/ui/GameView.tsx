@@ -58,12 +58,28 @@ export function GameView({ client }: { client: GameClient }) {
     top?.kind === "DISCARD" && playing && top.pendingFrom.includes(snap.seat)
       ? ((top.data?.["amounts"] as Record<string, number> | undefined)?.[snap.seat] ?? 0)
       : 0;
+  // So does a gold pick: as many as you're owed, or what the bank has left (the engine's rule).
+  const bankLeft = Object.values(snap.view.zones["bank"]?.contents ?? {}).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  const goldOwed =
+    top?.kind === "GOLD_CHOICE" && playing && top.pendingFrom.includes(snap.seat)
+      ? Math.min(
+          (top.data?.["amounts"] as Record<string, number> | undefined)?.[snap.seat] ?? 0,
+          bankLeft,
+        )
+      : 0;
   const activePick =
     owed > 0
       ? pick?.purpose === "discard"
         ? pick
         : startPick("discard", { giveLimit: owed })
-      : pick;
+      : goldOwed > 0
+        ? pick?.purpose === "gold"
+          ? pick
+          : startPick("gold", { wantLimit: goldOwed })
+        : pick;
 
   return (
     <main className="layout">

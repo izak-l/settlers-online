@@ -144,4 +144,4 @@ Sub-milestones: M10a switches (014) → M10b seams → M10c seafaring core + sce
 
 ## Status
 
-Draft
+In progress (M10c, on `m10`). Built: the core seams, the seafaring module, scenarios 1, 2 and 4 with their fixed maps, the lobby and sandbox pickers, the board and controls, the fuzzer. Left: an online playtest. As built, `pirateStart` may also be `"frame"` (scenarios 2 and 4 start the pirate off the board), lobbies need no new column (the stored map's id names the scenario and setup), and ships, the pirate and island bonuses reuse the build, robber and award sounds.

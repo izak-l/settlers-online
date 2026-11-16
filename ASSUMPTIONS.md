@@ -214,3 +214,39 @@ Bank trades are all 4:1 and the board doesn't draw the harbors, but the map's po
 The server folds the lobby's switches into the resolved map's `features` when the game starts, so `games` needs no new column and replays read them from the stored map. Games saved before switches existed have no `features` and play with everything on.
 
 **Test:** `features.test.ts` — "treat a missing features option … as all on"; the online suite's "house rules" test.
+
+## Spec 015 — Seafaring (M10c)
+
+### A34: A second starting settlement next to gold gets a pick
+
+The rulebook's maps keep gold off the starting islands, but custom maps may not: the player picks one card per gold hex the settlement touches (a `GOLD_CHOICE` step above the setup road).
+
+**Test:** `seafaring.test.ts` — "a second starting settlement next to gold earns a pick (custom maps)".
+
+### A35: The map's border edges are ordinary edges; nothing lies beyond
+
+Every water space inside the frame is a sea hex in the map JSON (the frame encloses two more than the rulebook's sea tiles; those two are printed on its frame pieces). Edges along the border take roads (land side) and ships like any other; the pirate may be parked on the frame, where it blocks nothing.
+
+**Test:** `seafaring.test.ts` — "may sail along the map's outer border", "can be parked on the frame"; `scenarios.test.ts` component counts.
+
+### A36: Gold picks come from what the bank still has
+
+Gold is picked after normal production, from the bank as it stands. With several players picking at once, each pick is checked against the bank when it's made, and anyone the bank can no longer pay is dropped. The bank shortage rule for ordinary resources doesn't apply to gold.
+
+**Test:** `seafaring.test.ts` — "the robber blocks a gold hex; a short bank limits the pick".
+
+### A37: Island bonus: one per region, never for a building touching a home region
+
+The bonus is computed from the pieces: the scenario's VP for each non-home region where the player has a settlement or city. A building that touches one of the player's home regions counts for none, so a corner where the main island meets the strip beyond the desert (scenario 4) is still home. Deserts in scenario 4 belong to the main region. There's no cap from the number of VP tokens in the box.
+
+**Test:** `seafaring.test.ts` — "earns the bonus once per island", "a building touching a home region earns no bonus".
+
+### A38: 1–3 seats play a scenario's 3-player map; 4 seats the 4-player map
+
+**Test:** `scenarios.test.ts` — "picks the 3-player map for 1–3 seats"; online suite "scenarios".
+
+### A39: The open-end rule covers the closed-line rule
+
+A ship can move only from an open end (a corner with none of the player's buildings or other ships). A ship in a line joining two of the player's buildings never has one, even when an opponent has built on the line (that corner still has the player's other ship), so no separate check is needed.
+
+**Test:** `seafaring.test.ts` — "a line joining two of your buildings never moves, even if an opponent builds on it".

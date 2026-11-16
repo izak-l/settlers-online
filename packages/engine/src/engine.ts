@@ -6,6 +6,7 @@ import {
   handlerFor,
   legalFor,
   reject,
+  routeAwardName,
   runTradeRatio,
   runVpSources,
   type RulesModule,
@@ -134,6 +135,11 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
 /** Every concrete action `player` may send right now. */
 export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
   return legalFor(state, player, modulesOf(state));
+}
+
+/** The longest-route award's display name for a ruleset ("Longest Trade Route" with ships). */
+export function routeAwardNameFor(moduleIds: readonly string[]): string {
+  return routeAwardName(moduleIds.flatMap((id) => (MODULES[id] ? [MODULES[id]] : [])));
 }
 
 /** The bank rate `player` gets for each resource (cards given per card received). */

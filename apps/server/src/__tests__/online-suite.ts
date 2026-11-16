@@ -308,6 +308,57 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(ada!.state!.view.pieces["robber"]).toBeUndefined();
     });
 
+    it("scenarios: the host picks a seafaring scenario; the seat count picks its map", async () => {
+      const [ada, bo] = await Promise.all(["dev:Ada", "dev:Bo_b"].map(connect));
+      const created = await ada!.socket.emitWithAck("lobby:create", {
+        maxSeats: 2,
+        allowSpectators: false,
+      });
+      if (!created.ok) throw new Error(created.code);
+      const lobbyId = created.lobby.id;
+      const choose = (map: unknown) =>
+        ada!.socket.emitWithAck("lobby:map", { lobbyId, map } as never);
+      expect(await choose({ scenario: "no-such", setup: "fixed" })).toMatchObject({
+        ok: false,
+        code: "UNKNOWN_MAP",
+      });
+      // Variable setup isn't built yet (spec 017): no such map.
+      expect(await choose({ scenario: "new-horizons", setup: "variable" })).toMatchObject({
+        ok: false,
+        code: "UNKNOWN_MAP",
+      });
+      expect((await bo!.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
+      expect(await choose({ scenario: "new-horizons", setup: "fixed" })).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.map.scenario?.id === "new-horizons");
+      expect(bo!.lobby!.map).toMatchObject({
+        id: "new-horizons-3p-fixed",
+        name: "New Horizons",
+        vpToWin: 14,
+        scenario: { id: "new-horizons", setup: "fixed" },
+      });
+
+      expect((await bo!.socket.emitWithAck("lobby:seat", { lobbyId, seat: 1 })).ok).toBe(true);
+      for (const p of [ada!, bo!])
+        expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
+      const started = await ada!.socket.emitWithAck("lobby:start", { lobbyId });
+      if (!started.ok) throw new Error(started.code);
+      const stored = await store.getGame(started.gameId);
+      expect(stored!.game.modules).toEqual(["base", "seafaring"]);
+      expect(stored!.game.map.id).toBe("new-horizons-3p-fixed");
+
+      expect((await ada!.socket.emitWithAck("game:join", { gameId: started.gameId })).ok).toBe(
+        true,
+      );
+      await ada!.until(() => ada!.state !== null);
+      expect(ada!.state!.view.pieces["pirate"]).toBeDefined();
+      // Starting settlements only on the main island; the legal list says so.
+      expect(ada!.state!.legal.every((a) => a.type === "PLACE_SETTLEMENT")).toBe(true);
+
+      const history = await ada!.socket.emitWithAck("games:history", {});
+      if (!history.ok) throw new Error(history.code);
+      expect(history.games[0]!.mapName).toBe("New Horizons");
+    });
+
     it("maps: a map that doesn't allow the lobby's seat count is refused", async () => {
       const ada = await connect("dev:Ada");
       const created = await ada.socket.emitWithAck("lobby:create", {

@@ -1,4 +1,4 @@
-import type { MapDef } from "@settlers/maps";
+import { SCENARIO_CATALOG, scenarioMap, type MapDef, type SetupMode } from "@settlers/maps";
 import { MapPreview } from "../board/MapPreview";
 import { mapFacts } from "../board/mapTiles";
 
@@ -11,6 +11,27 @@ export interface MapOption {
   tag?: string;
   /** Why it can't be picked right now; the option is shown but disabled. */
   disabledReason?: string | undefined;
+  /** Options are listed under a heading per group (e.g. "Seafaring"); none means the main list. */
+  group?: string;
+}
+
+/** Seafaring scenarios as map options: each shows its map for this seat count and setup mode. */
+export function scenarioOptions(seats: number, setup: SetupMode): MapOption[] {
+  return SCENARIO_CATALOG.flatMap((s): MapOption[] => {
+    const def = scenarioMap(s.id, seats, setup);
+    const any = def ?? scenarioMap(s.id, seats, "fixed");
+    if (!any) return [];
+    return [
+      {
+        id: `scenario:${s.id}`,
+        name: s.name,
+        description: s.description,
+        def: any,
+        group: "Seafaring",
+        disabledReason: def ? undefined : "Variable setup isn't available yet",
+      },
+    ];
+  });
 }
 
 /** One-line facts: players, VP target and land size. */
@@ -35,25 +56,28 @@ export function MapPicker({
   return (
     <fieldset className="map-list" disabled={disabled}>
       <legend className="visually-hidden">Map</legend>
-      {options.map((m) => (
-        <label key={m.id} className={m.id === value ? "map-choice chosen" : "map-choice"}>
-          <input
-            type="radio"
-            name="map"
-            checked={m.id === value}
-            disabled={m.disabledReason !== undefined}
-            onChange={() => onChange(m.id)}
-          />
-          <MapPreview def={m.def} />
-          <span className="map-text">
-            <strong>
-              {m.name}
-              {m.tag && <span className="tag">{m.tag}</span>}
-            </strong>
-            <span className="small">{m.description}</span>
-            <span className="muted small">{m.disabledReason ?? mapSummary(m.def)}</span>
-          </span>
-        </label>
+      {options.map((m, i) => (
+        <div key={m.id} className="map-option">
+          {m.group && m.group !== options[i - 1]?.group && <h4 className="map-group">{m.group}</h4>}
+          <label className={m.id === value ? "map-choice chosen" : "map-choice"}>
+            <input
+              type="radio"
+              name="map"
+              checked={m.id === value}
+              disabled={m.disabledReason !== undefined}
+              onChange={() => onChange(m.id)}
+            />
+            <MapPreview def={m.def} />
+            <span className="map-text">
+              <strong>
+                {m.name}
+                {m.tag && <span className="tag">{m.tag}</span>}
+              </strong>
+              <span className="small">{m.description}</span>
+              <span className="muted small">{m.disabledReason ?? mapSummary(m.def)}</span>
+            </span>
+          </label>
+        </div>
       ))}
     </fieldset>
   );

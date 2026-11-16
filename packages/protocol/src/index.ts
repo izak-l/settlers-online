@@ -132,8 +132,14 @@ export const CreateLobbySchema = z.object({
     .default(0),
 });
 export const LobbyRefSchema = z.object({ lobbyId: Id });
-/** Where a lobby's map comes from. M8b adds `{ mine: id }` for maps saved in the editor. */
-export const MapChoiceSchema = z.object({ builtin: Id }).strict();
+/**
+ * Where a lobby's map comes from: a built-in map, or a seafaring scenario (the server picks its
+ * 3- or 4-player map from the seat count). M8b adds `{ mine: id }` for maps saved in the editor.
+ */
+export const MapChoiceSchema = z.union([
+  z.object({ builtin: Id }).strict(),
+  z.object({ scenario: Id, setup: z.enum(["fixed", "variable"]) }).strict(),
+]);
 /** Host only, while the lobby is open. Clears every ready flag. */
 export const SetLobbyMapSchema = z.object({ lobbyId: Id, map: MapChoiceSchema });
 /**
@@ -206,6 +212,8 @@ export interface LobbyMap {
   vpToWin: number;
   /** The unresolved definition, for the preview. */
   def: MapDef;
+  /** Set when the map is a seafaring scenario's: which one, and the setup mode. */
+  scenario?: { id: string; setup: "fixed" | "variable" };
 }
 
 export interface LobbyState {

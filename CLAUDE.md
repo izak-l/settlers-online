@@ -19,7 +19,7 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M7 UI overhaul: cards instead of counts, original art, a resizable/zoomable board, sounds (specs 006–009)
 - [x] M9 Deploy: Cloudflare Pages + Oracle ARM VM (docs/features/012-deploy.md; runbook docs/DEPLOY.md)
 - [x] M8a Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md; drafts in packages/maps/maps/drafts/)
-- [ ] M10 Base-game feature switches, then seafaring ← now, on `m10` (specs 014 switches, 015 seafaring + scenarios, 016 fog, 017 variable setup; 018–022 written before each later scenario; decision 0001). Rules follow the 2025 seafaring rulebook. Specs in review: no code yet
+- [ ] M10 Base-game feature switches, then seafaring ← now, on `m10` (specs 014 switches, 015 seafaring + scenarios, 016 fog, 017 variable setup; 018–022 written before each later scenario; decision 0001). Rules follow the 2025 seafaring rulebook. Done: M10a switches (014), M10b seams, M10c seafaring core + scenarios 1, 2, 4 (fixed maps). Next: 017 variable setup, 016 fog + scenario 3, then 018–022
 - [ ] M11 Knights-and-cities
 - [ ] M12 Traders scenarios
 - [ ] M13 Explorers

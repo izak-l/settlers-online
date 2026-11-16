@@ -48,3 +48,35 @@ describe("validateMapDef: token accounting", () => {
     expect(validateMapDef(def)).toEqual({ ok: true, errors: [] });
   });
 });
+
+describe("MapDefSchema: size limits for uploaded maps", () => {
+  const ok = (def: unknown) => MapDefSchema.safeParse(def).success;
+
+  it("accepts the base map with an optional name and description", () => {
+    expect(ok({ ...BASE_4P, name: "Isle", description: "A small isle." })).toBe(true);
+  });
+
+  it("rejects more than 200 hexes", () => {
+    const hexes = Array.from({ length: 201 }, (_, i) => ({
+      q: (i % 15) - 7,
+      r: Math.floor(i / 15) - 7,
+      terrain: "sea",
+    }));
+    expect(ok({ ...BASE_4P, hexes })).toBe(false);
+  });
+
+  it("rejects coordinates beyond ±15", () => {
+    expect(ok({ ...BASE_4P, hexes: [...BASE_4P.hexes, { q: 16, r: 0, terrain: "sea" }] })).toBe(
+      false,
+    );
+  });
+
+  it("rejects the same hex twice", () => {
+    expect(ok({ ...BASE_4P, hexes: [...BASE_4P.hexes, BASE_4P.hexes[0]] })).toBe(false);
+  });
+
+  it("rejects a long name or description", () => {
+    expect(ok({ ...BASE_4P, name: "x".repeat(41) })).toBe(false);
+    expect(ok({ ...BASE_4P, description: "x".repeat(201) })).toBe(false);
+  });
+});

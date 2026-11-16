@@ -16,9 +16,14 @@ const TerrainField = z.union([TerrainValue, z.string().startsWith("pool:")]);
 
 const TokenField = z.union([z.number().int().min(2).max(12), z.string().startsWith("pool:")]);
 
+/** Limits for maps people upload (M8b); every built-in map fits well inside them. */
+export const MAP_LIMITS = { hexes: 200, coord: 15, name: 40, description: 200 } as const;
+
+const Coord = z.number().int().min(-MAP_LIMITS.coord).max(MAP_LIMITS.coord);
+
 export const HexDefSchema = z.object({
-  q: z.number().int(),
-  r: z.number().int(),
+  q: Coord,
+  r: Coord,
   terrain: TerrainField,
   token: TokenField.optional(),
   hidden: z.boolean().optional(),
@@ -48,13 +53,26 @@ export const PoolsSchema = z.object({
 const ConstraintName = z.enum(["no-adjacent-red-tokens"]);
 
 export const MapDefSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1).max(64),
+  /** Display name and one-line description, in our own words. Required for catalog maps. */
+  name: z.string().min(1).max(MAP_LIMITS.name).optional(),
+  description: z.string().max(MAP_LIMITS.description).optional(),
   version: z.number().int().positive(),
   players: z.object({ min: z.number().int(), max: z.number().int() }),
   vpToWin: z.number().int().positive(),
-  hexes: z.array(HexDefSchema),
+  hexes: z
+    .array(HexDefSchema)
+    .max(MAP_LIMITS.hexes)
+    .superRefine((hexes, ctx) => {
+      const seen = new Set<string>();
+      for (const h of hexes) {
+        const key = `${h.q},${h.r}`;
+        if (seen.has(key)) ctx.addIssue({ code: "custom", message: `Hex ${key} appears twice` });
+        seen.add(key);
+      }
+    }),
   pools: PoolsSchema.optional(),
-  ports: z.array(PortDefSchema).optional(),
+  ports: z.array(PortDefSchema).max(MAP_LIMITS.hexes).optional(),
   robberStart: z.string().optional(),
   constraints: z.array(ConstraintName).optional(),
   modules: z.array(z.string()),

@@ -20,7 +20,7 @@ export const TEST_SECOND_MS = 2;
 
 export function startTestServer(store: Store): Promise<RunningServer> {
   return startServer({
-    config: { WEB_ORIGIN: "*", SNAPSHOT_EVERY: 10 },
+    config: { WEB_ORIGIN: ["*"], SNAPSHOT_EVERY: 10 },
     store,
     auth: devAuthenticator,
     port: 0,

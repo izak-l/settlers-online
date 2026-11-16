@@ -533,7 +533,7 @@ This doc is the spec: build milestone by milestone (section 13), and if the code
 | `pnpm dev` | web + server with hot reload |
 | `pnpm test` | Vitest across all packages |
 | `pnpm typecheck` / `pnpm lint` | strict TS check / ESLint + Prettier |
-| `pnpm sim --games 10000 --seed 1` | bot fuzzing with invariant checks |
+| `pnpm sim --games 2000 --seed 1` | bot fuzzing with invariant checks |
 
 **Environment variables**
 

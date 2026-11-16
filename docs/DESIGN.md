@@ -395,7 +395,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
 - **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan when zoomed). On wide screens the layout uses the extra width instead of a fixed maximum.
 - **Sound (M7):** short original sound effects for key moments (dice, building, your turn, trades, robber, win, chat), with a mute toggle and volume remembered per browser. Off-screen tabs don't play sounds for other players' routine moves.
-- **Maps (M8):** maps are JSON files in the catalog, chosen by the lobby host. **Map editor (later):** click hexes to set terrain, tokens and ports; validates with the shared map validator; exports map JSON.
+- **Maps (M8a):** maps are JSON files in the catalog, chosen by the lobby host. **Map editor (M8b):** click hexes to set terrain, tokens and ports; validates with the shared map validator; saves to "My maps" and exports map JSON.
 
 **As built (M3: board UI)**
 
@@ -487,7 +487,7 @@ Each milestone ends with something playable or testable; don't start the next un
 
 Online play comes before the remaining rules (M4 before M5), so friends can play real online games early and every rule added afterwards ships straight into online play. The engine doesn't depend on the server, so the order is safe. There is no hot-seat mode.
 
-After M7, deployment (M9) shipped first so friends could play on the hosted site; next is the map selector (M8, maps as JSON files in the repo rather than an in-app editor), then the expansions (M10–M13). The editor comes later.
+After M7, deployment (M9) shipped first so friends could play on the hosted site; next is M8: the map selector (M8a, maps as JSON files in the repo) and then the in-app map editor (M8b, maps saved per user and picked in the same lobby picker), then the expansions (M10–M13).
 
 | # | Milestone | Done when |
 | --- | --- | --- |
@@ -499,13 +499,13 @@ After M7, deployment (M9) shipped first so friends could play on the hosted site
 | M5 | Robber, dev cards, bank/port/player trades, awards, win | Every box in section 7 ticked; fuzzer runs 10k games clean; an online game finishes with a winner |
 | M6 | Friends list, presence, invites, game history; polish: log, chat, animations, small-screen layout, turn timers | Friends play a full game online without help; the layout stays usable from desktop down to a 375px-wide window |
 | M7 | UI overhaul: individual resource and dev cards instead of counts, better board and piece graphics, a board that resizes to fill the window and can be zoomed, sound effects (section 10) | Hands, discards, trades and card plays all use cards; the board fills the available space from a 375px window to a large desktop; sounds play for key events and can be muted; friends find a full game smooth in a playtest |
-| M8 | Map selector: maps written as JSON in the repo, chosen by the lobby host (spec 011) | A new map file shows up in the lobby picker and plays online; every catalog map validates in CI |
+| M8a | Map selector: maps written as JSON in the repo, chosen by the lobby host (spec 011) | A new map file shows up in the lobby picker and plays online; every catalog map validates in CI |
+| M8b | In-app map editor: a Maps tab to draw maps, saved per user and picked in the same lobby picker (spec 013) | Draw a map, save it, pick it in a lobby and play it online; built-in maps still validate in CI |
 | M9 | Deploy: frontend on Cloudflare Pages, server and Postgres on an Oracle ARM VM (spec 012, section 12) | Friends play a game on the hosted site; a server restart mid-game loses nothing |
 | M10 | Base-game feature switches, then v1.1 seafaring (section 14) | Ships and the first island scenario play online |
 | M11 | v1.2 knights-and-cities | See section 14 |
 | M12 | v1.3 traders scenarios | See section 14 |
 | M13 | v1.4 explorers | See section 14 |
-| Later | In-app map editor | Draw a map, save it, pick it in a lobby |
 
 ## 14. Expansion roadmap and open questions
 
@@ -519,7 +519,7 @@ Expansions are added as modules on top of `base`; each row lists what the module
 | v1.4 | `explorers` | ships carrying settlers and crews, harbor settlements, missions with their own VP tracks, fog exploration, scenario-specific VP targets | movable pieces with cargo `attrs`, hidden hexes, new decision kinds, `vpSources`; turns off several base features |
 
 - **New seam this order needs:** the base module is split into toggleable features (`devCards`, `robber`, `longestRoad`, `largestArmy`, `ports`), because later modules switch some of them off.
-- **Maps before seafaring.** Seafaring is mostly fixed scenario maps. They are written as JSON in the map catalog (M8), checked in CI and previewed in the dev sandbox; the in-app editor comes later.
+- **Maps before seafaring.** Seafaring is mostly fixed scenario maps. They are written as JSON in the map catalog (M8a), checked in CI and previewed in the dev sandbox; the in-app editor (M8b) can open and export the same JSON.
 - Module ids stay internal. Display names and all scenario text in the UI are our own wording.
 
 **Rule for adding a seam:** only generalize the core when a module actually needs it, and add a test in the base module proving nothing changed.

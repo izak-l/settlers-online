@@ -1,5 +1,6 @@
 # The server stack on the VM: Postgres, the game server, and Caddy for HTTPS.
-# Lives in ~/settlers on the VM next to `.env` (copied from env.example). See docs/DEPLOY.md.
+# Use it either from a clone of the repo on the VM (deploy/, next to deploy/.env) or from
+# ~/settlers with an image shipped by scripts/deploy-server.sh. See docs/DEPLOY.md.
 name: settlers
 
 x-logging: &logging
@@ -25,6 +26,11 @@ services:
 
   server:
     image: settlers-server:${SERVER_TAG:-latest}
+    # Build from the repo when this file is used from a checkout (deploy/ inside the repo):
+    # `docker compose up -d --build`. A copy in ~/settlers with a shipped image never builds.
+    build:
+      context: ..
+      dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:

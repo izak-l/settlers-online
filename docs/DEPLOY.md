@@ -59,7 +59,43 @@ mkdir -p ~/settlers/backups
 If you use your own domain, add the A record for `API_DOMAIN` now (DNS only), so it resolves
 before Caddy asks Let's Encrypt for a certificate.
 
-## 3. Build and ship the server
+## 3. Build and run the server
+
+There are two ways to do this, using the same `deploy/compose.yaml`. **A** builds on the VM from
+a clone of the repo: simplest when you're already SSH'd in. **B** builds on the Mac and ships the
+image: no GitHub access needed on the VM.
+
+### A. Build on the VM from a clone
+
+The VM needs to read the repo. First push `main` from the Mac (`git push origin main`). Then, on
+the VM, add a read-only deploy key:
+
+```sh
+sudo apt install -y git
+ssh-keygen -t ed25519 -C settlers-vm -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub
+```
+
+On GitHub, go to **repo → Settings → Deploy keys → Add deploy key**, paste the key, and leave
+write access off. Then, on the VM:
+
+```sh
+printf 'Host github.com\n  IdentityFile ~/.ssh/github_deploy\n' >> ~/.ssh/config
+git clone git@github.com:izak-l/settlers-online.git ~/settlers-online
+cd ~/settlers-online/deploy
+cp env.example .env && chmod 600 .env
+nano .env                         # fill it in (below)
+docker compose up -d --build      # builds the arm64 image here, starts db, server, caddy
+docker compose logs -f server     # "migrated …" lines, then "Settlers server listening"
+curl https://<API_DOMAIN>/health  # {"ok":true}; the first certificate can take a minute
+```
+
+To update later: `cd ~/settlers-online && git pull && cd deploy && docker compose up -d --build`.
+
+In this setup the stack lives in `~/settlers-online/deploy`, not `~/settlers`. Use that folder in
+the commands below (logs, backups, restore).
+
+### B. Build on the Mac and ship the image
 
 From the repo on the Mac (Docker Desktop running):
 
@@ -76,17 +112,18 @@ cp env.example .env && chmod 600 .env
 nano .env
 ```
 
-Fill in:
+Then run `scripts/deploy-server.sh ubuntu@<vm-ip>` again. It starts the stack and ends by printing
+`{"ok":true}` from `https://<API_DOMAIN>/health`.
 
-- `API_DOMAIN`, from above.
+### What goes in `.env`
+
+- `API_DOMAIN`: from above.
 - `POSTGRES_PASSWORD`: generate one with `openssl rand -hex 24`.
 - `WEB_ORIGIN`: the Pages URL from step 4, e.g. `https://settlers-online.pages.dev`. Put the
   expected URL now; fix it after step 4 if the name was taken.
 - `SUPABASE_URL`: the same value as in your local `.env`.
 
-Run `scripts/deploy-server.sh ubuntu@<vm-ip>` again. It starts the stack (migrations run
-automatically when the server starts) and ends by printing `{"ok":true}` from
-`https://<API_DOMAIN>/health`. The first certificate can take up to a minute.
+Migrations run automatically when the server starts.
 
 ## 4. Put the frontend on Cloudflare Pages
 
@@ -132,7 +169,7 @@ To use a custom domain, add it in **Pages → your project → Custom domains**,
 
 | Task | Command |
 | --- | --- |
-| Deploy a server change | `scripts/deploy-server.sh ubuntu@<vm-ip>` |
+| Deploy a server change | A: on the VM, `cd ~/settlers-online && git pull && cd deploy && docker compose up -d --build`. B: `scripts/deploy-server.sh ubuntu@<vm-ip>` |
 | Deploy a web change | `SERVER_URL=https://<API_DOMAIN> scripts/deploy-web.sh <project>` |
 | Server logs | `ssh ubuntu@<vm-ip> 'cd ~/settlers && docker compose logs -f --tail 200 server'` |
 | Status | `ssh ubuntu@<vm-ip> 'cd ~/settlers && docker compose ps'` |

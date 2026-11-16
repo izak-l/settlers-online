@@ -9,3 +9,6 @@ import { baseModule } from "./base";
 export const MODULES: Record<ModuleId, RulesModule> = {
   base: baseModule,
 };
+
+/** The ids of every registered module, base first. Maps may only name these. */
+export const MODULE_IDS: readonly ModuleId[] = Object.keys(MODULES);

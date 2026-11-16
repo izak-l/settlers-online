@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Action } from "@settlers/engine";
+import { findMap } from "@settlers/maps";
 import { LocalGame, type Snapshot } from "./LocalGame";
 
 const NAMES = ["A", "B", "C", "D"];
@@ -57,5 +58,13 @@ describe("LocalGame", () => {
     const a = new LocalGame(NAMES, "same").snapshot().view.map;
     const b = new LocalGame(NAMES, "same").snapshot().view.map;
     expect(a).toEqual(b);
+  });
+
+  it("plays on the map it is given, with that map's win target", () => {
+    const def = findMap("grand-diamond")!.def;
+    const view = new LocalGame(["A", "B"], "diamond", def).snapshot().view;
+    expect(view.map.id).toBe("grand-diamond");
+    expect(view.map.hexes.filter((h) => h.terrain !== "sea")).toHaveLength(49);
+    expect(view.options.vpToWin).toBe(12);
   });
 });

@@ -14,7 +14,7 @@ import {
   type PlayerId,
   type PlayerView,
 } from "@settlers/engine";
-import { BASE_4P, generateMap } from "@settlers/maps";
+import { DEFAULT_MAP_DEF, generateMap, type MapDef } from "@settlers/maps";
 import type { ChatMessage } from "@settlers/protocol";
 
 export interface SnapshotPlayer {
@@ -72,10 +72,11 @@ export class LocalGame implements GameClient {
   constructor(
     private names: string[],
     seed: string,
+    def: MapDef = DEFAULT_MAP_DEF,
   ) {
-    const { map } = generateMap(BASE_4P, seedFromString(`${seed}:map`));
+    const { map } = generateMap(def, seedFromString(`${seed}:map`));
     const seats = names.map((_, i) => `p${i}`);
-    this.state = createGame(map, { modules: ["base"] }, seats, seed);
+    this.state = createGame(map, { modules: def.modules }, seats, seed);
   }
 
   private waitingOn(): PlayerId {

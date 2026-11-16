@@ -33,6 +33,10 @@ interface Shape {
    * 6s and 8s, and on big maps a random shuffle almost never keeps them all apart.
    */
   tokenCopies: number;
+  /** An explicit token pool, for maps too small for a whole copy of the base set. */
+  tokens?: number[];
+  /** Defaults to 2–4. */
+  players?: { min: number; max: number };
   art: string;
 }
 
@@ -130,7 +134,221 @@ const SHAPES: Shape[] = [
     tokenCopies: 2,
     art: diamondArt(7),
   },
+  {
+    id: "little-harbour",
+    name: "Little Harbour",
+    description: "A small island curled round a sheltered bay. Quick games for one to three.",
+    vpToWin: 8,
+    modules: ["base"],
+    tokenCopies: 0,
+    tokens: [2, 3, 4, 4, 5, 5, 6, 8, 9, 10, 10, 11, 12],
+    players: { min: 1, max: 3 },
+    art: `
+. x x x x .
+ x x x x . .
+x x . x x .
+ x . . x . .
+`,
+  },
+  {
+    id: "crescent-bay",
+    name: "Crescent Bay",
+    description: "A crescent of land wrapped around a wide bay that opens to the east.",
+    vpToWin: 10,
+    modules: ["base"],
+    tokenCopies: 1,
+    art: `
+. . x x x x .
+ . x x x x . .
+. x x x . . .
+ x x x . . . .
+. x x x . . .
+ . x x x x . .
+. . x x x x .
+`,
+  },
+  {
+    id: "the-boot",
+    name: "The Boot",
+    description:
+      "A long peninsula after Italy, from the Alps down to the heel and toe, with Sicily joined on.",
+    vpToWin: 10,
+    modules: ["base"],
+    tokenCopies: 1,
+    art: `
+x M M x x . .
+ . x x x . . .
+. . x x . . .
+ . . x x . . .
+. . . x x . .
+ . . . x x . .
+. . . . x x x
+ . . . . x . x
+. . . x x . .
+ . . x x . . .
+`,
+  },
+  {
+    id: "hourglass",
+    name: "Hourglass",
+    description: "Two broad lands joined by a narrow neck. Whoever holds the neck holds the roads.",
+    vpToWin: 11,
+    modules: ["base"],
+    tokenCopies: 1,
+    art: `
+. x x x .
+ x x x x .
+x x x x x
+ . x x x .
+. . x x .
+ . x x . .
+. x x x .
+ x x x x .
+x x x x x
+ . x x x .
+`,
+  },
+  {
+    id: "lagoon-ring",
+    name: "Lagoon Ring",
+    description: "A ring of land around a calm lagoon, with one channel out to the open sea.",
+    vpToWin: 10,
+    modules: ["base"],
+    tokenCopies: 1,
+    // Land 2-3 steps from the centre; the lagoon inside; a channel cut to the east.
+    art: axialArt(3, (q, r) => (dist(q, r) >= 2 && !(r === 0 && q > 0) ? "x" : ".")),
+  },
+  {
+    id: "six-point-star",
+    name: "Six-Point Star",
+    description: "A round heartland with six narrow points reaching out to sea.",
+    vpToWin: 10,
+    modules: ["base"],
+    tokenCopies: 1,
+    // The radius-2 hexagon plus two hexes out from each of its six corners.
+    art: axialArt(4, (q, r) => {
+      const d = dist(q, r);
+      if (d <= 2) return "x";
+      const onAxis = q === 0 || r === 0 || q + r === 0;
+      return onAxis && d <= 4 ? "x" : ".";
+    }),
+  },
+  {
+    id: "great-hexagon",
+    name: "Great Hexagon",
+    description: "The familiar hexagonal board grown to 61 tiles: five rings around the centre.",
+    vpToWin: 13,
+    modules: ["base"],
+    tokenCopies: 2,
+    art: axialArt(4, () => "x"),
+  },
+  {
+    id: "inland-sea",
+    name: "Inland Sea",
+    description:
+      "Shores around an enclosed sea, after the Mediterranean, with its larger islands offshore. Needs ships (seafaring).",
+    vpToWin: 14,
+    modules: ["base", "seafaring"],
+    tokenCopies: 3,
+    art: `
+. . . . . . x x x x x x x . . . . . . . . . .
+ x x x x x x x . x x . . x x x x x x x x x . .
+x x x x . . . . . x x . . x x . . x x x x . .
+ . x x . . . . x . . x . . . x . . . . . x x .
+. x x . . . . x . . . x . . . . . . . . . x .
+ . . . . . . . . . x . . . . . . . . . x . x .
+x x x . . . . . . . . . . . . x x . . . . x .
+ x x x x x x x x . . . . . . . . . . . . x x .
+. . . . . . . . x x x x x x x x x x x x x x .
+`,
+  },
+  {
+    id: "rising-chain",
+    name: "Rising Chain",
+    description:
+      "Four main islands in a long arc, after Japan, from the cold north-east to the warm south-west. Needs ships (seafaring).",
+    vpToWin: 12,
+    modules: ["base", "seafaring"],
+    tokenCopies: 2,
+    art: `
+. . . . . . . . . . x x x .
+ . . . . . . . . . . x x x .
+. . . . . . . . . . . . . .
+ . . . . . . . . . x x . . .
+. . . . . . . . . x x x . .
+ . . . . . . . . x x x . . .
+. . . . . . x M x x x . . .
+ . . x x x x x x x . . . . .
+. . x x x x . . . . . . . .
+ . . . . . . x x . . . . . .
+x x x . . . x . . . . . . .
+ x x . . . . . . . . . . . .
+x . . . . . . . . . . . . .
+`,
+  },
+  {
+    id: "home-waters",
+    name: "Home Waters",
+    description:
+      "A home island in the middle, with six smaller isles around it to sail out and settle. Needs ships (seafaring).",
+    vpToWin: 12,
+    modules: ["base", "seafaring"],
+    tokenCopies: 2,
+    art: `
+. x x . . . . . . . . . . . . . . x x . .
+ x x x . . . . . . . . . . . . . x x x . .
+. . x . . . . . . . . . . . . . . . x . .
+ . . . . . . . . . . . . . . . . . . . . .
+. . . . . . . . x x x . . . . . . . . . .
+ . . . . . . . x x x x . . . . . . . . . .
+. . x x . . . x x x x x . . . . . x x . .
+ . . . . . . . x x x x . . . . . . . . . .
+. . . . . . . . x x x . . . . . . . . . .
+ . . . . . . . . . . . . . . . . . . . . .
+. x x . . . . . . . . . . . . . . x x . .
+ x x x . . . . . . . . . . . . . x x x . .
+. . x . . . . . . . . . . . . . . . x . .
+`,
+  },
 ];
+
+/**
+ * Turns axial cells into odd-r art, so shapes defined by hex maths (rings, stars) can use the
+ * same pipeline. `cell` returns the art character for (q, r), or null for "not drawn".
+ */
+function axialArt(radius: number, cell: (q: number, r: number) => string | null): string {
+  const rows: string[] = [];
+  const cols = new Map<number, Map<number, string>>();
+  let minCol = Infinity;
+  let maxCol = -Infinity;
+  for (let r = -radius; r <= radius; r++) {
+    const row = r + radius;
+    const line = new Map<number, string>();
+    for (let q = -radius * 2; q <= radius * 2; q++) {
+      if (dist(q, r) > radius) continue;
+      const ch = cell(q, r);
+      if (ch === null) continue;
+      // axial -> odd-r column for this row (parseArt inverts this, up to a translation)
+      const col = q + (row - (row & 1)) / 2;
+      line.set(col, ch);
+      minCol = Math.min(minCol, col);
+      maxCol = Math.max(maxCol, col);
+    }
+    cols.set(row, line);
+  }
+  for (let row = 0; row <= radius * 2; row++) {
+    const line = cols.get(row)!;
+    const chars: string[] = [];
+    for (let c = minCol; c <= maxCol; c++) chars.push(line.get(c) ?? ".");
+    rows.push((row % 2 ? " " : "") + chars.join(" "));
+  }
+  return rows.join("\n");
+}
+
+/** Hex distance from the origin. */
+function dist(q: number, r: number): number {
+  return (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2;
+}
 
 /** A rhombus standing on its point: rows 1, 2, ... n, ... 2, 1 hexes wide. */
 function diamondArt(n: number): string {
@@ -212,6 +430,14 @@ function landMix(n: number): Record<Terrain, number> {
     if (left-- <= 0) break;
     out[e.t]++;
   }
+  // Every map needs a desert for the robber to start on.
+  if (out.desert === 0) {
+    out.desert = 1;
+    const biggest = (["forest", "pasture", "fields"] as Terrain[]).sort(
+      (a, b) => out[b] - out[a],
+    )[0]!;
+    out[biggest]--;
+  }
   return out;
 }
 
@@ -257,8 +483,10 @@ function build(shape: Shape) {
   const coastal = land.filter((c) =>
     DIRS.some(([dq, dr]) => !landKeys.has(`${c.q + dq!},${c.r + dr!}`)),
   ).length;
-  // About one port per 3.5 coastal hexes, but never fewer than the base board's 9.
-  const ports = portPool(Math.max(9, Math.round(coastal / 3.5)));
+  // About one port per 3.5 coastal hexes, but never fewer than the base board's 9
+  // (5 on maps smaller than the base board).
+  const minPorts = land.length < 19 ? 5 : 9;
+  const ports = portPool(Math.max(minPorts, Math.round(coastal / 3.5)));
   const portCount = Object.values(ports).reduce((a, b) => a + b, 0);
 
   const hexLines = [
@@ -269,14 +497,20 @@ function build(shape: Shape) {
     }),
     ...sea.map((c) => `{ "q": ${c.q}, "r": ${c.r}, "terrain": "sea" }`),
   ];
-  const tokens = tokenPool(land.length - mix.desert, shape.tokenCopies);
+  const tokens = shape.tokens
+    ? [...shape.tokens].sort((a, b) => a - b)
+    : tokenPool(land.length - mix.desert, shape.tokenCopies);
+  if (tokens.length !== land.length - mix.desert) {
+    throw new Error(`${shape.id}: ${tokens.length} tokens for ${land.length - mix.desert} hexes`);
+  }
+  const players = shape.players ?? { min: 2, max: 4 };
 
   const json = `{
   "id": "${shape.id}",
   "name": "${shape.name}",
   "description": "${shape.description}",
   "version": 1,
-  "players": { "min": 2, "max": 4 },
+  "players": { "min": ${players.min}, "max": ${players.max} },
   "vpToWin": ${shape.vpToWin},
   "hexes": [
     ${hexLines.join(",\n    ")}

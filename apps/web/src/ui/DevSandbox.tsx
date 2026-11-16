@@ -1,21 +1,41 @@
 import { useMemo, useState } from "react";
+import { DEFAULT_MAP_ID, type MapDef } from "@settlers/maps";
 import { LocalGame } from "../game/LocalGame";
 import { GameView } from "./GameView";
+import { MapPicker } from "./MapPicker";
+import { sandboxMapOptions } from "./sandboxMaps";
+
+/**
+ * Draft maps, read straight from the repo so a new JSON file shows up on reload. This module is
+ * only rendered in development builds (see App.tsx), and a production build is checked not to
+ * contain any draft.
+ */
+const DRAFTS: Record<string, unknown> = import.meta.glob(
+  "../../../../packages/maps/maps/drafts/*.json",
+  {
+    eager: true,
+    import: "default",
+  },
+);
 
 /**
  * Developer-only: a local game where you act for whichever seat is being waited on.
- * Used to try rules and UI changes without a server. Not part of production builds.
+ * Used to try rules, UI changes and maps without a server. Not part of production builds.
  */
 export function DevSandbox() {
   const [count, setCount] = useState(4);
   const [seed, setSeed] = useState("");
-  const [started, setStarted] = useState<{ count: number; seed: string } | null>(null);
+  const [mapId, setMapId] = useState(DEFAULT_MAP_ID);
+  const [started, setStarted] = useState<{ count: number; seed: string; def: MapDef } | null>(null);
+  const options = useMemo(() => sandboxMapOptions(DRAFTS, count), [count]);
+  const chosen = options.find((o) => o.id === mapId && o.disabledReason === undefined);
   const client = useMemo(
     () =>
       started
         ? new LocalGame(
             Array.from({ length: started.count }, (_, i) => `Seat ${i + 1}`),
             started.seed,
+            started.def,
           )
         : null,
     [started],
@@ -25,10 +45,15 @@ export function DevSandbox() {
 
   return (
     <form
-      className="start card stack"
+      className="start card stack sandbox"
       onSubmit={(e) => {
         e.preventDefault();
-        setStarted({ count, seed: seed.trim() || Math.random().toString(36).slice(2, 10) });
+        if (!chosen) return;
+        setStarted({
+          count,
+          seed: seed.trim() || Math.random().toString(36).slice(2, 10),
+          def: chosen.def,
+        });
       }}
     >
       <h1>Dev sandbox</h1>
@@ -49,8 +74,12 @@ export function DevSandbox() {
         <span>Seed (optional)</span>
         <input value={seed} placeholder="random" onChange={(e) => setSeed(e.target.value)} />
       </label>
-      <button type="submit" className="primary">
-        Start sandbox game
+      <div className="stack">
+        <span className="muted small">Map (drafts come from packages/maps/maps/drafts/)</span>
+        <MapPicker options={options} value={mapId} onChange={setMapId} />
+      </div>
+      <button type="submit" className="primary" disabled={!chosen}>
+        {chosen ? `Start on ${chosen.name}` : "Pick a map that fits the seat count"}
       </button>
     </form>
   );

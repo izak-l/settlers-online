@@ -1,46 +1,218 @@
 {
   "id": "base-4p",
+  "name": "Standard Island",
+  "description": "The classic 19-tile island, shuffled into a new layout every game.",
   "version": 1,
-  "players": { "min": 1, "max": 4 },
+  "players": {
+    "min": 1,
+    "max": 4
+  },
   "vpToWin": 10,
   "hexes": [
-    { "q": 0, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 1, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 1, "r": -1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": -1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -1, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -1, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": -1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": -2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 1, "r": -2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": -2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -1, "r": -1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -2, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -2, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -2, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -1, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 1, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 3, "r": -3, "terrain": "sea" },
-    { "q": 3, "r": -2, "terrain": "sea" },
-    { "q": 3, "r": -1, "terrain": "sea" },
-    { "q": 3, "r": 0, "terrain": "sea" },
-    { "q": 2, "r": 1, "terrain": "sea" },
-    { "q": 1, "r": 2, "terrain": "sea" },
-    { "q": 0, "r": 3, "terrain": "sea" },
-    { "q": -1, "r": 3, "terrain": "sea" },
-    { "q": -2, "r": 3, "terrain": "sea" },
-    { "q": -3, "r": 3, "terrain": "sea" },
-    { "q": -3, "r": 2, "terrain": "sea" },
-    { "q": -3, "r": 1, "terrain": "sea" },
-    { "q": -3, "r": 0, "terrain": "sea" },
-    { "q": -2, "r": -1, "terrain": "sea" },
-    { "q": -1, "r": -2, "terrain": "sea" },
-    { "q": 0, "r": -3, "terrain": "sea" },
-    { "q": 1, "r": -3, "terrain": "sea" },
-    { "q": 2, "r": -3, "terrain": "sea" }
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": -3,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": -3,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": -3,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": -3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "sea"
+    }
   ],
   "pools": {
     "land": {
@@ -62,15 +234,42 @@
     }
   },
   "ports": [
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" }
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    }
   ],
   "robberStart": "desert",
   "constraints": ["no-adjacent-red-tokens"],

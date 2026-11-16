@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { ActionSchema, CreateLobbySchema, GameActionSchema, UsernameSchema } from "./index";
+import {
+  ActionSchema,
+  CreateLobbySchema,
+  GameActionSchema,
+  PROTOCOL_ERROR_MESSAGES,
+  SetLobbyMapSchema,
+  UsernameSchema,
+} from "./index";
 
 describe("protocol schemas", () => {
   it("accepts every engine action shape", () => {
@@ -35,5 +42,25 @@ describe("protocol schemas", () => {
       expect(CreateLobbySchema.safeParse({ maxSeats, allowSpectators: true }).success).toBe(true);
     for (const maxSeats of [0, 5, 6])
       expect(CreateLobbySchema.safeParse({ maxSeats, allowSpectators: true }).success).toBe(false);
+  });
+
+  it("accepts a built-in map choice for a lobby", () => {
+    expect(
+      SetLobbyMapSchema.safeParse({ lobbyId: "abc", map: { builtin: "grand-diamond" } }).success,
+    ).toBe(true);
+    // Unknown ids parse; the server decides whether they exist.
+    expect(SetLobbyMapSchema.safeParse({ lobbyId: "abc", map: { builtin: "nope" } }).success).toBe(
+      true,
+    );
+  });
+
+  it("rejects malformed map choices", () => {
+    for (const map of [{}, { builtin: "" }, { builtin: "x".repeat(65) }, "base-4p", null]) {
+      expect(SetLobbyMapSchema.safeParse({ lobbyId: "abc", map }).success).toBe(false);
+    }
+  });
+
+  it("has a UI message for UNKNOWN_MAP", () => {
+    expect(PROTOCOL_ERROR_MESSAGES.UNKNOWN_MAP).toMatch(/map/i);
   });
 });

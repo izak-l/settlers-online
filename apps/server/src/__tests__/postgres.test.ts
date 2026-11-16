@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import pg from "pg";
+import { BASE_4P, findMap } from "@settlers/maps";
 import { loadEnvFiles } from "../config";
 import { migrate } from "../db/migrate";
 import { PgStore } from "../store/postgres";
@@ -41,6 +42,7 @@ if (!url) {
           seats: [null, null, null],
           status: "open",
           gameId: null,
+          map: BASE_4P,
         });
         const game = {
           id: "00000000-0000-0000-0000-000000000001",
@@ -62,6 +64,7 @@ if (!url) {
             seats: [null, null, null],
             status: "started",
             gameId: game.id,
+            map: BASE_4P,
           },
           game,
           [{ seat: "p0", userId: "u1" }],
@@ -88,9 +91,37 @@ if (!url) {
           seats: [{ userId: "u1", ready: true }, null, null],
           status: "open" as const,
           gameId: null,
+          map: findMap("grand-diamond")!.def,
         };
         await store.createLobby(lobby);
         expect(await store.getLobby("L2")).toEqual(lobby);
+        lobby.map = BASE_4P;
+        await store.saveLobby(lobby);
+        expect((await store.getLobby("L2"))!.map).toEqual(BASE_4P);
+      } finally {
+        await store.close();
+      }
+    });
+
+    it("reads a lobby saved before maps existed (map is null) as the base map", async () => {
+      const store = await freshStore();
+      try {
+        await store.ensureProfile("u1");
+        await store.createLobby({
+          id: "L3",
+          hostId: "u1",
+          maxSeats: 2,
+          allowSpectators: false,
+          turnSeconds: 0,
+          seats: [null, null],
+          status: "open",
+          gameId: null,
+          map: BASE_4P,
+        });
+        const pool = new pg.Pool({ connectionString: url });
+        await pool.query("update lobbies set map = null where id = 'L3'");
+        await pool.end();
+        expect((await store.getLobby("L3"))!.map).toEqual(BASE_4P);
       } finally {
         await store.close();
       }

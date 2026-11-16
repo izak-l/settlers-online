@@ -18,14 +18,14 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] 1–4 player games (docs/features/010-one-and-two-player-games.md)
 - [x] M7 UI overhaul: cards instead of counts, original art, a resizable/zoomable board, sounds (specs 006–009)
 - [x] M9 Deploy: Cloudflare Pages + Oracle ARM VM (docs/features/012-deploy.md; runbook docs/DEPLOY.md)
-- [ ] M8 Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md; reviewed drafts in packages/maps/maps/drafts/) ← now, on `m8`
-- [ ] M10 Base-game feature switches, then seafaring
+- [x] M8a Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md; drafts in packages/maps/maps/drafts/)
+- [ ] M10 Base-game feature switches, then seafaring ← next (write its spec first)
 - [ ] M11 Knights-and-cities
 - [ ] M12 Traders scenarios
 - [ ] M13 Explorers
-- [ ] Later: in-app map editor
+- [ ] M8b Map editor: a Maps tab to draw, save and pick your own maps (deferred until the expansions exist, so it covers their terrain, pieces and scenario rules; spec 013 written then)
 
-Tick these off as milestones finish. Online play (M4) deliberately came before the remaining rules (M5); deployment (M9) shipped before M8 and the expansions so friends can play the hosted game; see DESIGN.md §13. Playtest feedback is tracked in docs/FEEDBACK.md.
+Tick these off as milestones finish. Online play (M4) deliberately came before the remaining rules (M5); deployment (M9) shipped before M8 and the expansions so friends can play the hosted game; the map editor (M8b) waits until after the expansions; see DESIGN.md §13. Playtest feedback is tracked in docs/FEEDBACK.md.
 
 ## Repo layout
 

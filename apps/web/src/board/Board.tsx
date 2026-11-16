@@ -154,7 +154,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
           .map((h) => (
             <polygon
               key={`rim-${h.q},${h.r}`}
-              points={hexPolygon(h.q, h.r, HEX_SIZE + 7)}
+              points={hexPolygon(h.q, h.r, HEX_SIZE, -7)}
               className="coast"
             />
           ))}

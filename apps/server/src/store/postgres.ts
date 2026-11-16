@@ -1,4 +1,5 @@
 import type { StateSnapshot } from "@settlers/engine";
+import { DEFAULT_MAP_DEF, mapName, type MapDef } from "@settlers/maps";
 import pg from "pg";
 import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 import type {
@@ -24,6 +25,8 @@ interface LobbyRow {
   seats: LobbyRecord["seats"];
   status: LobbyRecord["status"];
   game_id: string | null;
+  /** Null for lobbies created before maps could be chosen. */
+  map: MapDef | null;
 }
 
 const toLobby = (r: LobbyRow): LobbyRecord => ({
@@ -35,6 +38,7 @@ const toLobby = (r: LobbyRow): LobbyRecord => ({
   seats: r.seats,
   status: r.status,
   gameId: r.game_id,
+  map: r.map ?? DEFAULT_MAP_DEF,
 });
 
 interface ChatRow {
@@ -141,8 +145,8 @@ export class PgStore implements Store {
   async createLobby(l: LobbyRecord): Promise<void> {
     await this.pool.query(
       `insert into lobbies
-         (id, host_id, max_seats, allow_spectators, seats, status, game_id, turn_seconds)
-       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)`,
+         (id, host_id, max_seats, allow_spectators, seats, status, game_id, turn_seconds, map)
+       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb)`,
       [
         l.id,
         l.hostId,
@@ -152,6 +156,7 @@ export class PgStore implements Store {
         l.status,
         l.gameId,
         l.turnSeconds,
+        json(l.map),
       ],
     );
   }
@@ -163,8 +168,9 @@ export class PgStore implements Store {
 
   async saveLobby(l: LobbyRecord): Promise<void> {
     await this.pool.query(
-      "update lobbies set seats = $2::jsonb, status = $3, game_id = $4 where id = $1",
-      [l.id, json(l.seats), l.status, l.gameId],
+      `update lobbies set seats = $2::jsonb, status = $3, game_id = $4, map = $5::jsonb
+        where id = $1`,
+      [l.id, json(l.seats), l.status, l.gameId, json(l.map)],
     );
   }
 
@@ -317,9 +323,10 @@ export class PgStore implements Store {
       players: { seat: string; username: string | null }[];
       winner_seat: string | null;
       final_scores: Record<string, number> | null;
+      map_id: string;
     }>(
       `select g.id, g.status, g.created_at, g.ended_at, me.seat as you, g.winner_seat,
-              g.final_scores,
+              g.final_scores, g.map->>'id' as map_id,
               (select json_agg(json_build_object('seat', gp.seat, 'username', p.username)
                                order by gp.seat)
                  from game_players gp join profiles p on p.id = gp.user_id
@@ -337,6 +344,7 @@ export class PgStore implements Store {
       endedAt: r.ended_at?.toISOString() ?? null,
       you: r.you,
       players: r.players.map((p) => ({ seat: p.seat, username: p.username ?? "?" })),
+      mapName: mapName(r.map_id),
       winner: r.winner_seat,
       scores: r.final_scores,
     }));

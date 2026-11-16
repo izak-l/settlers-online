@@ -20,3 +20,4 @@ export {
 } from "./engine";
 export { COSTS as BASE_COSTS, BASE_RESOURCES, DEV_CARD_NAMES } from "./modules/base";
 export { baseInvariantViolations } from "./modules/base/invariants";
+export { MODULE_IDS } from "./modules";

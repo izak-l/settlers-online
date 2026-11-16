@@ -85,6 +85,8 @@ A map is data. The engine derives the vertex and edge graph from whatever set of
 ```json
 {
   "id": "base-4p",
+  "name": "Standard Island",
+  "description": "The classic 19-tile island, shuffled into a new layout every game.",
   "version": 1,
   "players": { "min": 3, "max": 4 },
   "vpToWin": 10,
@@ -108,7 +110,15 @@ A map is data. The engine derives the vertex and edge graph from whatever set of
 - Terrain types map to a resource through the ruleset (`forest → wood`), so new terrains (gold, fog) are just data plus a module.
 - Hidden hexes (`"hidden": true`) are revealed by the server at the moment of discovery, drawing from a pool with the game RNG.
 - `constraints` names validators run during generation; a rejected board is regenerated with the next RNG draw.
-- A map validator checks that the land is connected, that pool counts match the slots, and that every port sits on a coastal edge. The map editor uses the same validator.
+- A map validator checks that the land is connected, that pool counts match the slots (deserts, fixed or drawn from the land pool, take no token), and that every port sits on a coastal edge. The map editor uses the same validator.
+- The schema bounds a map's size for uploads: at most 600 hexes counting sea, coordinates within ±32, no duplicate hexes, a name of at most 40 characters and a description of at most 200.
+
+**As built (M8a: map catalog)**
+
+- `MAP_CATALOG` (`packages/maps/src/catalog.ts`) lists the built-in maps, default (`base-4p`) first: each JSON file in `packages/maps/maps/` is imported statically, so the bundled server and the Vite build need no file scanning. Built-in maps must have a name and description in our own words. Ids never change once shipped.
+- `catalog.test.ts` fails if a JSON file in that folder isn't in the catalog, and checks each map: ids match file names, the player range is within 1–4, every module is in the engine's `MODULE_IDS`, the validator passes, and 1,000 generated seeds all resolve to valid boards. `pnpm sim --map <id>` fuzzes a catalog map; CI also plays a few games on each non-default map.
+- Catalog maps today: Standard Island (`base-4p`, 1–4 players, 10 VP) and Grand Diamond (`grand-diamond`, 49 land tiles, 2–4 players, 12 VP). A bigger map changes only the board, the player range and the win target; the bank, dev deck and piece limits stay the base ones.
+- `packages/maps/maps/drafts/` holds work-in-progress maps (with `build.ts`, `check.ts`, `preview.ts`). They are not in the catalog, not checked by CI and never offered in lobbies; the dev sandbox lists them.
 
 ## 5. Engine core
 
@@ -307,6 +317,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | C→S | `lobby:join` | lobby id (watch it; doesn't take a seat) |
 | C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
 | C→S | `lobby:ready` | lobby id, ready flag |
+| C→S | `lobby:map` | lobby id, `{ builtin: mapId }` (host only, while open; the map must allow the seat count; clears ready flags) |
 | C→S | `lobby:start` | lobby id (host only; every seat filled and ready) |
 | C→S | `game:join` | game id (your seat if you have one, otherwise spectator if allowed) |
 | C→S | `game:action` | game id, `Action` |
@@ -316,7 +327,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | C→S | `games:history` | (none): your last 20 games |
 | C→S | `chat:send` | game id, text (1–300 characters) |
 | S→C | `welcome` | your user id and username (null until picked) |
-| S→C | `lobby` | seats (username, ready, connected), status, turn timer, game id once started |
+| S→C | `lobby` | seats (username, ready, connected), the map (id, name, description, players, VP, definition), status, turn timer, game id once started |
 | S→C | `state` | game id, `seq`, `you` (seat or `"spectator"`), filtered `PlayerView`, your `legal` actions, public `scores`, players (username, connected), new `events`; the full `log` only on join; the running `clock` (kind, ms left, total) when the game has a timer |
 | S→C | `friends` / `presence` | your whole friends list / one friend's new presence |
 | S→C | `invite` / `invite:closed` | a friend's lobby invite / that lobby started |
@@ -376,7 +387,7 @@ Postgres stores each game as a header plus an append-only action log; snapshots 
 - `snapshots`: game id, sequence number, state JSON without the derived graph (`toSnapshot` / `fromSnapshot`), written every 25 actions (`SNAPSHOT_EVERY`) and when the game ends.
 - When a game ends, `games` also stores `winner_seat` and `final_scores` (full VP, VP cards included) for the history list.
 - On server restart, rooms resume by loading the latest snapshot and replaying later actions.
-- Also stored: `profiles` (id = auth user id or `dev:<name>`, unique username), `lobbies` (seats as JSON, turn timer), `game_players` (seat ↔ user), `friendships`, `chat_messages`. `games.turn_seconds` is copied from the lobby. Migrations are plain SQL in `apps/server/migrations`, applied in order by `pnpm db:migrate` and on server start (behind an advisory lock).
+- Also stored: `profiles` (id = auth user id or `dev:<name>`, unique username), `lobbies` (seats as JSON, turn timer, and `map`: a copy of the chosen map's definition, null meaning the base map), `game_players` (seat ↔ user), `friendships`, `chat_messages`. `games.turn_seconds` is copied from the lobby. Migrations are plain SQL in `apps/server/migrations`, applied in order by `pnpm db:migrate` and on server start (behind an advisory lock).
 - The `Store` interface has a Postgres implementation and an in-memory one for tests; the same online test suite runs against both.
 - Each module has a `version`. A saved game replays with the module versions it was created with; if a version is no longer available, the game opens read-only from its last snapshot.
 - Replay viewer (later): step through the action log with full visibility after the game ends.
@@ -395,7 +406,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
 - **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan when zoomed). On wide screens the layout uses the extra width instead of a fixed maximum.
 - **Sound (M7):** short original sound effects for key moments (dice, building, your turn, trades, robber, win, chat), with a mute toggle and volume remembered per browser. Off-screen tabs don't play sounds for other players' routine moves.
-- **Maps (M8):** maps are JSON files in the catalog, chosen by the lobby host. **Map editor (later):** click hexes to set terrain, tokens and ports; validates with the shared map validator; exports map JSON.
+- **Maps (M8a):** maps are JSON files in the catalog, chosen by the lobby host on the lobby screen. **Map editor (M8b, after the expansions):** click hexes to set terrain, tokens and ports; validates with the shared map validator; saves to "My maps" and exports map JSON.
 
 **As built (M3: board UI)**
 
@@ -449,6 +460,14 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - Chat ticks for messages from others less than 15 seconds old, so history arriving after a join stays quiet.
 - The top bar has a speaker button (mute) and a volume slider, stored in `localStorage` under `settlers.sound` with guarded access (`audio/settings.ts`).
 
+**As built (M8a: choosing a map)**
+
+- **Lobby:** new lobbies start on the base map. The lobby screen shows the map to everyone (preview, name, description, player range, VP target, land tiles); the host can change it while the lobby is open, from the maps that allow the lobby's seat count. Changing it clears every ready flag. The server checks the choice (`UNKNOWN_MAP`, or `BAD_REQUEST` with the allowed player range) and stores a copy of the definition on the lobby; at start the game is generated from that copy with the map's own `modules`, so a catalog edit never changes an open lobby.
+- **Preview:** `board/MapPreview.tsx` draws an unresolved map: fixed tiles as they are, random land as a neutral tile with "?", random tokens as "?"; random ports aren't drawn. `board/mapTiles.ts` is the pure, tested part.
+- **History:** "Your games" shows each game's map name, looked up in the catalog from the stored map's id (the id itself if the map is gone).
+- **Dev sandbox:** a map picker lists catalog maps, then every draft file (loaded with `import.meta.glob`, so a new file appears on reload). Maps that don't fit the seat count, need modules the engine lacks, or fail the validator are shown with the reason. The production build contains neither the sandbox nor any draft.
+- **Coast rim:** drawn as a negative inset around each land hex (`hexPolygon(q, r, HEX_SIZE, -7)`), so it stays centred on big maps.
+
 ## 11. Testing strategy
 
 The engine is tested hardest, because a rules bug ruins a game and the engine is pure and easy to test.
@@ -487,7 +506,7 @@ Each milestone ends with something playable or testable; don't start the next un
 
 Online play comes before the remaining rules (M4 before M5), so friends can play real online games early and every rule added afterwards ships straight into online play. The engine doesn't depend on the server, so the order is safe. There is no hot-seat mode.
 
-After M7, deployment (M9) shipped first so friends could play on the hosted site; next is the map selector (M8, maps as JSON files in the repo rather than an in-app editor), then the expansions (M10–M13). The editor comes later.
+After M7, deployment (M9) shipped first so friends could play on the hosted site; M8a, the map selector (maps as JSON files in the repo, picked in the lobby), shipped next; then the expansions (M10–M13). The in-app map editor (M8b, maps saved per user and picked in the same lobby picker) is deferred until the expansions exist, so it is designed for their terrains, pieces and scenario rules from the start.
 
 | # | Milestone | Done when |
 | --- | --- | --- |
@@ -499,13 +518,13 @@ After M7, deployment (M9) shipped first so friends could play on the hosted site
 | M5 | Robber, dev cards, bank/port/player trades, awards, win | Every box in section 7 ticked; fuzzer runs 10k games clean; an online game finishes with a winner |
 | M6 | Friends list, presence, invites, game history; polish: log, chat, animations, small-screen layout, turn timers | Friends play a full game online without help; the layout stays usable from desktop down to a 375px-wide window |
 | M7 | UI overhaul: individual resource and dev cards instead of counts, better board and piece graphics, a board that resizes to fill the window and can be zoomed, sound effects (section 10) | Hands, discards, trades and card plays all use cards; the board fills the available space from a 375px window to a large desktop; sounds play for key events and can be muted; friends find a full game smooth in a playtest |
-| M8 | Map selector: maps written as JSON in the repo, chosen by the lobby host (spec 011) | A new map file shows up in the lobby picker and plays online; every catalog map validates in CI |
+| M8a | Map selector: maps written as JSON in the repo, chosen by the lobby host (spec 011) | A new map file shows up in the lobby picker and plays online; every catalog map validates in CI |
 | M9 | Deploy: frontend on Cloudflare Pages, server and Postgres on an Oracle ARM VM (spec 012, section 12) | Friends play a game on the hosted site; a server restart mid-game loses nothing |
 | M10 | Base-game feature switches, then v1.1 seafaring (section 14) | Ships and the first island scenario play online |
 | M11 | v1.2 knights-and-cities | See section 14 |
 | M12 | v1.3 traders scenarios | See section 14 |
 | M13 | v1.4 explorers | See section 14 |
-| Later | In-app map editor | Draw a map, save it, pick it in a lobby |
+| M8b | In-app map editor (deferred until after M13): a Maps tab to draw maps, saved per user and picked in the same lobby picker (spec 013) | Draw a map, save it, pick it in a lobby and play it online; built-in maps still validate in CI |
 
 ## 14. Expansion roadmap and open questions
 
@@ -519,7 +538,7 @@ Expansions are added as modules on top of `base`; each row lists what the module
 | v1.4 | `explorers` | ships carrying settlers and crews, harbor settlements, missions with their own VP tracks, fog exploration, scenario-specific VP targets | movable pieces with cargo `attrs`, hidden hexes, new decision kinds, `vpSources`; turns off several base features |
 
 - **New seam this order needs:** the base module is split into toggleable features (`devCards`, `robber`, `longestRoad`, `largestArmy`, `ports`), because later modules switch some of them off.
-- **Maps before seafaring.** Seafaring is mostly fixed scenario maps. They are written as JSON in the map catalog (M8), checked in CI and previewed in the dev sandbox; the in-app editor comes later.
+- **Maps before seafaring.** Seafaring is mostly fixed scenario maps. They are written as JSON in the map catalog (M8a), checked in CI and previewed in the dev sandbox; the in-app editor (M8b, after the expansions) will open and export the same JSON.
 - Module ids stay internal. Display names and all scenario text in the UI are our own wording.
 
 **Rule for adding a seam:** only generalize the core when a module actually needs it, and add a test in the base module proving nothing changed.

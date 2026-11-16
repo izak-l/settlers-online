@@ -5,8 +5,8 @@
  *
  * For each draft: parse with MapDefSchema, check pool accounting (deserts drawn from the land
  * pool get no token), generate with 200 seeds, and run validateResolvedMap on every result.
- * "Land is not fully connected" is reported separately: the island maps expect it until
- * seafaring allows islands.
+ * "Land is not fully connected" is only a warning on maps that use seafaring (islands are the
+ * point); on base-only maps it is an error.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -70,8 +70,12 @@ for (const file of files) {
       continue;
     }
     for (const e of validateResolvedMap(map).errors) {
-      if (e.code === "DISCONNECTED") bump(warnings, e.message);
-      else bump(errors, `${e.code}: ${e.message}`);
+      // Islands are expected only on maps that will need ships.
+      if (e.code === "DISCONNECTED" && def.modules.includes("seafaring")) {
+        bump(warnings, e.message);
+      } else {
+        bump(errors, `${e.code}: ${e.message}`);
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { seedFromString } from "@settlers/engine";
-import { BASE_4P, generateMap } from "@settlers/maps";
-import type { Ack, CreateLobbyParsed } from "@settlers/protocol";
+import { MODULE_IDS, seedFromString } from "@settlers/engine";
+import { DEFAULT_MAP_DEF, findMap, generateMap } from "@settlers/maps";
+import type { Ack, CreateLobbyParsed, MapChoice } from "@settlers/protocol";
 import { fail } from "./errors";
 import type { KeyedQueue } from "./queue";
 import type { GamePlayer, GameRecord, LobbyRecord, Store } from "./store/types";
@@ -25,6 +25,7 @@ export class LobbyService {
       ),
       status: "open",
       gameId: null,
+      map: DEFAULT_MAP_DEF,
     };
     await this.store.createLobby(lobby);
     return lobby;
@@ -64,6 +65,29 @@ export class LobbyService {
     });
   }
 
+  /**
+   * Host only, while open. The lobby keeps a copy of the map, so later catalog changes never
+   * touch it. Everyone has to ready up again for the new map.
+   */
+  setMap(lobbyId: string, userId: string, choice: MapChoice): Promise<Ack> {
+    return this.queue.run(`lobby:${lobbyId}`, async () => {
+      const lobby = await this.store.getLobby(lobbyId);
+      if (!lobby) return fail("NOT_FOUND");
+      if (lobby.hostId !== userId) return fail("NOT_HOST");
+      if (lobby.status !== "open") return fail("LOBBY_STARTED");
+      const def = findMap(choice.builtin)?.def;
+      if (!def) return fail("UNKNOWN_MAP");
+      const { min, max } = def.players;
+      if (lobby.maxSeats < min || lobby.maxSeats > max) {
+        return fail("BAD_REQUEST", `This map is for ${min}–${max} players.`);
+      }
+      lobby.map = def;
+      lobby.seats = lobby.seats.map((s) => (s ? { ...s, ready: false } : null));
+      await this.store.saveLobby(lobby);
+      return { ok: true };
+    });
+  }
+
   /** Host only. Every seat must be filled and ready. Seat i plays as engine seat "p<i>". */
   start(lobbyId: string, userId: string): Promise<Ack<{ gameId: string }>> {
     return this.queue.run(`lobby:${lobbyId}`, async () => {
@@ -73,9 +97,15 @@ export class LobbyService {
       if (lobby.status !== "open") return fail("LOBBY_STARTED");
       if (!lobby.seats.every((s) => s?.ready)) return fail("NOT_READY");
 
+      const def = lobby.map;
+      // Catalog maps are checked in CI; this guards lobbies saved before a module was removed.
+      if (!def.modules.every((id) => MODULE_IDS.includes(id))) {
+        return fail("SERVER_ERROR", "This map needs rules the server doesn't have.");
+      }
+
       // The server isn't bound by engine purity: the seed comes from the OS.
       const seed = randomBytes(16).toString("hex");
-      const { map } = generateMap(BASE_4P, seedFromString(`${seed}:map`));
+      const { map } = generateMap(def, seedFromString(`${seed}:map`));
       const players: GamePlayer[] = lobby.seats.map((s, i) => ({
         seat: `p${i}`,
         userId: s!.userId,
@@ -84,7 +114,7 @@ export class LobbyService {
         id: randomUUID(),
         lobbyId,
         map,
-        modules: ["base"],
+        modules: def.modules,
         seed,
         seats: players.map((p) => p.seat),
         status: "active",

@@ -316,6 +316,9 @@ importers:
       '@settlers/engine':
         specifier: workspace:*
         version: link:../engine
+      '@settlers/maps':
+        specifier: workspace:*
+        version: link:../maps
       zod:
         specifier: ^3.23.0
         version: 3.25.76

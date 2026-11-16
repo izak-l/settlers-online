@@ -41,10 +41,13 @@ export function validateMapDef(def: MapDef): ValidationResult {
     }
   }
 
-  const poolTokenCount = def.hexes.filter((h) => {
-    const isDesertLand = typeof h.terrain === "string" && h.terrain === "desert";
-    return h.token === "pool:tokens" && !isDesertLand;
-  }).length;
+  // A desert never gets a token, whether it is fixed on the map or drawn from the land pool.
+  const tokenSlots = def.hexes.filter((h) => h.token === "pool:tokens");
+  const fixedDeserts = tokenSlots.filter((h) => h.terrain === "desert").length;
+  const poolDeserts = tokenSlots.some((h) => h.terrain === "pool:land")
+    ? (def.pools?.land?.desert ?? 0)
+    : 0;
+  const poolTokenCount = tokenSlots.length - fixedDeserts - poolDeserts;
   if (poolTokenCount > 0 && def.pools?.tokens) {
     if (def.pools.tokens.length !== poolTokenCount) {
       errors.push(

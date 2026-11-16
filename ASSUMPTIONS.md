@@ -162,3 +162,29 @@ When no seated player has the game open, the clock stops, so an abandoned game d
 1 and 2 players use the normal base rules (no two-player variant, no neutral player). Setup is still a snake, so a solo player places both settlements and roads in a row. Offering a trade needs at least one other player; bank and port trades always work.
 
 **Test:** `players.test.ts` — "setup is a snake of one…", "can't offer a trade with nobody to trade with…", "setup snakes 1, 2, 2, 1"; `sim.test.ts` — the one- and two-player batches (seed `1-1` was a bot offering trades solo).
+
+## Spec 011 — Map catalog (M8a)
+
+### A26: Bigger maps keep the base bank, dev deck and piece limits
+
+A map changes the board, the player range and the win target, nothing else. Grand Diamond (49 land tiles, 12 VP) still has 19 of each resource in the bank, the same development deck and the same 5 settlements, 4 cities and 15 roads per player. If that plays badly, a later module option can scale them.
+
+**Test:** `sim.test.ts` — "10 games on each other catalog map run clean", which checks after every action that bank + hands = 19 for each resource and that piece limits hold.
+
+### A27: Changing a lobby's map clears every ready flag
+
+Players agree to a map by readying up, so a new map asks everyone again. Only the host can change it, only while the lobby is open, and only to a map whose player range includes the lobby's seat count.
+
+**Test:** `online-suite.ts` — "maps: the host picks a built-in map…" and "maps: a map that doesn't allow the lobby's seat count is refused".
+
+### A28: A lobby saved before maps existed plays the base map
+
+Lobbies created before migration 007 have no stored map; they read as the default base map.
+
+**Test:** `postgres.test.ts` — "reads a lobby saved before maps existed (map is null) as the base map".
+
+### A29: Deserts never take a token, whether fixed or drawn from the land pool
+
+The token pool must hold exactly one token per `pool:tokens` hex, minus fixed deserts on those hexes, minus the deserts in `pools.land`. This assumes every random land hex asks for a random token, which is true of every map so far; the 1,000-seed catalog test catches a map where it isn't.
+
+**Test:** `validator.test.ts` — "accepts the base map…", "rejects a token pool one short/long", "does not count a literal desert hex…".

@@ -1,7 +1,7 @@
 import { BASE_COSTS, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
-import { DiscardPicker, StealPicker, TradeOfferView } from "./Decisions";
+import { StealPicker, TradeOfferView } from "./Decisions";
 import { TurnTimer } from "./TurnTimer";
 
 const BUILDS: { mode: Exclude<BuildMode, null>; label: string; action: string }[] = [
@@ -81,16 +81,15 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
           <p className="prompt">Place a free road ({String(top.data?.["remaining"])} left).</p>
         );
         break;
-      case "DISCARD":
+      case "DISCARD": {
+        const owed = (top.data?.["amounts"] as Record<string, number>)[snap.seat] ?? 0;
         body = (
-          <DiscardPicker
-            // Fresh picks for each seat's own discard (the sandbox switches seats in one tab).
-            key={`${snap.view.turn.number}-${snap.seat}-${top.pendingFrom.length}`}
-            snap={snap}
-            send={send}
-          />
+          <p className="prompt">
+            A 7 was rolled and you hold more than 7 cards. Pick {owed} from your hand to discard.
+          </p>
         );
         break;
+      }
       case "MOVE_ROBBER":
         body = <p className="prompt">Move the robber: click a highlighted hex.</p>;
         break;

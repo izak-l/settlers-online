@@ -175,6 +175,9 @@ describe("stealing", () => {
     expect(publicEvent.hiddenFrom).toEqual(["p0", "p2"]);
     expect(eventVisibleTo(publicEvent, "spectator")).toBe(true);
     expect(eventVisibleTo(secret, "spectator")).toBe(false);
+    // Both name the players (public anyway); only the secret one names the resource.
+    expect(secret.data).toEqual({ thief: "p0", victim: "p2", resource: "brick" });
+    expect(publicEvent.data).toEqual({ thief: "p0", victim: "p2" });
   });
 
   it("defaultAction picks a victim apply accepts", () => {

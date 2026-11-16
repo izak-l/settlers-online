@@ -36,7 +36,7 @@ Resources and development cards look and behave like cards. You hold a hand, pic
 
 ## Engine changes
 
-None. Hands and dev zones are already counts per type, `devnew-<seat>` marks cards bought this turn, and steal, trade and Monopoly events already name who was involved.
+Hands and dev zones are already counts per type, and `devnew-<seat>` marks cards bought this turn. One additive change, with no rule changes: `STOLE` events carry `data: { thief, victim }` (plus `resource` on the version only the two of them see), and `TRADED` carries `data: { from, with, give, want }`, so the UI knows who a card came from without parsing log text. Counts alone can't tell, since a one-for-one trade leaves both totals unchanged. Pinned in `robber.test.ts` and `trade.test.ts`.
 
 ## Server/UI changes
 
@@ -45,7 +45,7 @@ New, under `apps/web/src/cards/`:
 - `CardFace.tsx`: resource faces, dev faces and the card back, as inline SVG that shares icons with the board art (spec 008).
 - `fan.ts` (pure): the offset of each card from the dock width, card width and group sizes; how many to draw per group.
 - `picking.ts` (pure): the pick state (`purpose`, `give`, `want`) and a reducer for add, remove, clear, and set-from-ratio.
-- `handDiff.ts` (pure): previous vs current counts → arrivals and departures per resource, with the source seat taken from that snapshot's new events where there is one.
+- `handDiff.ts` (pure): previous vs current counts → arrivals and departures per resource. The source is the trade or steal partner from the new events; otherwise players whose totals dropped (Monopoly) or rose; otherwise the bank.
 - `HandDock.tsx`: the dock, the tray and the bank strip. Its mode comes from the top decision (discard) or from what you started (trade, Bounty, Monopoly).
 - `CardFan.tsx`: the face-down fans for opponents.
 
@@ -72,4 +72,4 @@ None. (Decided: on phones the dock scrolls with the page rather than sticking to
 
 ## Status
 
-Draft
+Shipped

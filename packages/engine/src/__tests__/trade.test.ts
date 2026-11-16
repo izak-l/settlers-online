@@ -84,7 +84,13 @@ describe("trading with players", () => {
     s = act(s, "p2", { type: "RESPOND_TRADE", accept: false });
     s = act(s, "p1", { type: "RESPOND_TRADE", accept: true });
     expectReject(s, "p0", { type: "CONFIRM_TRADE", with: "p2" }, "INVALID_TRADE");
-    s = act(s, "p0", { type: "CONFIRM_TRADE", with: "p1" });
+    const res = apply(s, "p0", { type: "CONFIRM_TRADE", with: "p1" });
+    if (!res.ok) throw new Error(res.code);
+    expect(res.events.find((e) => e.type === "TRADED")!.data).toMatchObject({
+      from: "p0",
+      with: "p1",
+    });
+    s = res.state;
     expect(hand(s, "p0")).toMatchObject({ wood: 1, ore: 1 });
     expect(hand(s, "p1")).toMatchObject({ wood: 1, ore: 0 });
     expect(s.decisions.map((d) => d.kind)).toEqual(["MAIN"]);

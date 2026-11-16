@@ -421,6 +421,15 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Zoom and pan** (`board/viewport.ts`, pure and tested; `board/useViewport.ts`): fit (1×) to 4× by the + / − / fit buttons, the mouse wheel around the cursor, or a pinch; drag to pan when zoomed. The viewBox always matches the container's aspect, so the area around the map shows sea, and the fit box (land plus a strip of sea) can never be panned out of view. A press only becomes a drag after 6px, and the click ending a drag is swallowed, so target clicks work at any zoom. At 1× touch drags scroll the page (`touch-action: pan-y`). Zoom resets to fit when the game is opened. No gesture library.
 - **Hit areas** are 22 screen px in radius, capped just under half the vertex spacing so neighbours never overlap (at 375px and 1× that cap wins; zooming in gives full-size targets). Keyboard focus on a target outside the zoomed view pans to it.
 
+**As built (M7b: cards)**
+
+- **Hand dock** (`cards/HandDock.tsx`) under the board: resource cards fanned by type in a fixed order, then dev cards (one group per type, with cards bought this turn in a separate dimmed "New" group). Each group has a count badge. `cards/fan.ts` (pure) sets the overlap from the dock's width; when even a 6px sliver doesn't fit, groups draw only their first few cards. Cards are 64px wide, or 48px under 600px.
+- **Picking** (`cards/picking.ts`, pure) replaces the old +/− `ResourcePicker`. A tray holds the picked cards (tap one to put it back) and the confirm button; tap a hand group to pick from your hand, or a bank card for what you want. Discards open the tray automatically; the trade panel starts a bank trade or an offer; Bounty and Monopoly start from their card's Play button. Bank trade, Bounty and Monopoly buttons are enabled only from `legal`; the discard and offer buttons only check counts, and the server validates. Picks reset whenever the top decision changes. On wide screens the tray floats over the bottom of the board, so the board keeps its size.
+- **Dev cards:** tap a card to show its blurb and a Play button (from `legal`).
+- **Opponents:** face-down fans (at most 8 backs drawn) with counts, which pulse +n / −n when the count changes. The open trade offer shows both sides as small card faces.
+- **Motion** (`cards/handDiff.ts`, `useCardMotion.ts`): comparing snapshots gives the cards that moved in or out and where from. The partner comes from the new `STOLE` / `TRADED` events (their `data` names both players); otherwise players whose totals dropped (Monopoly) or rose; otherwise the bank. Cards fly from (or to) that player's row, or from above for the bank. Under reduced motion they just appear with an outline.
+- **Icons:** `art/icons.tsx` holds original resource and dev card icons used on the cards.
+
 ## 11. Testing strategy
 
 The engine is tested hardest, because a rules bug ruins a game and the engine is pure and easy to test.

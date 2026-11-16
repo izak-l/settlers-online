@@ -42,6 +42,7 @@ export function GameView({ client }: { client: GameClient }) {
       <div className="board-wrap">
         <Board snap={snap} seats={seats} mode={mode} onAction={(a) => void send(a)} />
       </div>
+      {playing && <HandPanel snap={snap} />}
       <aside className="side">
         {snap.view.winner !== undefined && (
           <section className="panel winner" role="status">
@@ -62,7 +63,6 @@ export function GameView({ client }: { client: GameClient }) {
           send={(a) => void send(a)}
           error={error}
         />
-        {playing && <HandPanel snap={snap} />}
         {playing && <DevCards snap={snap} send={(a) => void send(a)} />}
         {playing && <TradePanel snap={snap} send={(a) => void send(a)} />}
         <GameLog snap={snap} seats={seats} client={client} />

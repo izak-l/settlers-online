@@ -54,4 +54,4 @@ None. (Decided: at 375px and 1× hit areas can't reach 44px without overlapping;
 
 ## Status
 
-In progress
+Shipped

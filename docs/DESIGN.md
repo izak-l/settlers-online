@@ -385,7 +385,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Trading:** offer builder (give / want), incoming offers with accept/decline, bank and port trades with the best ratio pre-filled.
 - **Modals driven by the decision stack:** discard picker, robber placement, steal target, Year of Plenty / Monopoly pickers.
 - **State:** Zustand store holds the view and connection status. Optimistic UI is not used; the board updates when the server confirms.
-- **Small screens:** responsive layout, not a separate mobile app. The board scales to fit, panels stack below it, tap targets stay comfortably large, and nothing scrolls sideways down to a 375px-wide window. Pan/zoom or a bottom drawer only if testing at that size shows they're needed.
+- **Small screens:** responsive layout, not a separate mobile app. The board scales to fit, panels stack below it, tap targets stay comfortably large, and nothing scrolls sideways down to a 375px-wide window.
 - **Art:** original flat SVG icons and a custom color palette. No borrowed assets.
 - **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
 - **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan when zoomed). On wide screens the layout uses the extra width instead of a fixed maximum.
@@ -414,6 +414,12 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Game:** a countdown in the action bar (red under 10 s). Log and chat share one tabbed panel: the log reads oldest-first, auto-scrolls unless you've scrolled up, colours names by seat and marks turn ends; chat shows an unread count. The dev sandbox has no chat.
 - **Small screens:** the board's viewBox fits the land plus a strip of sea (ports stay visible). Below 860px the action bar and hand come straight after the board; below 600px every control is at least 44px tall. Board targets have wide invisible hit areas. Checked at 375px: no sideways scrolling on home, lobby or game.
 - **Animations:** the dice spin on each roll, new pieces (and city upgrades) pop in, the robber slides, gained resources flash with a "+n". All are off under `prefers-reduced-motion`. They come only from comparing views, never from delaying input.
+
+**As built (M7a: layout, resize and zoom)**
+
+- The game screen fills the window height. The board column takes all the width the side column (`clamp(300px, 24vw, 380px)`) doesn't, with the hand under the board; there is no maximum layout width. Below 860px everything stacks and scrolls with the page: board (aspect from the map, at most 62% of the window height), action bar, hand, then the rest.
+- **Zoom and pan** (`board/viewport.ts`, pure and tested; `board/useViewport.ts`): fit (1×) to 4× by the + / − / fit buttons, the mouse wheel around the cursor, or a pinch; drag to pan when zoomed. The viewBox always matches the container's aspect, so the area around the map shows sea, and the fit box (land plus a strip of sea) can never be panned out of view. A press only becomes a drag after 6px, and the click ending a drag is swallowed, so target clicks work at any zoom. At 1× touch drags scroll the page (`touch-action: pan-y`). Zoom resets to fit when the game is opened. No gesture library.
+- **Hit areas** are 22 screen px in radius, capped just under half the vertex spacing so neighbours never overlap (at 375px and 1× that cap wins; zooming in gives full-size targets). Keyboard focus on a target outside the zoomed view pans to it.
 
 ## 11. Testing strategy
 

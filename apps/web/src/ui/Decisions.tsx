@@ -1,34 +1,9 @@
-import { useState } from "react";
 import type { Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { SeatInfo } from "../game/seats";
-import { ResourcePicker, nonZero, sum } from "./ResourcePicker";
+import { CardRow } from "../cards/CardFace";
 
 const nameOf = (seats: SeatInfo[], id: string) => seats.find((s) => s.id === id)?.name ?? id;
-const list = (r: Record<string, number>) =>
-  Object.entries(r)
-    .map(([k, n]) => `${n} ${k}`)
-    .join(", ");
-
-export function DiscardPicker({ snap, send }: { snap: Snapshot; send(a: Action): void }) {
-  const [picked, setPicked] = useState<Record<string, number>>({});
-  const owed =
-    (snap.view.decisions.at(-1)!.data!["amounts"] as Record<string, number>)[snap.seat] ?? 0;
-  const hand = snap.view.zones[`hand-${snap.seat}`]?.contents ?? {};
-  return (
-    <div className="stack">
-      <p className="prompt">A 7 was rolled and you hold more than 7 cards. Discard {owed}.</p>
-      <ResourcePicker value={picked} onChange={setPicked} max={hand} limit={owed} label="Discard" />
-      <button
-        className="primary"
-        disabled={sum(picked) !== owed}
-        onClick={() => send({ type: "DISCARD", resources: nonZero(picked) })}
-      >
-        Discard {sum(picked)} / {owed}
-      </button>
-    </div>
-  );
-}
 
 export function StealPicker({
   snap,
@@ -78,10 +53,20 @@ export function TradeOfferView({
 
   return (
     <div className="stack offer">
-      <p className="prompt">
-        {mine ? "You offer" : `${nameOf(seats, offer.from)} offers`}{" "}
-        <strong>{list(offer.give)}</strong> for <strong>{list(offer.want)}</strong>.
-      </p>
+      <p className="prompt">{mine ? "You offer" : `${nameOf(seats, offer.from)} offers`}</p>
+      <div className="offer-sides">
+        <div>
+          <span className="muted small">{mine ? "You give" : "They give"}</span>
+          <CardRow cards={offer.give} />
+        </div>
+        <span className="offer-arrow" aria-hidden="true">
+          ⇄
+        </span>
+        <div>
+          <span className="muted small">{mine ? "You get" : "They want"}</span>
+          <CardRow cards={offer.want} />
+        </div>
+      </div>
       <ul className="responses">
         {others.map((s) => (
           <li key={s.id}>

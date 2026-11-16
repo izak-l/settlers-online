@@ -390,7 +390,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Trading:** offer builder (give / want), incoming offers with accept/decline, bank and port trades with the best ratio pre-filled.
 - **Modals driven by the decision stack:** discard picker, robber placement, steal target, Year of Plenty / Monopoly pickers.
 - **State:** Zustand store holds the view and connection status. Optimistic UI is not used; the board updates when the server confirms.
-- **Small screens:** responsive layout, not a separate mobile app. The board scales to fit, panels stack below it, tap targets stay comfortably large, and nothing scrolls sideways down to a 375px-wide window. Pan/zoom or a bottom drawer only if testing at that size shows they're needed.
+- **Small screens:** responsive layout, not a separate mobile app. The board scales to fit, panels stack below it, tap targets stay comfortably large, and nothing scrolls sideways down to a 375px-wide window.
 - **Art:** original flat SVG icons and a custom color palette. No borrowed assets.
 - **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
 - **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan when zoomed). On wide screens the layout uses the extra width instead of a fixed maximum.
@@ -419,6 +419,35 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Game:** a countdown in the action bar (red under 10 s). Log and chat share one tabbed panel: the log reads oldest-first, auto-scrolls unless you've scrolled up, colours names by seat and marks turn ends; chat shows an unread count. The dev sandbox has no chat.
 - **Small screens:** the board's viewBox fits the land plus a strip of sea (ports stay visible). Below 860px the action bar and hand come straight after the board; below 600px every control is at least 44px tall. Board targets have wide invisible hit areas. Checked at 375px: no sideways scrolling on home, lobby or game.
 - **Animations:** the dice spin on each roll, new pieces (and city upgrades) pop in, the robber slides, gained resources flash with a "+n". All are off under `prefers-reduced-motion`. They come only from comparing views, never from delaying input.
+
+**As built (M7a: layout, resize and zoom)**
+
+- The game screen fills the window height. The board column takes all the width the side column (`clamp(300px, 24vw, 380px)`) doesn't, with the hand under the board; there is no maximum layout width. Below 860px everything stacks and scrolls with the page: board (aspect from the map, at most 62% of the window height), action bar, hand, then the rest.
+- **Zoom and pan** (`board/viewport.ts`, pure and tested; `board/useViewport.ts`): fit (1×) to 4× by the + / − / fit buttons, the mouse wheel around the cursor, or a pinch; drag to pan when zoomed. The viewBox always matches the container's aspect, so the area around the map shows sea, and the fit box (land plus a strip of sea) can never be panned out of view. A press only becomes a drag after 6px, and the click ending a drag is swallowed, so target clicks work at any zoom. At 1× touch drags scroll the page (`touch-action: pan-y`). Zoom resets to fit when the game is opened. No gesture library.
+- **Hit areas** are 22 screen px in radius, capped just under half the vertex spacing so neighbours never overlap (at 375px and 1× that cap wins; zooming in gives full-size targets). Keyboard focus on a target outside the zoomed view pans to it.
+
+**As built (M7b: cards)**
+
+- **Hand dock** (`cards/HandDock.tsx`) under the board: resource cards fanned by type in a fixed order, then dev cards (one group per type, with cards bought this turn in a separate dimmed "New" group). Each group has a count badge. `cards/fan.ts` (pure) sets the overlap from the dock's width; when even a 6px sliver doesn't fit, groups draw only their first few cards. Cards are 64px wide, or 48px under 600px.
+- **Picking** (`cards/picking.ts`, pure) replaces the old +/− `ResourcePicker`. A tray holds the picked cards (tap one to put it back) and the confirm button; tap a hand group to pick from your hand, or a bank card for what you want. Discards open the tray automatically; the trade panel starts a bank trade or an offer; Bounty and Monopoly start from their card's Play button. Bank trade, Bounty and Monopoly buttons are enabled only from `legal`; the discard and offer buttons only check counts, and the server validates. Picks reset whenever the top decision changes. On wide screens the tray floats over the bottom of the board, so the board keeps its size.
+- **Dev cards:** tap a card to show its blurb and a Play button (from `legal`).
+- **Opponents:** face-down fans (at most 8 backs drawn) with counts, which pulse +n / −n when the count changes. The open trade offer shows both sides as small card faces.
+- **Motion** (`cards/handDiff.ts`, `useCardMotion.ts`): comparing snapshots gives the cards that moved in or out and where from. The partner comes from the new `STOLE` / `TRADED` events (their `data` names both players); otherwise players whose totals dropped (Monopoly) or rose; otherwise the bank. Cards fly from (or to) that player's row, or from above for the bank. Under reduced motion they just appear with an outline.
+- **Icons:** `art/icons.tsx` holds original resource and dev card icons used on the cards.
+
+**As built (M7c: art)**
+
+- All art is our own inline SVG and CSS; there are no image files, icon sets or web fonts. `art/board.tsx` draws each terrain as a radial gradient (`--t-<terrain>` / `--t-<terrain>-light`) plus a few flat shapes around the centre: pines, sheep and grass, wheat rows, clay mounds with bricks, snow-capped peaks, dunes and sea waves. A sandy rim under the land makes the coast one shape. Tokens are cream discs with a shadow (6 and 8 larger and red). Ports are a two-plank pier to a sign with the rate and the resource icon ("?" for 3:1). Roads have an outline and a light top edge; settlements and cities are shaded buildings; the robber is a hooded figure with a ground shadow. Decoration never takes pointer events.
+- `art/icons.tsx` icons are reused on cards, cost chips, port signs, award badges (road and knight) and in the log, which puts an icon before each resource word. Dice show pip faces.
+- Palette: warm parchment light theme and slate dark theme as CSS tokens in `styles.css`; panels have a soft shadow; the current player's row has an edge in their seat colour.
+
+**As built (M7d: sound)**
+
+- `audio/cues.ts` (pure, tested) compares two snapshots (new events, the top decision, your hand) and picks at most two cues by priority: win, your turn, discard, steal, offer, an answer to your offer, dice, robber, city, build, dev card, award, cards gained. The first snapshot (history on join) gives none.
+- When the tab is hidden, only cues about you play: your turn, a discard you owe, an offer you can answer or answers to yours, a steal you're part of, the win, and chat. Spectators never get your-turn or discard cues.
+- `audio/synth.ts` generates every sound with the Web Audio API (oscillators, filtered noise, envelopes); there are no audio files. The audio context starts on the first pointer or key press, and earlier cues are dropped.
+- Chat ticks for messages from others less than 15 seconds old, so history arriving after a join stays quiet.
+- The top bar has a speaker button (mute) and a volume slider, stored in `localStorage` under `settlers.sound` with guarded access (`audio/settings.ts`).
 
 ## 11. Testing strategy
 
@@ -538,7 +567,7 @@ This doc is the spec: build milestone by milestone (section 13), and if the code
 | `pnpm dev` | web + server with hot reload |
 | `pnpm test` | Vitest across all packages |
 | `pnpm typecheck` / `pnpm lint` | strict TS check / ESLint + Prettier |
-| `pnpm sim --games 10000 --seed 1` | bot fuzzing with invariant checks |
+| `pnpm sim --games 2000 --seed 1` | bot fuzzing with invariant checks |
 
 **Environment variables**
 

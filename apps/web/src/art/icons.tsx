@@ -1,0 +1,147 @@
+/**
+ * Original flat icons, drawn on a 24×24 grid. Shared by cards, costs, the log and (M7c) the board.
+ * Colours come from `currentColor` plus a few fixed tints, so they work on any card background.
+ */
+
+const PATHS: Record<string, React.ReactNode> = {
+  wood: (
+    <>
+      <path d="M12 2 L5 11 h3 L4 16 h6 v6 h4 v-6 h6 L16 11 h3 Z" fill="currentColor" />
+    </>
+  ),
+  brick: (
+    <>
+      <rect x="2" y="5" width="9" height="5" rx="1" fill="currentColor" />
+      <rect x="13" y="5" width="9" height="5" rx="1" fill="currentColor" />
+      <rect x="6.5" y="12" width="11" height="5" rx="1" fill="currentColor" />
+      <rect x="2" y="19" width="9" height="3" rx="1" fill="currentColor" opacity="0.75" />
+      <rect x="13" y="19" width="9" height="3" rx="1" fill="currentColor" opacity="0.75" />
+    </>
+  ),
+  sheep: (
+    <>
+      <path
+        d="M7 9 a3 3 0 0 1 5 -2 a3 3 0 0 1 5 1 a3 3 0 0 1 2 5 a3 3 0 0 1 -3 4 h-8 a3 3 0 0 1 -3 -4 a3 3 0 0 1 2 -4 Z"
+        fill="currentColor"
+      />
+      <ellipse cx="4.5" cy="11" rx="2.5" ry="2" fill="currentColor" opacity="0.7" />
+      <rect x="8" y="17" width="2" height="4" rx="1" fill="currentColor" opacity="0.7" />
+      <rect x="14" y="17" width="2" height="4" rx="1" fill="currentColor" opacity="0.7" />
+    </>
+  ),
+  wheat: (
+    <>
+      <path d="M12 22 V8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      {[0, 1, 2, 3].map((i) => (
+        <g key={i} fill="currentColor">
+          <ellipse
+            cx="9.5"
+            cy={9 + i * 3.2}
+            rx="2.4"
+            ry="1.3"
+            transform={`rotate(-35 9.5 ${9 + i * 3.2})`}
+          />
+          <ellipse
+            cx="14.5"
+            cy={9 + i * 3.2}
+            rx="2.4"
+            ry="1.3"
+            transform={`rotate(35 14.5 ${9 + i * 3.2})`}
+          />
+        </g>
+      ))}
+      <ellipse cx="12" cy="5" rx="1.4" ry="2.6" fill="currentColor" />
+    </>
+  ),
+  ore: (
+    <>
+      <path d="M3 20 L8 9 L12 13 L15 6 L21 20 Z" fill="currentColor" />
+      <path d="M15 6 L13.5 11 L17 10 Z" fill="currentColor" opacity="0.55" />
+      <path d="M8 9 L7 14 L10 12 Z" fill="currentColor" opacity="0.55" />
+    </>
+  ),
+  knight: (
+    <path
+      d="M12 2 L20 5 V11 C20 16.5 16.5 20 12 22 C7.5 20 4 16.5 4 11 V5 Z M12 6 V18 M7 11 H17"
+      fill="currentColor"
+      stroke="var(--icon-cut, #0005)"
+      strokeWidth="1.4"
+    />
+  ),
+  victoryPoint: (
+    <path
+      d="M12 2 L14.9 8.6 L22 9.3 L16.6 14 L18.2 21 L12 17.3 L5.8 21 L7.4 14 L2 9.3 L9.1 8.6 Z"
+      fill="currentColor"
+    />
+  ),
+  roadBuilding: (
+    <>
+      <path
+        d="M9 2 L3 22 M15 2 L21 22"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12 4 V7 M12 10 V14 M12 17 V21"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  yearOfPlenty: (
+    <>
+      <circle cx="8" cy="15" r="5" fill="currentColor" />
+      <circle cx="16" cy="9" r="5" fill="currentColor" opacity="0.75" />
+      <path d="M16 6.5 V11.5 M13.5 9 H18.5" stroke="var(--icon-cut, #0005)" strokeWidth="1.5" />
+    </>
+  ),
+  monopoly: (
+    <path
+      d="M3 18 L4 7 L9 12 L12 4 L15 12 L20 7 L21 18 Z M3 20 H21"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth="1"
+    />
+  ),
+  speaker: (
+    <>
+      <path d="M3 9 H7 L12 5 V19 L7 15 H3 Z" fill="currentColor" />
+      <path
+        d="M15.5 9 Q17.5 12 15.5 15 M18 6.5 Q22 12 18 17.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  speakerOff: (
+    <>
+      <path d="M3 9 H7 L12 5 V19 L7 15 H3 Z" fill="currentColor" />
+      <path
+        d="M16 9.5 L21 14.5 M21 9.5 L16 14.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+};
+
+export function Icon({ name, size = 24, title }: { name: string; size?: number; title?: string }) {
+  return (
+    <svg
+      className="icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden={title ? undefined : true}
+      role={title ? "img" : undefined}
+    >
+      {title && <title>{title}</title>}
+      {PATHS[name] ?? <circle cx="12" cy="12" r="8" fill="currentColor" />}
+    </svg>
+  );
+}

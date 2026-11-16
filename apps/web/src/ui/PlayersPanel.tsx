@@ -1,3 +1,5 @@
+import { Icon } from "../art/icons";
+import { CardFan } from "../cards/CardFan";
 import type { Snapshot } from "../game/LocalGame";
 import type { SeatInfo } from "../game/seats";
 
@@ -17,20 +19,36 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
           const knights = snap.view.zones[`played-${s.id}`]?.contents?.["knight"] ?? 0;
           const devCards = zoneCount(`dev-${s.id}`) + zoneCount(`devnew-${s.id}`);
           return (
-            <li key={s.id} className={s.id === snap.view.turn.activePlayer ? "current" : ""}>
+            <li
+              key={s.id}
+              data-seat={s.id}
+              className={s.id === snap.view.turn.activePlayer ? "current" : ""}
+              style={{ "--seat": s.color } as React.CSSProperties}
+            >
               <span className="swatch" style={{ background: s.color }} />
               <span className="name">
                 {s.name}
                 {s.id === snap.seat && <span className="muted"> (you)</span>}
                 {!s.connected && <span className="offline-tag">offline</span>}
                 <span className="meta">
-                  {plural(zoneCount(`hand-${s.id}`), "card")} · {plural(devCards, "dev card")}
-                  {knights > 0 && ` · ${plural(knights, "knight")}`}
+                  <CardFan count={zoneCount(`hand-${s.id}`)} kind="res" label="resource cards" />
+                  {devCards > 0 && (
+                    <CardFan count={devCards} kind="dev" label="development cards" />
+                  )}
+                  {knights > 0 && <span>{plural(knights, "knight")}</span>}
                 </span>
                 {(base.longestRoad === s.id || base.largestArmy === s.id) && (
                   <span className="awards">
-                    {base.longestRoad === s.id && <span className="award">Longest Road</span>}
-                    {base.largestArmy === s.id && <span className="award">Largest Army</span>}
+                    {base.longestRoad === s.id && (
+                      <span className="award">
+                        <Icon name="roadBuilding" size={12} /> Longest Road
+                      </span>
+                    )}
+                    {base.largestArmy === s.id && (
+                      <span className="award">
+                        <Icon name="knight" size={12} /> Largest Army
+                      </span>
+                    )}
                   </span>
                 )}
               </span>

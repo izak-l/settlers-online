@@ -1,7 +1,8 @@
 import { BASE_COSTS, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
-import { DiscardPicker, StealPicker, TradeOfferView } from "./Decisions";
+import { Icon } from "../art/icons";
+import { StealPicker, TradeOfferView } from "./Decisions";
 import { TurnTimer } from "./TurnTimer";
 
 const BUILDS: { mode: Exclude<BuildMode, null>; label: string; action: string }[] = [
@@ -21,12 +22,33 @@ const WAITING_FOR: Record<string, string> = {
   PLACE_FREE_ROAD: "to place free roads",
 };
 
+/** Pip positions on a 3×3 grid (0–8, row by row) for each face. */
+const PIPS: Record<number, number[]> = {
+  1: [4],
+  2: [2, 6],
+  3: [2, 4, 6],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+};
+
+function Die({ n, die }: { n: number; die: string }) {
+  return (
+    <span className={`die die-${die}`} role="img" aria-label={String(n)}>
+      {Array.from({ length: 9 }, (_, i) => (
+        <span key={i} className={PIPS[n]?.includes(i) ? "pip on" : "pip"} />
+      ))}
+    </span>
+  );
+}
+
 function Cost({ cost }: { cost: Record<string, number> }) {
   return (
     <span className="cost">
       {Object.entries(cost).map(([r, n]) => (
         <span key={r} className={`chip res-${r}`} title={`${n} ${r}`}>
-          {n}
+          <Icon name={r} size={12} />
+          {n > 1 && <span>{n}</span>}
         </span>
       ))}
     </span>
@@ -81,16 +103,15 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
           <p className="prompt">Place a free road ({String(top.data?.["remaining"])} left).</p>
         );
         break;
-      case "DISCARD":
+      case "DISCARD": {
+        const owed = (top.data?.["amounts"] as Record<string, number>)[snap.seat] ?? 0;
         body = (
-          <DiscardPicker
-            // Fresh picks for each seat's own discard (the sandbox switches seats in one tab).
-            key={`${snap.view.turn.number}-${snap.seat}-${top.pendingFrom.length}`}
-            snap={snap}
-            send={send}
-          />
+          <p className="prompt">
+            A 7 was rolled and you hold more than 7 cards. Pick {owed} from your hand to discard.
+          </p>
         );
         break;
+      }
       case "MOVE_ROBBER":
         body = <p className="prompt">Move the robber: click a highlighted hex.</p>;
         break;
@@ -160,9 +181,7 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
               aria-label="Last roll"
             >
               {Object.entries(lastRoll).map(([die, n]) => (
-                <span key={die} className={`die die-${die}`}>
-                  {n}
-                </span>
+                <Die key={die} die={die} n={n} />
               ))}
               <span className="muted">= {Object.values(lastRoll).reduce((a, b) => a + b, 0)}</span>
             </div>

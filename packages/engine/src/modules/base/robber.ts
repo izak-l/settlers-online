@@ -65,11 +65,13 @@ function steal(draft: GameState, thief: PlayerId, victim: PlayerId, events: Game
     type: "STOLE",
     text: `${thief} stole 1 ${resource} from ${victim}`,
     visibleTo: [thief, victim],
+    data: { thief, victim, resource },
   });
   events.push({
     type: "STOLE",
     text: `${thief} stole a card from ${victim}`,
     hiddenFrom: [thief, victim],
+    data: { thief, victim },
   });
 }
 

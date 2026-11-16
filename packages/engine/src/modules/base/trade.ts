@@ -176,6 +176,7 @@ export const tradeActions: ActionHandlers = {
       events.push({
         type: "TRADED",
         text: `${player} traded ${describe(offer.give)} for ${describe(offer.want)} with ${partner}`,
+        data: { from: player, with: partner, give: offer.give, want: offer.want },
       });
       popDecision(draft);
     },

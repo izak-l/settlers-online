@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Action } from "@settlers/engine";
+import { useSession } from "../app/session";
+import { useSounds } from "../audio/useSounds";
 import { Board } from "../board/Board";
 import { HandDock } from "../cards/HandDock";
 import { startPick, type Pick } from "../cards/picking";
@@ -19,6 +21,11 @@ export function GameView({ client }: { client: GameClient }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => client.subscribe(setSnap), [client]);
+  useSounds(
+    snap,
+    client,
+    useSession((s) => s.me?.id),
+  );
 
   // Cards being picked belong to one decision: start over whenever it changes.
   const top = snap?.view.decisions.at(-1);

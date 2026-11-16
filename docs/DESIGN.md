@@ -436,6 +436,14 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - `art/icons.tsx` icons are reused on cards, cost chips, port signs, award badges (road and knight) and in the log, which puts an icon before each resource word. Dice show pip faces.
 - Palette: warm parchment light theme and slate dark theme as CSS tokens in `styles.css`; panels have a soft shadow; the current player's row has an edge in their seat colour.
 
+**As built (M7d: sound)**
+
+- `audio/cues.ts` (pure, tested) compares two snapshots (new events, the top decision, your hand) and picks at most two cues by priority: win, your turn, discard, steal, offer, an answer to your offer, dice, robber, city, build, dev card, award, cards gained. The first snapshot (history on join) gives none.
+- When the tab is hidden, only cues about you play: your turn, a discard you owe, an offer you can answer or answers to yours, a steal you're part of, the win, and chat. Spectators never get your-turn or discard cues.
+- `audio/synth.ts` generates every sound with the Web Audio API (oscillators, filtered noise, envelopes); there are no audio files. The audio context starts on the first pointer or key press, and earlier cues are dropped.
+- Chat ticks for messages from others less than 15 seconds old, so history arriving after a join stays quiet.
+- The top bar has a speaker button (mute) and a volume slider, stored in `localStorage` under `settlers.sound` with guarded access (`audio/settings.ts`).
+
 ## 11. Testing strategy
 
 The engine is tested hardest, because a rules bug ruins a game and the engine is pure and easy to test.

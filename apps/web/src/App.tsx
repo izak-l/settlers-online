@@ -7,6 +7,7 @@ import { LobbyScreen } from "./ui/LobbyScreen";
 import { OnlineGame } from "./ui/OnlineGame";
 import { PickUsername } from "./ui/PickUsername";
 import { SignIn } from "./ui/SignIn";
+import { SoundToggle } from "./ui/SoundToggle";
 import { Toasts } from "./ui/Toasts";
 
 const STATUS_TEXT = {
@@ -72,6 +73,7 @@ function Shell(props: {
           Settlers Online
         </button>
         {props.badge && <span className="badge">{props.badge}</span>}
+        <SoundToggle />
         {props.user !== undefined && (
           <span className="user">
             {props.user}

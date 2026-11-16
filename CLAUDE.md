@@ -19,7 +19,8 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
   - [x] M7a board layout, resize and zoom (docs/features/006-board-layout-and-zoom.md)
   - [x] M7b cards instead of counts (007-cards.md)
   - [x] M7c board and panel art (008-board-and-panel-art.md)
-  - [ ] M7d sounds (009-sounds.md) ← now
+  - [x] M7d sounds (009-sounds.md)
+  - [ ] Playtest: friends find a full game smooth (DESIGN.md §13) ← next
 - [ ] M8 Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
 - [ ] M9+ Deploy to free tiers
 

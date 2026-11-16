@@ -105,6 +105,29 @@ const PATHS: Record<string, React.ReactNode> = {
       strokeWidth="1"
     />
   ),
+  speaker: (
+    <>
+      <path d="M3 9 H7 L12 5 V19 L7 15 H3 Z" fill="currentColor" />
+      <path
+        d="M15.5 9 Q17.5 12 15.5 15 M18 6.5 Q22 12 18 17.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  speakerOff: (
+    <>
+      <path d="M3 9 H7 L12 5 V19 L7 15 H3 Z" fill="currentColor" />
+      <path
+        d="M16 9.5 L21 14.5 M21 9.5 L16 14.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 24, title }: { name: string; size?: number; title?: string }) {

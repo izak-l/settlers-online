@@ -39,6 +39,7 @@ tools/sim           seeded bot games for fuzz testing
 docs/DESIGN.md      the system as it exists now + near-term roadmap
 docs/features/      one short spec per feature (NNN-name.md)
 docs/decisions/     decision records for architecture changes (NNNN-title.md)
+docs/FEEDBACK.md    numbered playtest feedback backlog (numbers are permanent)
 ASSUMPTIONS.md      every ambiguous rule reading we chose, with the test that pins it
 ```
 

@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "db:migrate": "tsx src/db/migrate.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs",
+    "start:prod": "node --enable-source-maps dist/server.mjs"
   },
   "dependencies": {
     "@settlers/engine": "workspace:*",
@@ -21,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.10",
+    "esbuild": "0.28.2",
     "socket.io-client": "^4.8.1",
     "tsx": "^4.19.2",
     "typescript": "^5.5.0",

@@ -3,7 +3,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import pg from "pg";
 import { loadEnvFiles, readConfig } from "../config";
 
-const MIGRATIONS = fileURLToPath(new URL("../../migrations/", import.meta.url));
+/**
+ * The SQL migrations folder: next to the source by default, or MIGRATIONS_DIR (the bundled
+ * production server lives elsewhere; see the Dockerfile).
+ */
+export function migrationsDir(env: NodeJS.ProcessEnv = process.env): string {
+  const dir = env["MIGRATIONS_DIR"] ?? fileURLToPath(new URL("../../migrations/", import.meta.url));
+  return dir.endsWith("/") ? dir : `${dir}/`;
+}
 const LOCK_ID = 727_274; // any constant; stops two processes migrating at once
 
 /** Apply every migrations/*.sql not yet recorded, in name order, each in its own transaction. */
@@ -22,6 +29,7 @@ export async function migrate(
         (r) => r.name,
       ),
     );
+    const MIGRATIONS = migrationsDir();
     const files = (await readdir(MIGRATIONS)).filter((f) => f.endsWith(".sql")).sort();
     for (const file of files) {
       if (done.has(file)) continue;

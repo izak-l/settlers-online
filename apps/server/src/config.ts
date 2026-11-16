@@ -15,7 +15,16 @@ export function loadEnvFiles(): void {
 const ConfigSchema = z.object({
   NODE_ENV: z.string().default("development"),
   PORT: z.coerce.number().int().default(3000),
-  WEB_ORIGIN: z.string().default("http://localhost:5173"),
+  /** Allowed browser origins for Socket.IO, comma-separated (e.g. a custom domain and *.pages.dev). */
+  WEB_ORIGIN: z
+    .string()
+    .default("http://localhost:5173")
+    .transform((s) =>
+      s
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ),
   DATABASE_URL: z.string().optional(),
   /** "dev" adds sign-in as any username, alongside Supabase. */
   AUTH_MODE: z.enum(["supabase", "dev"]).default("supabase"),

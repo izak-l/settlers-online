@@ -468,16 +468,17 @@ The engine is tested hardest, because a rules bug ruins a game and the engine is
 
 ## 12. Hosting and ops
 
-Deployment is M9 (spec 012), right after the map selector; the expansions follow once the game is hosted.
+Deployment is M9 (spec 012); the runbook is `docs/DEPLOY.md`. Cost target: $0, on free tiers that keep running (no sleeping server).
 
-Target cost is $0 on free tiers. The two catches are that idle servers sleep (dropping sockets until the next visit wakes them) and their local disks don't persist, so the server keeps no state on disk.
-
-- **Frontend:** Cloudflare Pages (static build of `apps/web`).
-- **Game server:** a free-tier container host such as Render. Check current limits; expect a cold start of up to a minute after idle, which is fine for planned game nights.
-- **Database + auth:** Supabase free tier. Free projects pause after a stretch of inactivity, so regular play or a weekly ping keeps it awake.
-- Every action is written to Postgres before it's broadcast, so a restart or sleep loses nothing; rooms rebuild from snapshot + log on wake.
-- Health check endpoint, structured logs, and an admin page listing active lobbies.
-- **Upgrade path:** if sleeping gets annoying, move the server to a cheap VPS or a home machine behind a Cloudflare Tunnel with no code changes.
+- **Frontend:** Cloudflare Pages, uploaded with `scripts/deploy-web.sh` (Wrangler direct upload of `apps/web/dist`). The build gets only `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SERVER_URL`. Routes are hash-based, so no rewrite rules are needed.
+- **Server and database:** one Oracle Cloud Always Free Ampere (arm64) VM running Docker Compose (`deploy/compose.yaml`):
+  - `db`: Postgres 16 on a named volume. The VM's disk persists, so the database lives next to the server.
+  - `server`: the game server image (built by the root `Dockerfile`: esbuild bundles the server and workspace packages into one `server.mjs` on `node:22-alpine`, running as `node`, health-checked on `/health`).
+  - `caddy`: the only public service. It does automatic Let's Encrypt HTTPS for `API_DOMAIN` and proxies HTTP and WebSockets to the server.
+- **Shipping:** `scripts/deploy-server.sh` builds the image on the Mac (Apple Silicon is arm64, like the VM), streams it over SSH (`docker save | docker load`, no registry), tags it with the git commit and `latest`, restarts the stack, and checks `/health`.
+- **Auth:** Supabase Auth (email + Discord) only. The Pages URL is the Site URL and a redirect URL. The server's `WEB_ORIGIN` is a comma-separated list of allowed origins.
+- Every action is written to Postgres before it's broadcast, so a restart loses nothing; rooms rebuild from snapshot + log when a game is next opened. Migrations run when the server starts (`MIGRATIONS_DIR` points at them inside the image).
+- **Ops:** `docker compose logs`, the `/health` endpoint, nightly `pg_dump` backups kept 14 days, rollback by retagging an older image. An admin page is not built.
 
 ## 13. Milestones
 

@@ -1,0 +1,6 @@
+# HTTPS for the game server. Caddy gets and renews a Let's Encrypt certificate for API_DOMAIN
+# (ports 80 and 443 must be reachable) and proxies HTTP and WebSocket traffic to the server.
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy server:3000
+}

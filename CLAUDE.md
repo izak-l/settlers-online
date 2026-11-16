@@ -70,6 +70,9 @@ pnpm typecheck                    # strict tsc, all packages
 pnpm lint                         # ESLint + Prettier
 pnpm sim --games 2000 --seed 1   # bot fuzzing with invariant checks
 pnpm --filter @settlers/server db:migrate   # apply SQL migrations to DATABASE_URL
+pnpm --filter @settlers/server build        # bundle the server to apps/server/dist/server.mjs
+scripts/deploy-server.sh ubuntu@<vm-ip>     # build, ship and restart the server (docs/DEPLOY.md)
+SERVER_URL=https://<api> scripts/deploy-web.sh   # build and upload the web app to Cloudflare Pages
 ```
 
 Run `pnpm typecheck && pnpm test` before every commit.
@@ -136,16 +139,19 @@ SUPABASE_URL          web, server   project URL; server verifies tokens via the 
 SUPABASE_ANON_KEY     web           the project's publishable key (email + password, Discord sign-in)
 SUPABASE_JWT_SECRET   server        only if the project still uses a shared JWT secret
 DATABASE_URL          server        Postgres (in-memory store if unset: games lost on restart)
-WEB_ORIGIN            server        CORS / Socket.IO origin
+WEB_ORIGIN            server        allowed browser origins for CORS / Socket.IO, comma-separated
 PORT                  server, web   server listen port; web connects to localhost:PORT unless SERVER_URL is set
 SERVER_URL            web           game server URL for builds that don't run next to it
 AUTH_MODE             server, web   "dev" adds per-tab dev sign-in; refused when NODE_ENV=production
 TEST_DATABASE_URL     tests         Postgres for the server test suite (skipped if unset)
+MIGRATIONS_DIR        server        where the SQL migrations are (set in the Docker image)
+API_DOMAIN            deploy        the server's public HTTPS name (VM ~/settlers/.env only)
+POSTGRES_PASSWORD     deploy        password for the VM's Postgres container (VM ~/settlers/.env only)
 ```
 
 Both apps read the repo-root `.env`, then `.env.local` (gitignored), which wins. Local dev keeps `DATABASE_URL`, `TEST_DATABASE_URL` and `AUTH_MODE=dev` in `.env.local` so nothing touches the hosted database. The web build only ever receives `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SERVER_URL` and the dev-auth flag (see `apps/web/vite.config.ts`); never widen that.
 
-Never commit `.env` files or keys. Keep `.env.example` up to date.
+Never commit `.env` files or keys. Keep `.env.example` and `deploy/env.example` up to date. Production settings live only in `~/settlers/.env` on the VM.
 
 ## IP rules
 

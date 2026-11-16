@@ -64,6 +64,13 @@ export function scenarioMap(id: string, seats: number, setup: SetupMode): MapDef
   return findScenario(id)?.maps[`${sizeForSeats(seats)}-${setup}`];
 }
 
+/** A scenario map by its id (e.g. "new-horizons-4p-fixed"). */
+export function findScenarioMap(mapId: string): MapDef | undefined {
+  const found = scenarioOfMap(mapId);
+  if (!found) return undefined;
+  return Object.values(found.scenario.maps).find((m) => m?.id === mapId);
+}
+
 /** Which scenario (and setup mode) a scenario map id belongs to. */
 export function scenarioOfMap(
   mapId: string,

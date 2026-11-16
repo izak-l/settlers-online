@@ -3,7 +3,13 @@ import { SHIP_LIMIT } from "./data";
 import { seafaringInvariants } from "./invariants";
 import { goldActions, goldForStartingSettlement, produceGold } from "./gold";
 import { pirateActions } from "./pirate";
-import { checkSetupRegion, computeRegions, islandBonusVP, recordHome } from "./regions";
+import {
+  announceIslandBonus,
+  checkSetupRegion,
+  computeRegions,
+  islandBonusVP,
+  recordHome,
+} from "./regions";
 import { scenarioOf, type SeafaringState } from "./scenario";
 import { shipActions } from "./ships";
 
@@ -55,7 +61,8 @@ export const seafaringModule: RulesModule = {
       }
       return null;
     },
-    onPlace(draft, piece) {
+    onPlace(draft, piece, { events }) {
+      announceIslandBonus(draft, piece, events);
       // A starting settlement: the setup road step for it is now on top (base set `mustTouch`).
       const top = draft.decisions.at(-1);
       if (

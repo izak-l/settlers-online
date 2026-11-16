@@ -119,8 +119,8 @@ export const goldActions: ActionHandlers = {
 
 function goldEvent(player: PlayerId, got: Resources): GameEvent {
   return {
-    type: "PRODUCED",
+    type: "GOLD_PICKED",
     text: `${player} took ${describe(got)} from gold`,
-    data: { player, resources: got, gold: true },
+    data: { player, resources: got },
   };
 }

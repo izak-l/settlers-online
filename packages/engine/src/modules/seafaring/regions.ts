@@ -1,7 +1,7 @@
 import type { HexKey, VertexId } from "../../board/graph";
 import { hexKey, hexNeighbors } from "../../board/hex";
 import { reject } from "../../module";
-import type { GameState, PlayerId, Rejection } from "../../types";
+import type { GameEvent, GameState, Piece, PlayerId, Rejection } from "../../types";
 import { WATER } from "./data";
 import { scenarioOf, seaState } from "./scenario";
 
@@ -60,6 +60,32 @@ export function recordHome(draft: GameState, player: PlayerId, vertex: VertexId)
   sea.home[player] = [
     ...new Set([...(sea.home[player] ?? []), ...regionsAt(draft, vertex)]),
   ].sort();
+}
+
+/**
+ * After a settlement is built: if it's the player's first building in a region that isn't one of
+ * their home regions (and it touches no home region), announce the island bonus it earns.
+ */
+export function announceIslandBonus(draft: GameState, piece: Piece, events: GameEvent[]): void {
+  const bonus = scenarioOf(draft).islandBonus;
+  if (bonus === 0 || piece.type !== "settlement" || !piece.owner || !("vertex" in piece.at)) return;
+  const player = piece.owner;
+  const home = new Set(seaState(draft).home[player] ?? []);
+  const here = regionsAt(draft, piece.at.vertex);
+  if (here.length === 0 || here.some((r) => home.has(r))) return;
+  const before = new Set<string>();
+  for (const other of Object.values(draft.pieces)) {
+    if (other === piece || other.owner !== player || !("vertex" in other.at)) continue;
+    if (other.type !== "settlement" && other.type !== "city") continue;
+    for (const r of regionsAt(draft, other.at.vertex)) before.add(r);
+  }
+  const fresh = here.filter((r) => !before.has(r));
+  if (fresh.length === 0) return;
+  events.push({
+    type: "ISLAND_SETTLED",
+    text: `${player} settled a new island (+${bonus * fresh.length} VP)`,
+    data: { player, regions: fresh, vp: bonus * fresh.length },
+  });
 }
 
 /**

@@ -1,5 +1,5 @@
 import { MapDefSchema, type MapDef } from "./schema";
-import { scenarioOfMap } from "./scenarios";
+import { findScenarioMap, scenarioOfMap } from "./scenarios";
 import baseRaw from "../maps/base-4p.json" with { type: "json" };
 import grandDiamondRaw from "../maps/grand-diamond.json" with { type: "json" };
 
@@ -28,6 +28,11 @@ export const DEFAULT_MAP_ID = "base-4p";
 
 export function findMap(id: string): CatalogMap | undefined {
   return MAP_CATALOG.find((m) => m.id === id);
+}
+
+/** Any built-in map by id: a catalog map or a seafaring scenario's map. */
+export function findAnyMap(id: string): MapDef | undefined {
+  return findMap(id)?.def ?? findScenarioMap(id);
 }
 
 /** Built-in maps whose player range includes `seats`. */

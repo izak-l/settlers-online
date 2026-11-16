@@ -231,7 +231,10 @@ describe("islands", () => {
     let s = withLine(3);
     expect(computeVP(s, "p0")).toBe(1);
     s = give(s, "p0", { wood: 1, brick: 1, sheep: 1, wheat: 1 });
-    s = act(s, "p0", { type: "BUILD_SETTLEMENT", vertex: EAST_CORNER });
+    const res = apply(s, "p0", { type: "BUILD_SETTLEMENT", vertex: EAST_CORNER });
+    if (!res.ok) throw new Error(res.message);
+    expect(res.events.map((x) => x.type)).toContain("ISLAND_SETTLED");
+    s = res.state;
     expect(computeVP(s, "p0")).toBe(1 + 1 + 2);
     // A second settlement on the same island earns nothing extra.
     s = withPiece(s, "settlement", "p0", { vertex: v(h(4, 0), h(5, -1), h(5, 0)) });

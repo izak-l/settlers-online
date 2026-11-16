@@ -1,11 +1,13 @@
-import { buildGraph } from "./board/graph";
+import { buildMapGraph, type BoardGraph } from "./board/graph";
 import { nextInt, seedFromString } from "./rng";
 import type { Action, ActionSpec } from "./actions";
 import {
+  allowedFor,
+  handlerFor,
+  legalFor,
   reject,
   runTradeRatio,
   runVpSources,
-  type ActionHandler,
   type RulesModule,
 } from "./module";
 import { MODULES } from "./modules";
@@ -13,7 +15,6 @@ import { mergeFeatures } from "./types";
 import type {
   Actor,
   ApplyResult,
-  Decision,
   GameEvent,
   GameState,
   MapInput,
@@ -38,21 +39,15 @@ function cloneState(state: GameState): GameState {
   return { ...(JSON.parse(JSON.stringify(rest)) as Omit<GameState, "graph">), graph };
 }
 
-/** The decision's own module handles the action; otherwise the first module (in ruleset order) that can. */
-function findHandler(
-  state: GameState,
-  top: Decision,
-  type: Action["type"],
-): ActionHandler | undefined {
-  const owner = MODULES[top.module];
-  // The cast is safe: handlers are keyed by the action type they accept.
-  const own = owner?.actions?.[type] as ActionHandler | undefined;
-  if (own) return own;
-  for (const m of modulesOf(state)) {
-    const h = m.actions?.[type] as ActionHandler | undefined;
-    if (h) return h;
-  }
-  return undefined;
+/**
+ * The board graph for a map and ruleset: over sea hexes too when any module needs it (ships),
+ * otherwise land only. Clients rebuild it from a view with `graphFor(view.map, view.modules)`.
+ */
+export function graphFor(map: MapInput, moduleIds: readonly string[]): BoardGraph {
+  return buildMapGraph(
+    map.hexes,
+    moduleIds.some((id) => MODULES[id]?.needsSeaGraph),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +77,7 @@ export function createGame(
     },
     rng: seedFromString(seed),
     map,
-    graph: buildGraph(map.hexes.filter((h) => h.terrain !== "sea")),
+    graph: graphFor(map, ruleset.modules),
     players: [...seats],
     pieces: {},
     zones: {},
@@ -103,7 +98,8 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
 
   const top = state.decisions.at(-1);
   if (!top) return reject("GAME_OVER", "Nothing is waiting to be decided.");
-  if (!top.allowed.includes(action.type)) {
+  const modules = modulesOf(state);
+  if (!allowedFor(modules, top).includes(action.type)) {
     return reject("WRONG_DECISION", `${action.type} isn't allowed during ${top.kind}.`);
   }
 
@@ -113,10 +109,9 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
     return reject("NOT_YOUR_TURN", `Waiting on ${top.pendingFrom.join(", ")}.`);
   }
 
-  const handler = findHandler(state, top, action.type);
+  const handler = handlerFor(modules, top, action.type);
   if (!handler) return reject("UNKNOWN_ACTION", `No module handles ${action.type}.`);
 
-  const modules = modulesOf(state);
   const failure = handler.validate(state, player, action, { modules });
   if (failure) return failure;
 
@@ -138,19 +133,7 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
 
 /** Every concrete action `player` may send right now. */
 export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
-  const top = state.decisions.at(-1);
-  if (state.winner !== undefined || !top || !top.pendingFrom.includes(player)) return [];
-
-  const result: ActionSpec[] = [];
-  const modules = modulesOf(state);
-  for (const type of top.allowed) {
-    const handler = findHandler(state, top, type as Action["type"]);
-    if (!handler) continue;
-    for (const a of handler.candidates(state, player)) {
-      if (handler.validate(state, player, a, { modules }) === null) result.push(a);
-    }
-  }
-  return result;
+  return legalFor(state, player, modulesOf(state));
 }
 
 /** The bank rate `player` gets for each resource (cards given per card received). */
@@ -254,5 +237,5 @@ export function toSnapshot(state: GameState): StateSnapshot {
 /** Rebuild a full GameState (including the graph) from a stored snapshot. */
 export function fromSnapshot(snapshot: StateSnapshot): GameState {
   const rest = JSON.parse(JSON.stringify(snapshot)) as StateSnapshot;
-  return { ...rest, graph: buildGraph(rest.map.hexes.filter((h) => h.terrain !== "sea")) };
+  return { ...rest, graph: graphFor(rest.map, rest.modules) };
 }

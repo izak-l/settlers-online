@@ -52,4 +52,4 @@ Every seam lands with a base no-change test: the existing suites pass untouched,
 
 ## Status
 
-Proposed
+Accepted (2026-11-16). The M10b seams are built.

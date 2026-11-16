@@ -1,6 +1,12 @@
 import { hexKey } from "../../board/hex";
 import type { VertexId } from "../../board/graph";
-import { reject, type ActionHandlers } from "../../module";
+import {
+  reject,
+  runCanPlace,
+  runOnPlace,
+  type ActionContext,
+  type ActionHandlers,
+} from "../../module";
 import type { Decision, GameState, PlayerId, Resources } from "../../types";
 import { BANK_START, BASE_RESOURCES, TERRAIN_RESOURCE } from "./data";
 import {
@@ -10,10 +16,11 @@ import {
   decision,
   describe,
   distanceRuleOk,
+  edgePieceAt,
   featureOn,
   handOf,
+  isLandEdge,
   popDecision,
-  roadAt,
   rollDecision,
   transfer,
 } from "./helpers";
@@ -64,17 +71,18 @@ export function setupBase(draft: GameState): void {
 
 export const setupActions: ActionHandlers = {
   PLACE_SETTLEMENT: {
-    validate(state, _player, { vertex }) {
+    validate(state, player, { vertex }, { modules }) {
       if (!distanceRuleOk(state, vertex)) {
         return reject(
           "ILLEGAL_PLACEMENT",
           "Settlements need a free spot with no building next to it.",
         );
       }
-      return null;
+      return runCanPlace(modules, state, player, "settlement", { vertex }, "PLACE_SETTLEMENT");
     },
-    apply(draft, player, { vertex }, { events }) {
-      addPiece(draft, "settlement", player, { vertex });
+    apply(draft, player, { vertex }, ctx) {
+      const { events } = ctx;
+      const piece = addPiece(draft, "settlement", player, { vertex });
       events.push({ type: "PLACED_SETTLEMENT", text: `${player} placed a settlement` });
 
       const round = draft.decisions.at(-1)!.data?.["round"];
@@ -100,26 +108,46 @@ export const setupActions: ActionHandlers = {
       // The matching road must touch this settlement.
       const road = draft.decisions.at(-1)!;
       road.data = { ...road.data, mustTouch: vertex };
+      // Last, so a module can push its own step (e.g. a gold pick) above the road.
+      runOnPlace(ctx.modules, draft, piece, ctx);
     },
     candidates: (s) => allVertices(s).map((vertex) => ({ type: "PLACE_SETTLEMENT", vertex })),
   },
 
   PLACE_ROAD: {
-    validate(state, _player, { edge }) {
-      const e = state.graph.edges.get(edge);
-      const mustTouch = state.decisions.at(-1)!.data?.["mustTouch"];
-      if (!e || roadAt(state, edge) || !e.vertices.includes(mustTouch as VertexId)) {
+    validate(state, player, { edge }, { modules }) {
+      if (!setupEdgeOk(state, edge) || !isLandEdge(state, edge)) {
         return reject("ILLEGAL_PLACEMENT", "Your road must touch the settlement you just placed.");
       }
-      return null;
+      return runCanPlace(modules, state, player, "road", { edge }, "PLACE_ROAD");
     },
-    apply(draft, player, { edge }, { events }) {
-      addPiece(draft, "road", player, { edge });
-      events.push({ type: "PLACED_ROAD", text: `${player} placed a road` });
-      updateAwards(draft, events);
-      popDecision(draft);
-      if (draft.decisions.at(-1)?.kind === "ROLL") draft.turn.number = 1; // setup is over
+    apply(draft, player, { edge }, ctx) {
+      const piece = addPiece(draft, "road", player, { edge });
+      ctx.events.push({ type: "PLACED_ROAD", text: `${player} placed a road` });
+      finishSetupRoad(draft, ctx, piece);
     },
     candidates: (s) => allEdges(s).map((edge) => ({ type: "PLACE_ROAD", edge })),
   },
 };
+
+/**
+ * The edge is free and touches the settlement just placed (the setup road decision's
+ * `mustTouch`). Modules placing something else instead of the road (a ship) use it too.
+ */
+export function setupEdgeOk(state: GameState, edge: string): boolean {
+  const e = state.graph.edges.get(edge);
+  const mustTouch = state.decisions.at(-1)!.data?.["mustTouch"];
+  return !!e && !edgePieceAt(state, edge) && e.vertices.includes(mustTouch as VertexId);
+}
+
+/** After the setup road (or what a module places instead): awards, next step, and end of setup. */
+export function finishSetupRoad(
+  draft: GameState,
+  ctx: ActionContext,
+  piece: Parameters<typeof runOnPlace>[2],
+): void {
+  runOnPlace(ctx.modules, draft, piece, ctx);
+  updateAwards(draft, ctx.events, ctx.modules);
+  popDecision(draft);
+  if (draft.decisions.at(-1)?.kind === "ROLL") draft.turn.number = 1; // setup is over
+}

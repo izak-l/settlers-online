@@ -2,9 +2,10 @@ export * from "./board/index";
 export * from "./rng";
 export * from "./types";
 export * from "./actions";
-export type { Dice, RulesModule, Hooks, ActionHandler } from "./module";
+export type { Dice, RulesModule, Hooks, ActionHandler, ActionContext } from "./module";
 export {
   createGame,
+  graphFor,
   apply,
   legalActions,
   viewFor,

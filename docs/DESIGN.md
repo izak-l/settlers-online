@@ -78,7 +78,7 @@ A map is data. The engine derives the vertex and edge graph from whatever set of
 - `hex → vertices[6]`, `hex → edges[6]`
 - `vertex → hexes[≤3]`, `vertex → edges[≤3]`, `vertex → neighborVertices[≤3]`
 - `edge → vertices[2]`, `edge → hexes[≤2]`
-- Vertices and edges are only created for hexes marked as land or coast. Sea-only edges exist only when a module needs them (ships).
+- The graph is built by `graphFor(map, moduleIds)`: over land hexes only, unless a module sets `needsSeaGraph` (seafaring's ships), in which case it covers every listed hex. `hexIndex` maps each hex to its place in the map's hex list, so terrain is always read from the map (a fog reveal changes the map, never the graph). Land checks (`isLandHex` / `isLandVertex` / `isLandEdge` in base) keep buildings and roads off open sea and the robber on land. The listed hexes are enclosed by a frame; edges along the border are ordinary edges and nothing beyond them exists (decision record 0001).
 
 **Map definition**
 
@@ -231,7 +231,7 @@ interface RulesModule {
 | `tradeRatio` | bank trade | 4:1, port 3:1 / 2:1 |
 | `vpSources` | any VP check | buildings, VP cards, road, army |
 | `checkWin` | end of each action | active player ≥ `vpToWin` |
-| `routeGraph` | Longest Road | roads only (ships add edge types) |
+| `routePieceTypes` | Longest Road | roads (ships join only at the player's own building) |
 | `redact` | `viewFor` | hide hands, dev cards |
 
 - Hooks run in ruleset order. A hook returns either a value (for queries like `tradeRatio`, results are combined: min ratio, summed VP) or state changes.
@@ -243,6 +243,7 @@ interface RulesModule {
 - An action handler is `{ validate, apply, candidates }`. `validate` sees the untouched state; `apply` mutates the draft copy and pushes events. `legalActions` is `candidates` filtered by `validate`, so the UI's highlights and the server's checks can't disagree.
 - The handler for an action comes from the top decision's module first, then from the first module in ruleset order that has one.
 - Hooks implemented so far: `rollDice` (the last module that defines it wins), `produce` (every module runs, in order) and `vpSources` (summed). `setup` plays the role of `onGameStart`. The other hooks in the table are added when the milestone that needs them lands, per the seam rule in section 14.
+- **Seams for seafaring (M10b, decision record 0001):** a module may set `needsSeaGraph`, `routePieceTypes` (its pieces count towards the longest route; route pieces of different types join only at the player's own building), `routeAwardName`, `pieceLimits`, and `extraActions` (action types it allows during another module's decision kinds; the core's `allowedFor` merges them for `apply` and `legalActions`). Hooks `canPlace` (every module may veto a settlement, city, road or robber placement) and `onPlace` (after any placement or robber move). An edge holds one piece (`edgePieceAt`); `roadAt` only matches roads. Road Crew places up to two route pieces (fewer if fewer are left) and ends when nothing more is legal. `baseline.test.ts` pins three full base games to the exact final states from before the seams.
 - `validate` and `apply` both receive the active modules, so legality checks can use hooks (bank trades use `tradeRatio`).
 - `tradeRatio` (lowest across modules wins) gives the bank rate: 4, or 3 / 2 with a building on either end of a matching port edge.
 - Modules may provide `defaultAction(state, player)` for decisions they own; the core falls back to a random legal action. The base game rolls, ends the turn, and during a trade offer cancels it (offerer) or declines (everyone else). The core no longer names any base-game action.

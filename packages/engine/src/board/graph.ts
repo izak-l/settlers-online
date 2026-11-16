@@ -27,6 +27,11 @@ export interface BoardGraph {
   hexVertices: Map<HexKey, VertexId[]>;
   /** hex key → edge IDs of its 6 sides */
   hexEdges: Map<HexKey, EdgeId[]>;
+  /**
+   * hex key → index in the map's hex list (every listed hex, sea included), so terrain is read
+   * from the map: a fog reveal changes the map, never the graph.
+   */
+  hexIndex: Map<HexKey, number>;
 }
 
 /**
@@ -108,5 +113,18 @@ export function buildGraph(hexes: Hex[]): BoardGraph {
     }
   }
 
-  return { hexKeys: hexSet, vertices, edges, hexVertices, hexEdges };
+  const hexIndex = new Map(hexes.map((h, i) => [hexKey(h), i]));
+  return { hexKeys: hexSet, vertices, edges, hexVertices, hexEdges, hexIndex };
+}
+
+/**
+ * The graph for a map: over every listed hex when `includeSea` (ships need sea edges), otherwise
+ * over land only. `hexIndex` always indexes the full hex list.
+ */
+export function buildMapGraph(
+  hexes: (Hex & { terrain: string })[],
+  includeSea: boolean,
+): BoardGraph {
+  const graph = buildGraph(includeSea ? hexes : hexes.filter((h) => h.terrain !== "sea"));
+  return { ...graph, hexIndex: new Map(hexes.map((h, i) => [hexKey(h), i])) };
 }

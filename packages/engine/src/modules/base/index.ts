@@ -2,7 +2,7 @@ import { runVpSources, type RulesModule } from "../../module";
 import { awardVP } from "./awards";
 import { buildActions } from "./build";
 import { devCardActions, vpCards } from "./devcards";
-import { BASE_RESOURCES } from "./data";
+import { BASE_RESOURCES, PIECE_LIMITS } from "./data";
 import { countOwned } from "./helpers";
 import { produce } from "./production";
 import { robberActions } from "./robber";
@@ -19,6 +19,8 @@ export const baseModule: RulesModule = {
   id: "base",
   version: 1,
   resources: [...BASE_RESOURCES],
+  pieceLimits: { ...PIECE_LIMITS },
+  routePieceTypes: ["road"],
   actions: {
     ...setupActions,
     ...turnActions,

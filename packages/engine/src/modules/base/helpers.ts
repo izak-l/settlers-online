@@ -1,4 +1,4 @@
-import type { EdgeId, VertexId } from "../../board/graph";
+import type { EdgeId, HexKey, VertexId } from "../../board/graph";
 import { reject } from "../../module";
 import type { Decision, FeatureId, GameState, Piece, PlayerId, Resources } from "../../types";
 import { COSTS, PIECE_LIMITS } from "./data";
@@ -77,18 +77,50 @@ export function buildingAt(state: GameState, vertex: VertexId): Piece | undefine
   return Object.values(state.pieces).find((p) => "vertex" in p.at && p.at.vertex === vertex);
 }
 
-export function roadAt(state: GameState, edge: EdgeId): Piece | undefined {
+/** Whatever sits on an edge (a road, a ship, …): an edge holds one piece. */
+export function edgePieceAt(state: GameState, edge: EdgeId): Piece | undefined {
   return Object.values(state.pieces).find((p) => "edge" in p.at && p.at.edge === edge);
+}
+
+/** The road on an edge, if the piece there is a road. */
+export function roadAt(state: GameState, edge: EdgeId): Piece | undefined {
+  const piece = edgePieceAt(state, edge);
+  return piece?.type === "road" ? piece : undefined;
+}
+
+/**
+ * Terrain of a hex, read from the map (so a revealed hex reads its new terrain). Undefined for
+ * a hex the map doesn't list.
+ */
+export function terrainAt(state: GameState, hex: HexKey): string | undefined {
+  const i = state.graph.hexIndex.get(hex);
+  return i === undefined ? undefined : state.map.hexes[i]?.terrain;
+}
+
+/** Land is any listed hex that isn't sea. (Modules with other water terrains say so via canPlace.) */
+export function isLandHex(state: GameState, hex: HexKey): boolean {
+  const terrain = terrainAt(state, hex);
+  return terrain !== undefined && terrain !== "sea";
+}
+
+/** A corner touching at least one land hex: where buildings may stand. */
+export function isLandVertex(state: GameState, vertex: VertexId): boolean {
+  return state.graph.vertices.get(vertex)?.hexes.some((h) => isLandHex(state, h)) ?? false;
+}
+
+/** An edge with land on at least one side: where roads may go. */
+export function isLandEdge(state: GameState, edge: EdgeId): boolean {
+  return state.graph.edges.get(edge)?.hexes.some((h) => isLandHex(state, h)) ?? false;
 }
 
 export function countOwned(state: GameState, player: PlayerId, type: string): number {
   return Object.values(state.pieces).filter((p) => p.owner === player && p.type === type).length;
 }
 
-/** Vertex is free and no neighbouring vertex has a building. */
+/** Vertex touches land, is free, and no neighbouring vertex has a building. */
 export function distanceRuleOk(state: GameState, vertex: VertexId): boolean {
   const v = state.graph.vertices.get(vertex);
-  if (!v || buildingAt(state, vertex)) return false;
+  if (!v || !isLandVertex(state, vertex) || buildingAt(state, vertex)) return false;
   return v.neighbors.every((n) => !buildingAt(state, n));
 }
 
@@ -104,8 +136,30 @@ export function roadConnects(state: GameState, player: PlayerId, edge: EdgeId): 
   return false;
 }
 
-export function touchesOwnRoad(state: GameState, player: PlayerId, vertex: VertexId): boolean {
-  return state.graph.vertices.get(vertex)!.edges.some((e) => roadAt(state, e)?.owner === player);
+/** A road may go here: a land edge that's free and connects to the player's network. */
+export function roadSpotOk(state: GameState, player: PlayerId, edge: EdgeId): boolean {
+  return (
+    state.graph.edges.has(edge) &&
+    isLandEdge(state, edge) &&
+    !edgePieceAt(state, edge) &&
+    roadConnects(state, player, edge)
+  );
+}
+
+/**
+ * The corner touches one of the player's route pieces (`routeTypes`: roads, plus ships with
+ * seafaring), so a settlement may be built there after setup.
+ */
+export function touchesOwnRoute(
+  state: GameState,
+  player: PlayerId,
+  vertex: VertexId,
+  routeTypes: readonly string[],
+): boolean {
+  return state.graph.vertices.get(vertex)!.edges.some((e) => {
+    const piece = edgePieceAt(state, e);
+    return piece?.owner === player && routeTypes.includes(piece.type);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -123,9 +177,10 @@ function newPieceId(state: GameState, type: string, owner: PlayerId): string {
   return `${prefix}${n}`;
 }
 
-export function addPiece(draft: GameState, type: string, owner: PlayerId, at: Piece["at"]): void {
+export function addPiece(draft: GameState, type: string, owner: PlayerId, at: Piece["at"]): Piece {
   const id = newPieceId(draft, type, owner);
   draft.pieces[id] = { id, type, owner, at };
+  return draft.pieces[id]!;
 }
 
 export function handOf(state: GameState, player: PlayerId): Resources {

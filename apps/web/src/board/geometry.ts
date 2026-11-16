@@ -1,4 +1,4 @@
-import { buildGraph, type BoardGraph, type PlayerView } from "@settlers/engine";
+import { graphFor as engineGraphFor, type BoardGraph, type PlayerView } from "@settlers/engine";
 
 export type Point = [number, number];
 
@@ -61,11 +61,14 @@ export function edgeMidpoint(edgeId: string, size = HEX_SIZE): Point {
 
 const graphCache = new WeakMap<PlayerView["map"], BoardGraph>();
 
-/** Views don't carry the graph; rebuild it from the map once per map. */
+/**
+ * Views don't carry the graph; rebuild it from the map once per map, the same way the engine does
+ * (over sea hexes too when a module needs it, e.g. ships).
+ */
 export function graphFor(view: PlayerView): BoardGraph {
   let g = graphCache.get(view.map);
   if (!g) {
-    g = buildGraph(view.map.hexes.filter((h) => h.terrain !== "sea"));
+    g = engineGraphFor(view.map, view.modules);
     graphCache.set(view.map, g);
   }
   return g;

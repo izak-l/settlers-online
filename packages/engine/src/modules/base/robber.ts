@@ -1,4 +1,4 @@
-import { reject, type ActionHandlers } from "../../module";
+import { reject, runCanPlace, runOnPlace, type ActionHandlers } from "../../module";
 import { nextInt, shuffle } from "../../rng";
 import type { Decision, GameEvent, GameState, PlayerId } from "../../types";
 import { BASE_RESOURCES } from "./data";
@@ -9,6 +9,7 @@ import {
   featureOn,
   handOf,
   handSize,
+  isLandHex,
   popDecision,
   robberHex,
   transfer,
@@ -56,7 +57,12 @@ function victimsOn(state: GameState, hex: string, thief: PlayerId): PlayerId[] {
 }
 
 /** Take one random card. Only the thief and the victim learn which resource it was. */
-function steal(draft: GameState, thief: PlayerId, victim: PlayerId, events: GameEvent[]): void {
+export function steal(
+  draft: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  events: GameEvent[],
+): void {
   const cards = cardList(handOf(draft, victim));
   const pick = nextInt(draft.rng, cards.length);
   draft.rng = pick.rng;
@@ -121,15 +127,17 @@ export const robberActions: ActionHandlers = {
   },
 
   MOVE_ROBBER: {
-    validate(state, _player, { hex }) {
-      if (!state.graph.hexKeys.has(hex) || hex === robberHex(state)) {
+    validate(state, player, { hex }, { modules }) {
+      if (!state.graph.hexKeys.has(hex) || !isLandHex(state, hex) || hex === robberHex(state)) {
         return reject("ILLEGAL_PLACEMENT", "Move the robber to a different land hex.");
       }
-      return null;
+      return runCanPlace(modules, state, player, "robber", { hex }, "MOVE_ROBBER");
     },
-    apply(draft, player, { hex }, { events }) {
+    apply(draft, player, { hex }, ctx) {
+      const { events } = ctx;
       draft.pieces["robber"]!.at = { hex };
       events.push({ type: "MOVED_ROBBER", text: `${player} moved the robber`, data: { hex } });
+      runOnPlace(ctx.modules, draft, draft.pieces["robber"]!, ctx);
       popDecision(draft);
       const victims = victimsOn(draft, hex, player);
       if (victims.length === 1) steal(draft, player, victims[0]!, events);

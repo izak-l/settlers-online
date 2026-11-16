@@ -59,6 +59,8 @@ export function validateMapDef(def: MapDef): ValidationResult {
     }
   }
 
+  errors.push(...checkScenario(def));
+
   const poolPortCount = (def.ports ?? []).filter((p) => p.type === "pool:ports").length;
   if (poolPortCount > 0 && def.pools?.ports) {
     const portPoolSize = Object.values(def.pools.ports).reduce((a: number, b) => a + (b ?? 0), 0);
@@ -73,6 +75,41 @@ export function validateMapDef(def: MapDef): ValidationResult {
   }
 
   return { ok: errors.length === 0, errors };
+}
+
+const isHexKey = (s: string) => /^-?\d+,-?\d+$/.test(s);
+
+/**
+ * Seafaring scenario data: only with the seafaring module; every region it names exists; the
+ * pirate starts on a sea hex; a robber start given as a hex is a listed land hex.
+ */
+function checkScenario(def: MapDef): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const at = new Map(def.hexes.map((h) => [`${h.q},${h.r}`, h]));
+  if (def.robberStart !== undefined && isHexKey(def.robberStart)) {
+    const hex = at.get(def.robberStart);
+    if (!hex || hex.terrain === "sea")
+      errors.push(err("ROBBER_START", `Robber start ${def.robberStart} is not a land hex`));
+  }
+  const usesRegions = def.hexes.some((h) => h.region !== undefined);
+  if ((def.scenario || usesRegions) && !def.modules.includes("seafaring")) {
+    errors.push(err("SCENARIO", "Scenario settings and regions need the seafaring module"));
+  }
+  const s = def.scenario;
+  if (!s) return errors;
+  const regions = new Set(def.hexes.flatMap((h) => (h.region ? [h.region] : [])));
+  const named = [...(s.setupRegions ?? []), ...(typeof s.home === "object" ? s.home.regions : [])];
+  for (const r of named) {
+    if (!regions.has(r)) errors.push(err("UNKNOWN_REGION", `No hex is in region "${r}"`));
+  }
+  if (
+    s.pirateStart !== undefined &&
+    s.pirateStart !== "frame" &&
+    at.get(s.pirateStart)?.terrain !== "sea"
+  ) {
+    errors.push(err("PIRATE_START", `Pirate start ${s.pirateStart} is not a sea hex`));
+  }
+  return errors;
 }
 
 /** Validate a fully resolved map. Checks land connectivity and port placement. */
@@ -110,7 +147,8 @@ export function validateResolvedMap(map: ResolvedMap): ValidationResult {
       }
     }
   }
-  if (visited.size !== landHexes.length) {
+  // Seafaring maps may have several islands (ships connect them).
+  if (visited.size !== landHexes.length && !map.modules.includes("seafaring")) {
     errors.push(
       err(
         "DISCONNECTED",

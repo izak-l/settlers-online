@@ -50,7 +50,9 @@ export function setupBase(draft: GameState): void {
     };
   }
 
-  const start = draft.map.hexes.find((hx) => hx.terrain === draft.map.robberStart);
+  // `robberStart` names a terrain (the first hex of it, e.g. "desert") or a hex ("q,r").
+  const want = draft.map.robberStart;
+  const start = draft.map.hexes.find((hx) => hx.terrain === want || hexKey(hx) === want);
   if (start && featureOn(draft, "robber"))
     draft.pieces["robber"] = { id: "robber", type: "robber", at: { hex: hexKey(start) } };
 

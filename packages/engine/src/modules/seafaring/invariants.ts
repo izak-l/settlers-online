@@ -29,10 +29,11 @@ export function seafaringInvariants(state: GameState): {
     for (const piece of Object.values(state.pieces)) {
       if (piece.owner !== p || !("vertex" in piece.at)) continue;
       if (piece.type !== "settlement" && piece.type !== "city") continue;
-      for (const hex of state.graph.vertices.get(piece.at.vertex)!.hexes) {
-        const region = sea.regionOf[hex];
-        if (region && !home.has(region)) foreign.add(region);
-      }
+      const here = state.graph.vertices
+        .get(piece.at.vertex)!
+        .hexes.flatMap((hex) => (sea.regionOf[hex] ? [sea.regionOf[hex]] : []));
+      if (here.some((r) => home.has(r))) continue;
+      for (const r of here) foreign.add(r);
     }
     vp[p] = bonus * foreign.size;
   }

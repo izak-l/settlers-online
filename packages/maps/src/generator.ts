@@ -156,10 +156,11 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
     } while (checkConstraint && hasRedTokenViolation(landHexes, graph));
   }
 
-  // Apply fixed tokens (non-pool)
+  // Apply fixed tokens (non-pool) and region labels
   for (const h of landHexes) {
     const orig = def.hexes.find((d) => d.q === h.q && d.r === h.r);
     if (typeof orig?.token === "number") h.token = orig.token;
+    if (orig?.region !== undefined) h.region = orig.region;
   }
 
   // --- Ports ---
@@ -207,6 +208,7 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       ports,
       ...(def.robberStart !== undefined ? { robberStart: def.robberStart } : {}),
       ...(def.features !== undefined ? { features: def.features } : {}),
+      ...(def.scenario !== undefined ? { scenario: def.scenario } : {}),
       modules: def.modules,
     },
     rng: r,

@@ -238,6 +238,19 @@ describe("islands", () => {
     expect(computeVP(s, "p0")).toBe(1 + 1 + 2 + 1);
   });
 
+  it("a building touching a home region earns no bonus, even if it touches another", () => {
+    // A strip of land joined to the main island at C3's corner, labelled as its own region.
+    const strip = [{ q: 3, r: 0, terrain: "fields", token: 4, region: "strip" }];
+    let s = inMainPhase(game({}, "strip", strip));
+    s = withPiece(s, "settlement", "p0", { vertex: v(h(2, 0), h(3, 0), h(2, 1)) }); // strip + sea
+    expect(computeVP(s, "p0")).toBe(1 + 2);
+    let t = inMainPhase(
+      game({}, "strip", [...strip, { q: 2, r: 0, terrain: "desert", region: "main" }]),
+    );
+    t = withPiece(t, "settlement", "p0", { vertex: v(h(2, 0), h(3, 0), h(2, 1)) }); // main + strip
+    expect(computeVP(t, "p0")).toBe(1);
+  });
+
   it("home islands from setup: unlabelled landmasses, each player's own", () => {
     const unlabel = (hx: MapInput["hexes"][number]) => {
       const { region: _r, ...rest } = hx;
@@ -380,6 +393,14 @@ describe("the pirate", () => {
     s = act(s, "p0", { type: "MOVE_PIRATE", hex: null });
     expect(s.pieces["pirate"]).toBeUndefined();
     expect(s.decisions.at(-1)!.kind).toBe("MAIN");
+  });
+
+  it("may start on the frame: in play, off the board", () => {
+    let s = inRollPhase(game({ pirateStart: "frame" }, seedRolling(7, { pirateStart: "frame" })));
+    expect(s.pieces["pirate"]).toBeUndefined();
+    s = act(s, "p0", { type: "ROLL" });
+    expect(legalActions(s, "p0")).toContainEqual({ type: "MOVE_PIRATE", hex: "2,0" });
+    expectCode(s, "p0", { type: "MOVE_PIRATE", hex: null }, "ILLEGAL_PLACEMENT");
   });
 
   it("isn't in play when the scenario has no pirate start", () => {

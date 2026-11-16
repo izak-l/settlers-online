@@ -1,0 +1,336 @@
+{
+  "id": "new-horizons-4p-fixed",
+  "name": "New Horizons",
+  "description": "Your home island is settled; small islands lie just offshore. Settle each one for 2 extra VP.",
+  "version": 1,
+  "players": {
+    "min": 4,
+    "max": 4
+  },
+  "vpToWin": 14,
+  "hexes": [
+    {
+      "q": 1,
+      "r": -3,
+      "terrain": "mountains",
+      "token": 8,
+      "region": "north"
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "pasture",
+      "token": 11,
+      "region": "north"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "gold",
+      "token": 4,
+      "region": "east"
+    },
+    {
+      "q": 5,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "hills",
+      "token": 5,
+      "region": "east"
+    },
+    {
+      "q": 5,
+      "r": -2,
+      "terrain": "mountains",
+      "token": 2,
+      "region": "east"
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "pasture",
+      "token": 5,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "forest",
+      "token": 6,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "mountains",
+      "token": 4,
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "forest",
+      "token": 9,
+      "region": "east"
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "fields",
+      "token": 12,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "hills",
+      "token": 11,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "fields",
+      "token": 3,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "pasture",
+      "token": 9,
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "gold",
+      "token": 10,
+      "region": "east"
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "terrain": "hills",
+      "token": 6,
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "forest",
+      "token": 10,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "desert",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "fields",
+      "token": 11,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "forest",
+      "token": 5,
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "mountains",
+      "token": 3,
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pasture",
+      "token": 4,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "hills",
+      "token": 9,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "pasture",
+      "token": 8,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "terrain": "hills",
+      "token": 3,
+      "region": "south"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "fields",
+      "token": 8,
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "forest",
+      "token": 2,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "mountains",
+      "token": 10,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "terrain": "fields",
+      "token": 6,
+      "region": "south"
+    }
+  ],
+  "ports": [
+    {
+      "edge": "-1,-1|0,-1",
+      "type": "any3to1"
+    },
+    {
+      "edge": "2,-1|2,-2",
+      "type": "ore2to1"
+    },
+    {
+      "edge": "2,0|3,-1",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-2,0|-2,1",
+      "type": "sheep2to1"
+    },
+    {
+      "edge": "-2,1|-3,2",
+      "type": "brick2to1"
+    },
+    {
+      "edge": "2,1|2,2",
+      "type": "wheat2to1"
+    },
+    {
+      "edge": "-2,3|-3,3",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-1,3|-2,4",
+      "type": "wood2to1"
+    },
+    {
+      "edge": "0,3|1,3",
+      "type": "any3to1"
+    }
+  ],
+  "robberStart": "0,1",
+  "scenario": {
+    "islandBonus": 2,
+    "home": {
+      "regions": ["main"]
+    },
+    "setupRegions": ["main"],
+    "pirateStart": "5,0"
+  },
+  "modules": ["base", "seafaring"]
+}

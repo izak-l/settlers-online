@@ -1,0 +1,338 @@
+{
+  "id": "across-the-sands-4p-fixed",
+  "name": "Across the Sands",
+  "description": "A desert splits your island. Cross it, or sail to the islands to the east: each new region is worth 2 extra VP.",
+  "version": 1,
+  "players": {
+    "min": 4,
+    "max": 4
+  },
+  "vpToWin": 14,
+  "hexes": [
+    {
+      "q": 1,
+      "r": -3,
+      "terrain": "gold",
+      "token": 10,
+      "region": "strip"
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "desert",
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "forest",
+      "token": 5,
+      "region": "main"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -3,
+      "terrain": "mountains",
+      "token": 9,
+      "region": "northeast"
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "terrain": "mountains",
+      "token": 11,
+      "region": "strip"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "desert",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "hills",
+      "token": 3,
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "pasture",
+      "token": 6,
+      "region": "main"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -2,
+      "terrain": "fields",
+      "token": 4,
+      "region": "northeast"
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "terrain": "fields",
+      "token": 8,
+      "region": "strip"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "desert",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "mountains",
+      "token": 8,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "fields",
+      "token": 10,
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "forest",
+      "token": 4,
+      "region": "main"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "terrain": "hills",
+      "token": 2,
+      "region": "northeast"
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "forest",
+      "token": 10,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "hills",
+      "token": 11,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "pasture",
+      "token": 9,
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "terrain": "hills",
+      "token": 12,
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "hills",
+      "token": 6,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "fields",
+      "token": 5,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "forest",
+      "token": 8,
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "gold",
+      "token": 5,
+      "region": "east"
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "terrain": "pasture",
+      "token": 3,
+      "region": "east"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "pasture",
+      "token": 3,
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pasture",
+      "token": 11,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "mountains",
+      "token": 4,
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "forest",
+      "token": 9,
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "mountains",
+      "token": 6,
+      "region": "southeast"
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "terrain": "fields",
+      "token": 12,
+      "region": "southeast"
+    }
+  ],
+  "ports": [
+    {
+      "edge": "3,-3|4,-3",
+      "type": "brick2to1"
+    },
+    {
+      "edge": "3,-1|4,-2",
+      "type": "any3to1"
+    },
+    {
+      "edge": "3,-1|3,0",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-1,0|0,0",
+      "type": "sheep2to1"
+    },
+    {
+      "edge": "1,1|1,2",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-2,2|-3,2",
+      "type": "wheat2to1"
+    },
+    {
+      "edge": "-2,2|-2,3",
+      "type": "ore2to1"
+    },
+    {
+      "edge": "-1,3|0,3",
+      "type": "wood2to1"
+    },
+    {
+      "edge": "-1,3|-2,4",
+      "type": "any3to1"
+    }
+  ],
+  "robberStart": "1,-2",
+  "scenario": {
+    "islandBonus": 2,
+    "home": {
+      "regions": ["main"]
+    },
+    "setupRegions": ["main"],
+    "pirateStart": "frame"
+  },
+  "modules": ["base", "seafaring"]
+}

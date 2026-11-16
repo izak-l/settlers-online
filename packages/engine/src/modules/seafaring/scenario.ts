@@ -12,8 +12,11 @@ export interface SeafaringScenario {
   home: { regions: string[] } | "setup";
   /** Starting settlements must touch one of these regions. Omitted: anywhere. */
   setupRegions?: string[];
-  /** Where the pirate starts ("q,r", a sea hex). Omitted: no pirate in this scenario. */
-  pirateStart?: HexKey;
+  /**
+   * Where the pirate starts: a sea hex ("q,r"), or "frame" (in play, starting off the board).
+   * Omitted: no pirate in this scenario.
+   */
+  pirateStart?: HexKey | "frame";
 }
 
 /** Read the scenario with defaults. Malformed fields are ignored here; the map validator rejects them. */

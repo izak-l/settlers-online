@@ -42,7 +42,7 @@ export const seafaringModule: RulesModule = {
       pirateInPlay: scenario.pirateStart !== undefined,
     };
     draft.moduleState["seafaring"] = state;
-    if (scenario.pirateStart !== undefined) {
+    if (scenario.pirateStart !== undefined && scenario.pirateStart !== "frame") {
       draft.pieces["pirate"] = { id: "pirate", type: "pirate", at: { hex: scenario.pirateStart } };
     }
   },

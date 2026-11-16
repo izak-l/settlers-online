@@ -30,6 +30,8 @@ export const HexDefSchema = z.object({
   terrain: TerrainField,
   token: TokenField.optional(),
   hidden: z.boolean().optional(),
+  /** A labelled area of the map (seafaring: islands and regions, spec 015). */
+  region: z.string().min(1).max(24).optional(),
 });
 
 export const PortDefSchema = z.object({
@@ -54,6 +56,28 @@ export const PoolsSchema = z.object({
 });
 
 const ConstraintName = z.enum(["no-adjacent-red-tokens"]);
+
+/** "q,r": a hex on this map. */
+const HexKeyString = z.string().regex(/^-?\d+,-?\d+$/, "a hex as q,r");
+const RegionName = z.string().min(1).max(24);
+
+/**
+ * Scenario settings read by the seafaring module (spec 015). Strict, so a typo fails validation
+ * instead of silently using a default.
+ */
+export const ScenarioSchema = z
+  .object({
+    /** VP for a player's first settlement in each region that isn't one of their home regions. */
+    islandBonus: z.number().int().min(0).max(2),
+    /** Home regions for everyone, or "setup": where each player places starting settlements. */
+    home: z.union([z.literal("setup"), z.object({ regions: z.array(RegionName).min(1) }).strict()]),
+    /** Starting settlements must touch one of these regions. */
+    setupRegions: z.array(RegionName).min(1),
+    /** Where the pirate starts (a sea hex). Omitted: no pirate. */
+    pirateStart: z.union([HexKeyString, z.literal("frame")]),
+  })
+  .partial()
+  .strict();
 
 /** Base-game feature switches (spec 014); omitted ones stay on. */
 export const FeaturesSchema = z
@@ -91,6 +115,7 @@ export const MapDefSchema = z.object({
   robberStart: z.string().optional(),
   constraints: z.array(ConstraintName).optional(),
   features: FeaturesSchema.optional(),
+  scenario: ScenarioSchema.optional(),
   modules: z.array(z.string()),
 });
 
@@ -106,6 +131,7 @@ export interface ResolvedHex {
   terrain: TerrainType;
   token?: number;
   hidden?: boolean;
+  region?: string;
 }
 
 /** A port with its edge resolved to a concrete hex-pair key. */
@@ -123,5 +149,6 @@ export interface ResolvedMap {
   ports: ResolvedPort[];
   robberStart?: string;
   features?: z.infer<typeof FeaturesSchema>;
+  scenario?: z.infer<typeof ScenarioSchema>;
   modules: string[];
 }

@@ -64,7 +64,9 @@ export function recordHome(draft: GameState, player: PlayerId, vertex: VertexId)
 
 /**
  * Island bonus: the scenario's bonus for each region (other than the player's home regions) where
- * they have a settlement or city. Computed from the pieces; buildings are never removed.
+ * they have a settlement or city. A building touching one of their home regions counts for none
+ * (a corner where the main island meets a strip beyond the desert is still home). Computed from
+ * the pieces; buildings are never removed.
  */
 export function islandBonusVP(state: GameState, player: PlayerId): number {
   const bonus = scenarioOf(state).islandBonus;
@@ -74,8 +76,11 @@ export function islandBonusVP(state: GameState, player: PlayerId): number {
   for (const piece of Object.values(state.pieces)) {
     if (piece.owner !== player || !("vertex" in piece.at)) continue;
     if (piece.type !== "settlement" && piece.type !== "city") continue;
-    for (const region of regionsAt(state, piece.at.vertex))
-      if (!home.has(region)) settled.add(region);
+    // A building touching one of the player's home regions counts for none (a corner where the
+    // main island meets a strip beyond the desert is still home).
+    const regions = regionsAt(state, piece.at.vertex);
+    if (regions.some((r) => home.has(r))) continue;
+    for (const region of regions) settled.add(region);
   }
   return bonus * settled.size;
 }

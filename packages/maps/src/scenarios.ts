@@ -1,0 +1,74 @@
+import { MapDefSchema, type MapDef } from "./schema";
+import newHorizons3p from "../scenarios/new-horizons/3p-fixed.json" with { type: "json" };
+import newHorizons4p from "../scenarios/new-horizons/4p-fixed.json" with { type: "json" };
+import fourIsles3p from "../scenarios/four-isles/3p-fixed.json" with { type: "json" };
+import fourIsles4p from "../scenarios/four-isles/4p-fixed.json" with { type: "json" };
+import acrossTheSands3p from "../scenarios/across-the-sands/3p-fixed.json" with { type: "json" };
+import acrossTheSands4p from "../scenarios/across-the-sands/4p-fixed.json" with { type: "json" };
+
+/** Fixed: the rulebook's map. Variable: random within its areas (spec 017). */
+export type SetupMode = "fixed" | "variable";
+/** The rulebook gives each scenario a 3-player and a 4-player map. */
+export type PlayerSize = "3p" | "4p";
+
+/**
+ * A seafaring scenario (spec 015): one rule set, several maps. Each map is a normal map JSON in
+ * `packages/maps/scenarios/<id>/<size>-<setup>.json`, built by `scenarios/build.ts`.
+ */
+export interface CatalogScenario {
+  id: string;
+  /** Rulebook order, for listing. */
+  order: number;
+  name: string;
+  description: string;
+  vpToWin: number;
+  maps: Partial<Record<`${PlayerSize}-${SetupMode}`, MapDef>>;
+}
+
+function scenario(order: number, ...raws: unknown[]): CatalogScenario {
+  const defs = raws.map((raw) => MapDefSchema.parse(raw));
+  const first = defs[0]!;
+  const id = first.id.replace(/-(3p|4p)-(fixed|variable)$/, "");
+  const maps: CatalogScenario["maps"] = {};
+  for (const def of defs) {
+    const variant = def.id.slice(id.length + 1) as keyof CatalogScenario["maps"];
+    if (!def.name || !def.description) throw new Error(`Scenario map ${def.id} needs a name`);
+    maps[variant] = def;
+  }
+  return {
+    id,
+    order,
+    name: first.name!,
+    description: first.description!,
+    vpToWin: first.vpToWin,
+    maps,
+  };
+}
+
+/** Every seafaring scenario, in rulebook order. Ids never change once shipped. */
+export const SCENARIO_CATALOG: readonly CatalogScenario[] = [
+  scenario(1, newHorizons3p, newHorizons4p),
+  scenario(2, fourIsles3p, fourIsles4p),
+  scenario(4, acrossTheSands3p, acrossTheSands4p),
+];
+
+export function findScenario(id: string): CatalogScenario | undefined {
+  return SCENARIO_CATALOG.find((s) => s.id === id);
+}
+
+/** 1–3 seats play the 3-player map; 4 seats the 4-player map. */
+export const sizeForSeats = (seats: number): PlayerSize => (seats <= 3 ? "3p" : "4p");
+
+/** The map a lobby with `seats` players gets for a scenario and setup mode, if there is one. */
+export function scenarioMap(id: string, seats: number, setup: SetupMode): MapDef | undefined {
+  return findScenario(id)?.maps[`${sizeForSeats(seats)}-${setup}`];
+}
+
+/** Which scenario (and setup mode) a scenario map id belongs to. */
+export function scenarioOfMap(
+  mapId: string,
+): { scenario: CatalogScenario; setup: SetupMode } | undefined {
+  const m = /^(.*)-(3p|4p)-(fixed|variable)$/.exec(mapId);
+  const scenario = m ? findScenario(m[1]!) : undefined;
+  return scenario ? { scenario, setup: m![3] as SetupMode } : undefined;
+}

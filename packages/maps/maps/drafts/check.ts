@@ -23,17 +23,20 @@ const files = readdirSync(here)
 function poolErrors(def: MapDef): string[] {
   const errors: string[] = [];
   const poolLand = def.hexes.filter((h) => h.terrain === "pool:land");
-  const land = def.pools?.land ?? {};
+  const land = def.pools?.terrain?.["land"] ?? {};
   const landTotal = Object.values(land).reduce((a, b) => a + (b ?? 0), 0);
   if (landTotal !== poolLand.length) {
     errors.push(`land pool has ${landTotal} tiles, map has ${poolLand.length} pool:land hexes`);
   }
   const tokenHexes = def.hexes.filter((h) => h.token === "pool:tokens").length;
   const needed = tokenHexes - (land.desert ?? 0);
-  const tokens = def.pools?.tokens?.length ?? 0;
+  const tokens = def.pools?.tokens?.["tokens"]?.length ?? 0;
   if (tokens !== needed) errors.push(`token pool has ${tokens} tokens, map needs ${needed}`);
   const portEntries = (def.ports ?? []).filter((p) => p.type === "pool:ports").length;
-  const portTotal = Object.values(def.pools?.ports ?? {}).reduce((a, b) => a + (b ?? 0), 0);
+  const portTotal = Object.values(def.pools?.ports?.["ports"] ?? {}).reduce(
+    (a, b) => a + (b ?? 0),
+    0,
+  );
   if (portTotal !== portEntries) {
     errors.push(`port pool has ${portTotal} ports, map has ${portEntries} pool:ports entries`);
   }

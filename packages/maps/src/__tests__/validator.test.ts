@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { join, dirname } from "path";
+import { seedFromString } from "@settlers/engine";
+import { generateMap } from "../generator";
 import { validateMapDef } from "../validator";
 import { MAP_LIMITS, MapDefSchema, type MapDef } from "../schema";
 import { BASE_4P } from "../definitions";
@@ -26,15 +28,14 @@ describe("validateMapDef: token accounting", () => {
   });
 
   it("rejects a token pool one short", () => {
-    const def = {
-      ...BASE_4P,
-      pools: { ...BASE_4P.pools, tokens: BASE_4P.pools!.tokens!.slice(1) },
-    };
+    const tokens = BASE_4P.pools!.tokens!["tokens"]!;
+    const def = { ...BASE_4P, pools: { ...BASE_4P.pools, tokens: { tokens: tokens.slice(1) } } };
     expect(codes(def)).toContain("POOL_SIZE");
   });
 
   it("rejects a token pool one long", () => {
-    const def = { ...BASE_4P, pools: { ...BASE_4P.pools, tokens: [...BASE_4P.pools!.tokens!, 5] } };
+    const tokens = BASE_4P.pools!.tokens!["tokens"]!;
+    const def = { ...BASE_4P, pools: { ...BASE_4P.pools, tokens: { tokens: [...tokens, 5] } } };
     expect(codes(def)).toContain("POOL_SIZE");
   });
 
@@ -43,9 +44,68 @@ describe("validateMapDef: token accounting", () => {
     const hexes = BASE_4P.hexes.slice();
     const i = hexes.findIndex((h) => h.terrain === "pool:land");
     hexes[i] = { ...hexes[i]!, terrain: "desert" };
-    const land = { ...BASE_4P.pools!.land!, desert: 0 };
-    const def: MapDef = { ...BASE_4P, hexes, pools: { ...BASE_4P.pools, land } };
+    const land = { ...BASE_4P.pools!.terrain!["land"]!, desert: 0 };
+    const def: MapDef = { ...BASE_4P, hexes, pools: { ...BASE_4P.pools, terrain: { land } } };
     expect(validateMapDef(def)).toEqual({ ok: true, errors: [] });
+  });
+});
+
+describe("named pools (spec 017)", () => {
+  // Two areas: the base map's centre ring is its own pool with its own tokens.
+  const ring = new Set(["1,0", "1,-1", "0,-1", "-1,0", "-1,1", "0,1"]);
+  function twoPools(): MapDef {
+    const centre = BASE_4P.hexes.filter((h) => ring.has(`${h.q},${h.r}`));
+    const hexes = BASE_4P.hexes.map((h) =>
+      ring.has(`${h.q},${h.r}`) ? { ...h, terrain: "pool:inner", token: "pool:inner" } : h,
+    );
+    const land = { ...BASE_4P.pools!.terrain!["land"]! };
+    land.forest! -= 2;
+    land.pasture! -= 2;
+    land.fields! -= 2;
+    const tokens = [...BASE_4P.pools!.tokens!["tokens"]!];
+    const inner = [6, 8, 4, 5, 9, 10];
+    for (const t of inner) tokens.splice(tokens.indexOf(t), 1);
+    expect(centre).toHaveLength(6);
+    return {
+      ...BASE_4P,
+      hexes,
+      pools: {
+        ...BASE_4P.pools,
+        terrain: { land, inner: { forest: 2, pasture: 2, fields: 2 } },
+        tokens: { tokens, inner },
+      },
+    };
+  }
+
+  it("counts each pool against its own hexes", () => {
+    expect(validateMapDef(twoPools())).toEqual({ ok: true, errors: [] });
+    const short = twoPools();
+    short.pools!.tokens!["inner"] = [6, 8];
+    expect(codes(short)).toContain("POOL_SIZE");
+    const missing = twoPools();
+    delete missing.pools!.terrain!["inner"];
+    expect(codes(missing)).toContain("POOL_MISSING");
+  });
+
+  it("draws each pool only into its own hexes, and keeps the constraints", () => {
+    const def = { ...twoPools(), constraints: ["no-low-tokens-on-forest-pasture" as const] };
+    for (let i = 0; i < 200; i++) {
+      const { map } = generateMap(def, seedFromString(`pools-${i}`));
+      for (const h of map.hexes) {
+        if (ring.has(`${h.q},${h.r}`)) {
+          expect(["forest", "pasture", "fields"]).toContain(h.terrain);
+          expect([6, 8, 4, 5, 9, 10]).toContain(h.token);
+        }
+        if (h.terrain === "forest" || h.terrain === "pasture")
+          expect([2, 3, 11, 12]).not.toContain(h.token);
+      }
+    }
+  });
+
+  it("starts the robber on the hex with a given token", () => {
+    const { map } = generateMap({ ...BASE_4P, robberStart: "token:12" }, seedFromString("r"));
+    const hex = map.hexes.find((h) => h.token === 12)!;
+    expect(map.robberStart).toBe(`${hex.q},${hex.r}`);
   });
 });
 

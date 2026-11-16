@@ -215,22 +215,28 @@
     }
   ],
   "pools": {
-    "land": {
-      "forest": 4,
-      "pasture": 4,
-      "fields": 4,
-      "hills": 3,
-      "mountains": 3,
-      "desert": 1
+    "terrain": {
+      "land": {
+        "forest": 4,
+        "pasture": 4,
+        "fields": 4,
+        "hills": 3,
+        "mountains": 3,
+        "desert": 1
+      }
     },
-    "tokens": [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12],
+    "tokens": {
+      "tokens": [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
+    },
     "ports": {
-      "any3to1": 4,
-      "wood2to1": 1,
-      "brick2to1": 1,
-      "sheep2to1": 1,
-      "wheat2to1": 1,
-      "ore2to1": 1
+      "ports": {
+        "any3to1": 4,
+        "wood2to1": 1,
+        "brick2to1": 1,
+        "sheep2to1": 1,
+        "wheat2to1": 1,
+        "ore2to1": 1
+      }
     }
   },
   "ports": [

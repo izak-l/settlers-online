@@ -27,54 +27,77 @@ export function validateMapDef(def: MapDef): ValidationResult {
     return { ok: false, errors };
   }
 
-  // Pool size checks
-  const poolLandCount = def.hexes.filter((h) => String(h.terrain) === "pool:land").length;
-  if (poolLandCount > 0 && def.pools?.land) {
-    const poolSize = Object.values(def.pools.land).reduce((a: number, b) => a + (b ?? 0), 0);
-    if (poolSize !== poolLandCount) {
-      errors.push(
-        err(
-          "POOL_SIZE",
-          `pools.land has ${poolSize} tiles but map has ${poolLandCount} pool:land hexes`,
-        ),
-      );
-    }
-  }
-
-  // A desert never gets a token, whether it is fixed on the map or drawn from the land pool.
-  const tokenSlots = def.hexes.filter((h) => h.token === "pool:tokens");
-  const fixedDeserts = tokenSlots.filter((h) => h.terrain === "desert").length;
-  const poolDeserts = tokenSlots.some((h) => h.terrain === "pool:land")
-    ? (def.pools?.land?.desert ?? 0)
-    : 0;
-  const poolTokenCount = tokenSlots.length - fixedDeserts - poolDeserts;
-  if (poolTokenCount > 0 && def.pools?.tokens) {
-    if (def.pools.tokens.length !== poolTokenCount) {
-      errors.push(
-        err(
-          "POOL_SIZE",
-          `pools.tokens has ${def.pools.tokens.length} tokens but map needs ${poolTokenCount}`,
-        ),
-      );
-    }
-  }
-
+  errors.push(...checkPools(def));
   errors.push(...checkScenario(def));
 
-  const poolPortCount = (def.ports ?? []).filter((p) => p.type === "pool:ports").length;
-  if (poolPortCount > 0 && def.pools?.ports) {
-    const portPoolSize = Object.values(def.pools.ports).reduce((a: number, b) => a + (b ?? 0), 0);
-    if (portPoolSize !== poolPortCount) {
+  return { ok: errors.length === 0, errors };
+}
+
+const poolOf = (v: unknown): string | undefined =>
+  typeof v === "string" && v.startsWith("pool:") ? v.slice("pool:".length) : undefined;
+const total = (counts: Record<string, number | undefined>) =>
+  Object.values(counts).reduce((a: number, b) => a + (b ?? 0), 0);
+
+/**
+ * Every named pool holds exactly as many items as the hexes (or ports) that draw from it, and
+ * every pool a hex names exists (spec 017). A desert never takes a token, whether fixed on the map
+ * or drawn from a terrain pool; so a terrain pool's deserts are taken off the token pool its hexes
+ * draw from, which must then be a single token pool.
+ */
+function checkPools(def: MapDef): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const pools = def.pools ?? {};
+
+  for (const name of new Set(def.hexes.flatMap((h) => poolOf(h.terrain) ?? []))) {
+    const slots = def.hexes.filter((h) => poolOf(h.terrain) === name).length;
+    const pool = pools.terrain?.[name];
+    if (!pool) errors.push(err("POOL_MISSING", `No terrain pool "${name}"`));
+    else if (total(pool) !== slots)
       errors.push(
-        err(
-          "POOL_SIZE",
-          `pools.ports has ${portPoolSize} ports but map has ${poolPortCount} pool:ports port entries`,
-        ),
+        err("POOL_SIZE", `Terrain pool ${name} has ${total(pool)} tiles but ${slots} hexes use it`),
       );
-    }
   }
 
-  return { ok: errors.length === 0, errors };
+  const needed = new Map<string, number>();
+  for (const h of def.hexes) {
+    const name = poolOf(h.token);
+    if (!name || h.terrain === "desert") continue;
+    needed.set(name, (needed.get(name) ?? 0) + 1);
+  }
+  for (const [terrainPool, counts] of Object.entries(pools.terrain ?? {})) {
+    const deserts = counts.desert ?? 0;
+    if (deserts === 0) continue;
+    const tokenPools = new Set(
+      def.hexes.filter((h) => poolOf(h.terrain) === terrainPool).map((h) => poolOf(h.token)),
+    );
+    if (tokenPools.size > 1) {
+      errors.push(
+        err("POOL_MIXED", `Hexes of terrain pool ${terrainPool} draw from several token pools`),
+      );
+      continue;
+    }
+    const [tokenPool] = [...tokenPools];
+    if (tokenPool) needed.set(tokenPool, (needed.get(tokenPool) ?? 0) - deserts);
+  }
+  for (const [name, need] of needed) {
+    const pool = pools.tokens?.[name];
+    if (!pool) errors.push(err("POOL_MISSING", `No token pool "${name}"`));
+    else if (pool.length !== need)
+      errors.push(
+        err("POOL_SIZE", `Token pool ${name} has ${pool.length} tokens but the map needs ${need}`),
+      );
+  }
+
+  for (const name of new Set((def.ports ?? []).flatMap((p) => poolOf(p.type) ?? []))) {
+    const slots = (def.ports ?? []).filter((p) => poolOf(p.type) === name).length;
+    const pool = pools.ports?.[name];
+    if (!pool) errors.push(err("POOL_MISSING", `No port pool "${name}"`));
+    else if (total(pool) !== slots)
+      errors.push(
+        err("POOL_SIZE", `Port pool ${name} has ${total(pool)} ports but ${slots} ports use it`),
+      );
+  }
+  return errors;
 }
 
 const isHexKey = (s: string) => /^-?\d+,-?\d+$/.test(s);

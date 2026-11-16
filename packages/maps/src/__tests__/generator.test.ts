@@ -134,6 +134,6 @@ describe("port placement", () => {
     const { map } = generateMap(def, seedFromString("port-types"));
     const counts: Record<string, number> = {};
     for (const p of map.ports) counts[p.type] = (counts[p.type] ?? 0) + 1;
-    expect(counts).toEqual(def.pools!.ports);
+    expect(counts).toEqual(def.pools!.ports!["ports"]);
   });
 });

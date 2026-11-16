@@ -49,13 +49,29 @@ export const PortPoolSchema = z.record(
   z.number().int().nonnegative(),
 );
 
+const PoolName = z.string().regex(/^[a-z][a-z0-9-]{0,23}$/, "a pool name: lowercase, digits, -");
+
+/**
+ * Named pools (spec 017). A hex's `"pool:<name>"` terrain draws from `terrain[name]`, its
+ * `"pool:<name>"` token from `tokens[name]`, and a port's `"pool:<name>"` type from `ports[name]`.
+ * Each pool is drawn only into its own hexes, so a map can have a main-island pool and an
+ * islands pool. Most maps use one of each: `land`, `tokens` and `ports`.
+ */
 export const PoolsSchema = z.object({
-  land: LandPoolSchema.optional(),
-  tokens: z.array(z.number().int().min(2).max(12)).optional(),
-  ports: PortPoolSchema.optional(),
+  terrain: z.record(PoolName, LandPoolSchema).optional(),
+  tokens: z.record(PoolName, z.array(z.number().int().min(2).max(12))).optional(),
+  ports: z.record(PoolName, PortPoolSchema).optional(),
 });
 
-const ConstraintName = z.enum(["no-adjacent-red-tokens"]);
+/**
+ * Rules the generator keeps when it draws tokens (it reshuffles until they hold):
+ * no 6/8 next to each other; no 6/8 on gold; no 2, 3, 11 or 12 on forest or pasture.
+ */
+const ConstraintName = z.enum([
+  "no-adjacent-red-tokens",
+  "no-red-on-gold",
+  "no-low-tokens-on-forest-pasture",
+]);
 
 /** "q,r": a hex on this map. */
 const HexKeyString = z.string().regex(/^-?\d+,-?\d+$/, "a hex as q,r");

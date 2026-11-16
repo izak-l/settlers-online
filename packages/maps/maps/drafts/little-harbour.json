@@ -3,77 +3,317 @@
   "name": "Little Harbour",
   "description": "A small island curled round a sheltered bay. Quick games for one to three.",
   "version": 1,
-  "players": { "min": 1, "max": 3 },
+  "players": {
+    "min": 1,
+    "max": 3
+  },
   "vpToWin": 8,
   "hexes": [
-    { "q": 1, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 3, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 4, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 1, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 3, "r": 1, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -1, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 3, "r": 2, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": -1, "r": 3, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 2, "r": 3, "terrain": "pool:land", "token": "pool:tokens" },
-    { "q": 0, "r": 0, "terrain": "sea" },
-    { "q": 5, "r": 0, "terrain": "sea" },
-    { "q": 4, "r": 1, "terrain": "sea" },
-    { "q": 5, "r": 1, "terrain": "sea" },
-    { "q": 1, "r": 2, "terrain": "sea" },
-    { "q": 4, "r": 2, "terrain": "sea" },
-    { "q": 0, "r": 3, "terrain": "sea" },
-    { "q": 1, "r": 3, "terrain": "sea" },
-    { "q": 3, "r": 3, "terrain": "sea" },
-    { "q": 4, "r": 3, "terrain": "sea" },
-    { "q": 0, "r": -1, "terrain": "sea" },
-    { "q": 1, "r": -1, "terrain": "sea" },
-    { "q": 2, "r": -1, "terrain": "sea" },
-    { "q": 3, "r": -1, "terrain": "sea" },
-    { "q": 4, "r": -1, "terrain": "sea" },
-    { "q": 5, "r": -1, "terrain": "sea" },
-    { "q": 6, "r": -1, "terrain": "sea" },
-    { "q": 7, "r": -1, "terrain": "sea" },
-    { "q": -1, "r": 0, "terrain": "sea" },
-    { "q": 6, "r": 0, "terrain": "sea" },
-    { "q": -1, "r": 1, "terrain": "sea" },
-    { "q": 6, "r": 1, "terrain": "sea" },
-    { "q": -2, "r": 2, "terrain": "sea" },
-    { "q": 5, "r": 2, "terrain": "sea" },
-    { "q": -2, "r": 3, "terrain": "sea" },
-    { "q": 5, "r": 3, "terrain": "sea" },
-    { "q": -3, "r": 4, "terrain": "sea" },
-    { "q": -2, "r": 4, "terrain": "sea" },
-    { "q": -1, "r": 4, "terrain": "sea" },
-    { "q": 0, "r": 4, "terrain": "sea" },
-    { "q": 1, "r": 4, "terrain": "sea" },
-    { "q": 2, "r": 4, "terrain": "sea" },
-    { "q": 3, "r": 4, "terrain": "sea" },
-    { "q": 4, "r": 4, "terrain": "sea" }
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "terrain": "pool:land",
+      "token": "pool:tokens"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 7,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": -3,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 4,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 4,
+      "terrain": "sea"
+    }
   ],
   "pools": {
-    "land": { "forest": 3, "pasture": 3, "fields": 3, "hills": 2, "mountains": 2, "desert": 1 },
-    "tokens": [2, 3, 4, 4, 5, 5, 6, 8, 9, 10, 10, 11, 12],
+    "terrain": {
+      "land": {
+        "forest": 3,
+        "pasture": 3,
+        "fields": 3,
+        "hills": 2,
+        "mountains": 2,
+        "desert": 1
+      }
+    },
+    "tokens": {
+      "tokens": [2, 3, 4, 4, 5, 5, 6, 8, 9, 10, 10, 11, 12]
+    },
     "ports": {
-      "any3to1": 1,
-      "wood2to1": 1,
-      "brick2to1": 1,
-      "sheep2to1": 1,
-      "wheat2to1": 1,
-      "ore2to1": 1
+      "ports": {
+        "any3to1": 1,
+        "wood2to1": 1,
+        "brick2to1": 1,
+        "sheep2to1": 1,
+        "wheat2to1": 1,
+        "ore2to1": 1
+      }
     }
   },
   "ports": [
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" },
-    { "edge": "auto", "type": "pool:ports" }
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "auto",
+      "type": "pool:ports"
+    }
   ],
   "robberStart": "desert",
   "constraints": ["no-adjacent-red-tokens"],

@@ -25,7 +25,10 @@ describe("sandbox map options", () => {
         "drafts/later.json": draft({ id: "later", modules: ["base", "knights-and-cities"] }),
         "drafts/small.json": draft({ id: "small", players: { min: 1, max: 2 } }),
         "drafts/broken.json": { id: "broken", hexes: "nope" },
-        "drafts/short.json": draft({ id: "short", pools: { ...BASE_4P.pools, tokens: [5] } }),
+        "drafts/short.json": draft({
+          id: "short",
+          pools: { ...BASE_4P.pools, tokens: { tokens: [5] } },
+        }),
       },
       4,
     );

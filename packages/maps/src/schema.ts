@@ -16,8 +16,11 @@ const TerrainField = z.union([TerrainValue, z.string().startsWith("pool:")]);
 
 const TokenField = z.union([z.number().int().min(2).max(12), z.string().startsWith("pool:")]);
 
-/** Limits for maps people upload (M8b); every built-in map fits well inside them. */
-export const MAP_LIMITS = { hexes: 200, coord: 15, name: 40, description: 200 } as const;
+/**
+ * Limits for maps people upload (M8b), counting sea hexes. The largest draft (an island map)
+ * has 408 hexes and reaches coordinate 25.
+ */
+export const MAP_LIMITS = { hexes: 600, coord: 32, name: 40, description: 200 } as const;
 
 const Coord = z.number().int().min(-MAP_LIMITS.coord).max(MAP_LIMITS.coord);
 

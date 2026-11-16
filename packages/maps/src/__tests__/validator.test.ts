@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { join, dirname } from "path";
 import { validateMapDef } from "../validator";
-import { MapDefSchema, type MapDef } from "../schema";
+import { MAP_LIMITS, MapDefSchema, type MapDef } from "../schema";
 import { BASE_4P } from "../definitions";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -56,23 +56,34 @@ describe("MapDefSchema: size limits for uploaded maps", () => {
     expect(ok({ ...BASE_4P, name: "Isle", description: "A small isle." })).toBe(true);
   });
 
-  it("rejects more than 200 hexes", () => {
-    const hexes = Array.from({ length: 201 }, (_, i) => ({
-      q: (i % 15) - 7,
-      r: Math.floor(i / 15) - 7,
+  it("rejects more than MAP_LIMITS.hexes hexes", () => {
+    const hexes = Array.from({ length: MAP_LIMITS.hexes + 1 }, (_, i) => ({
+      q: (i % 30) - 15,
+      r: Math.floor(i / 30) - 15,
       terrain: "sea",
     }));
     expect(ok({ ...BASE_4P, hexes })).toBe(false);
   });
 
-  it("rejects coordinates beyond ±15", () => {
-    expect(ok({ ...BASE_4P, hexes: [...BASE_4P.hexes, { q: 16, r: 0, terrain: "sea" }] })).toBe(
-      false,
-    );
+  it("rejects coordinates beyond ±MAP_LIMITS.coord", () => {
+    expect(
+      ok({
+        ...BASE_4P,
+        hexes: [...BASE_4P.hexes, { q: MAP_LIMITS.coord + 1, r: 0, terrain: "sea" }],
+      }),
+    ).toBe(false);
   });
 
   it("rejects the same hex twice", () => {
     expect(ok({ ...BASE_4P, hexes: [...BASE_4P.hexes, BASE_4P.hexes[0]] })).toBe(false);
+  });
+
+  it("accepts every draft, island maps included", () => {
+    const dir = join(here, "../../maps/drafts");
+    for (const f of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+      const raw = JSON.parse(readFileSync(join(dir, f), "utf-8")) as unknown;
+      expect(ok(raw), f).toBe(true);
+    }
   });
 
   it("rejects a long name or description", () => {

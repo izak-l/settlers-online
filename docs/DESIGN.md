@@ -430,6 +430,12 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Motion** (`cards/handDiff.ts`, `useCardMotion.ts`): comparing snapshots gives the cards that moved in or out and where from. The partner comes from the new `STOLE` / `TRADED` events (their `data` names both players); otherwise players whose totals dropped (Monopoly) or rose; otherwise the bank. Cards fly from (or to) that player's row, or from above for the bank. Under reduced motion they just appear with an outline.
 - **Icons:** `art/icons.tsx` holds original resource and dev card icons used on the cards.
 
+**As built (M7c: art)**
+
+- All art is our own inline SVG and CSS; there are no image files, icon sets or web fonts. `art/board.tsx` draws each terrain as a radial gradient (`--t-<terrain>` / `--t-<terrain>-light`) plus a few flat shapes around the centre: pines, sheep and grass, wheat rows, clay mounds with bricks, snow-capped peaks, dunes and sea waves. A sandy rim under the land makes the coast one shape. Tokens are cream discs with a shadow (6 and 8 larger and red). Ports are a two-plank pier to a sign with the rate and the resource icon ("?" for 3:1). Roads have an outline and a light top edge; settlements and cities are shaded buildings; the robber is a hooded figure with a ground shadow. Decoration never takes pointer events.
+- `art/icons.tsx` icons are reused on cards, cost chips, port signs, award badges (road and knight) and in the log, which puts an icon before each resource word. Dice show pip faces.
+- Palette: warm parchment light theme and slate dark theme as CSS tokens in `styles.css`; panels have a soft shadow; the current player's row has an edge in their seat colour.
+
 ## 11. Testing strategy
 
 The engine is tested hardest, because a rules bug ruins a game and the engine is pure and easy to test.

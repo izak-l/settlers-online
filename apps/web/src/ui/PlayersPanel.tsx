@@ -1,3 +1,4 @@
+import { Icon } from "../art/icons";
 import { CardFan } from "../cards/CardFan";
 import type { Snapshot } from "../game/LocalGame";
 import type { SeatInfo } from "../game/seats";
@@ -22,6 +23,7 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
               key={s.id}
               data-seat={s.id}
               className={s.id === snap.view.turn.activePlayer ? "current" : ""}
+              style={{ "--seat": s.color } as React.CSSProperties}
             >
               <span className="swatch" style={{ background: s.color }} />
               <span className="name">
@@ -37,8 +39,16 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
                 </span>
                 {(base.longestRoad === s.id || base.largestArmy === s.id) && (
                   <span className="awards">
-                    {base.longestRoad === s.id && <span className="award">Longest Road</span>}
-                    {base.largestArmy === s.id && <span className="award">Largest Army</span>}
+                    {base.longestRoad === s.id && (
+                      <span className="award">
+                        <Icon name="roadBuilding" size={12} /> Longest Road
+                      </span>
+                    )}
+                    {base.largestArmy === s.id && (
+                      <span className="award">
+                        <Icon name="knight" size={12} /> Largest Army
+                      </span>
+                    )}
                   </span>
                 )}
               </span>

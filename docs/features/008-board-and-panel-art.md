@@ -32,10 +32,10 @@ None.
 
 ## Server/UI changes
 
-- `apps/web/src/art/` (new): `icons.tsx` (resource, dev card, piece and award icons as small React components), `terrain.tsx` (the `<defs>` patterns and symbols for each terrain, rendered once per board), `pieces.tsx` (road, settlement, city, robber shapes).
-- `Board.tsx` uses them; port and token drawing move into small components in `board/`.
+- `apps/web/src/art/` (new): `icons.tsx` (resource and dev card icons, also used for awards) and `board.tsx` (terrain gradients and per-hex illustrations, tokens, roads, buildings, the robber).
+- `Board.tsx` uses them (ports are drawn in `Board.tsx` from the shared icons).
 - `ActionBar.tsx` (pip dice, icon costs), `PlayersPanel.tsx`, `GameLog.tsx` (resource icons inline), `styles.css` (palette tokens, panels, buttons).
-- Performance: patterns are defined once in `<defs>` and referenced by each hex, so the board stays one light SVG. Checked by eye at 4× zoom on a laptop.
+- Performance: gradients are defined once in `<defs>`; each hex adds a handful of small shapes, so the board stays one light SVG.
 
 ## Test plan
 
@@ -48,4 +48,4 @@ None.
 
 ## Status
 
-Draft
+Shipped

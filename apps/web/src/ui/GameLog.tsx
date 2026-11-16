@@ -1,24 +1,38 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CHAT_MAX_LENGTH, type ChatMessage } from "@settlers/protocol";
 import type { GameClient, Snapshot } from "../game/LocalGame";
+import { Icon } from "../art/icons";
 import { errorText, type SeatInfo } from "../game/seats";
 
 const SHOWN = 200;
 
-/** Engine log text names seats ("p2"); show each as the player's name in their colour. */
+const RESOURCE_WORD = /\b(wood|brick|sheep|wheat|ore)\b/;
+
+/**
+ * Engine log text names seats ("p2"); show each as the player's name in their colour, and put a
+ * small icon before each resource word.
+ */
 function Named({ text, seats }: { text: string; seats: SeatInfo[] }) {
-  const parts = text.split(/\b(p\d+)\b/);
+  const parts = text.split(new RegExp(`\\b(p\\d+)\\b|${RESOURCE_WORD.source}`));
   return (
     <>
       {parts.map((part, i) => {
-        const seat = i % 2 === 1 ? seats.find((s) => s.id === part) : undefined;
-        return seat ? (
-          <strong key={i} style={{ color: seat.color }}>
-            {seat.name}
-          </strong>
-        ) : (
-          part
-        );
+        if (!part) return null;
+        const seat = /^p\d+$/.test(part) ? seats.find((s) => s.id === part) : undefined;
+        if (seat)
+          return (
+            <strong key={i} style={{ color: seat.color }}>
+              {seat.name}
+            </strong>
+          );
+        if (/^(wood|brick|sheep|wheat|ore)$/.test(part))
+          return (
+            <span key={i} className={`log-res res-${part}`}>
+              <Icon name={part} size={13} />
+              {part}
+            </span>
+          );
+        return part;
       })}
     </>
   );

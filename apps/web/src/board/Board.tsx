@@ -12,6 +12,8 @@ import {
   vertexPoint,
   type Point,
 } from "./geometry";
+import { Icon } from "../art/icons";
+import { Building, RobberFigure, Road, TerrainArt, TerrainDefs, Token } from "../art/board";
 import { BoardControls } from "./BoardControls";
 import { useViewport } from "./useViewport";
 import { hitRadius, type Box } from "./viewport";
@@ -39,28 +41,6 @@ function targets(snap: Snapshot, mode: BuildMode): ActionSpec[] {
   if (kind === "PLACE_FREE_ROAD") return snap.legal.filter((a) => a.type === "PLACE_FREE_ROAD");
   if (kind === "MAIN" && mode) return snap.legal.filter((a) => a.type === MODE_ACTION[mode]);
   return [];
-}
-
-function pips(token: number): number {
-  return 6 - Math.abs(7 - token);
-}
-
-const PORT_LABEL: Record<string, string> = {
-  any3to1: "3:1",
-  wood2to1: "2:1 wood",
-  brick2to1: "2:1 brick",
-  sheep2to1: "2:1 sheep",
-  wheat2to1: "2:1 wheat",
-  ore2to1: "2:1 ore",
-};
-
-function House({ at, color, city }: { at: Point; color: string; city: boolean }) {
-  const [x, y] = at;
-  const s = city ? 15 : 11;
-  const d = city
-    ? `M${x - s},${y + s * 0.7} V${y - s * 0.1} L${x - s * 0.45},${y - s * 0.7} L${x + s * 0.1},${y - s * 0.1} H${x + s} V${y + s * 0.7} Z`
-    : `M${x - s},${y + s * 0.8} V${y - s * 0.1} L${x},${y - s} L${x + s},${y - s * 0.1} V${y + s * 0.8} Z`;
-  return <path d={d} fill={color} stroke="var(--piece-outline)" strokeWidth={2} />;
 }
 
 const FRESH_MS = 700;
@@ -154,51 +134,92 @@ export function Board({ snap, seats, mode, onAction }: Props) {
         role="img"
         aria-label="Game board"
       >
-        {/* Hexes */}
-        {view.map.hexes.map((h) => {
-          const [cx, cy] = hexCenter(h.q, h.r);
-          return (
+        <TerrainDefs />
+
+        {/* Sea hexes, then a sandy rim under the land so the coast reads as one shape */}
+        {view.map.hexes
+          .filter((h) => h.terrain === "sea")
+          .map((h) => (
             <g key={`${h.q},${h.r}`}>
               <polygon
-                points={hexPolygon(h.q, h.r, HEX_SIZE, 1.5)}
-                fill={`var(--t-${h.terrain}, #ccc)`}
-                className={h.terrain === "sea" ? "hex sea" : "hex"}
+                points={hexPolygon(h.q, h.r, HEX_SIZE, 1)}
+                fill="url(#tg-sea)"
+                className="hex sea"
               />
-              {h.token !== undefined && (
-                <g className={pips(h.token) === 5 ? "token hot" : "token"}>
-                  <circle cx={cx} cy={cy} r={19} />
-                  <text x={cx} y={cy - 2} textAnchor="middle" dominantBaseline="middle">
-                    {h.token}
-                  </text>
-                  {Array.from({ length: pips(h.token) }, (_, i) => (
-                    <circle
-                      key={i}
-                      className="pip"
-                      cx={cx + (i - (pips(h.token!) - 1) / 2) * 4.5}
-                      cy={cy + 11}
-                      r={1.6}
-                    />
-                  ))}
-                </g>
-              )}
+              <TerrainArt terrain="sea" at={hexCenter(h.q, h.r)} />
             </g>
-          );
-        })}
+          ))}
+        {view.map.hexes
+          .filter((h) => h.terrain !== "sea")
+          .map((h) => (
+            <polygon
+              key={`rim-${h.q},${h.r}`}
+              points={hexPolygon(h.q, h.r, HEX_SIZE + 7)}
+              className="coast"
+            />
+          ))}
 
-        {/* Ports, nudged out toward the sea */}
+        {/* Land */}
+        {view.map.hexes
+          .filter((h) => h.terrain !== "sea")
+          .map((h) => {
+            const c = hexCenter(h.q, h.r);
+            return (
+              <g key={`${h.q},${h.r}`}>
+                <polygon
+                  points={hexPolygon(h.q, h.r, HEX_SIZE, 1.5)}
+                  fill={`url(#tg-${h.terrain})`}
+                  className="hex"
+                />
+                <TerrainArt terrain={h.terrain} at={c} />
+                {h.token !== undefined && <Token token={h.token} at={c} />}
+              </g>
+            );
+          })}
+
+        {/* Ports: a pier from the coast edge out to a sign with the rate and resource */}
         {view.map.ports.map((port) => {
           const [mx, my] = edgeMidpoint(port.edgeId);
           const land = port.edgeId.split("|").find((k) => landKeys.has(k)) ?? "0,0";
           const [lq, lr] = land.split(",").map(Number);
           const [lx, ly] = hexCenter(lq!, lr!);
-          const px = mx + (mx - lx) * 0.55;
-          const py = my + (my - ly) * 0.55;
+          const px = mx + (mx - lx) * 0.6;
+          const py = my + (my - ly) * 0.6;
+          const [[ax, ay], [bx, by]] = edgeEndpoints(graph, port.edgeId);
+          const resource = port.type.endsWith("2to1") ? port.type.slice(0, -4) : null;
+          const rate = resource ? "2:1" : "3:1";
+          const label = resource ? `Port: 2 ${resource} for 1` : "Port: 3 of a kind for 1";
           return (
-            <g key={port.edgeId} className="port">
-              <line x1={mx} y1={my} x2={px} y2={py} />
-              <rect x={px - 26} y={py - 10} width={52} height={20} rx={6} />
-              <text x={px} y={py + 1} textAnchor="middle" dominantBaseline="middle">
-                {PORT_LABEL[port.type] ?? port.type}
+            <g key={port.edgeId} className="port" role="img" aria-label={label}>
+              <title>{label}</title>
+              <line className="pier" x1={ax} y1={ay} x2={px} y2={py} />
+              <line className="pier" x1={bx} y1={by} x2={px} y2={py} />
+              <circle className="port-sign" cx={px} cy={py} r={17} />
+              {resource ? (
+                <g className={`port-icon res-${resource}`}>
+                  <svg x={px - 8} y={py - 15} width={16} height={16} viewBox="0 0 24 24">
+                    <Icon name={resource} />
+                  </svg>
+                </g>
+              ) : (
+                <text
+                  className="port-any"
+                  x={px}
+                  y={py - 6}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                >
+                  ?
+                </text>
+              )}
+              <text
+                className="port-rate"
+                x={px}
+                y={py + 8}
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {rate}
               </text>
             </g>
           );
@@ -211,8 +232,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, at(p, "edge")!);
             return (
               <g key={p.id} className={fresh.has(pieceKey(p)) ? "piece fresh" : "piece"}>
-                <line className="road-outline" x1={x1} y1={y1} x2={x2} y2={y2} />
-                <line className="road" x1={x1} y1={y1} x2={x2} y2={y2} stroke={colorOf(p.owner)} />
+                <Road from={[x1, y1]} to={[x2, y2]} color={colorOf(p.owner)} />
               </g>
             );
           })}
@@ -222,7 +242,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
           .filter((p) => p.type === "settlement" || p.type === "city")
           .map((p) => (
             <g key={p.id} className={fresh.has(pieceKey(p)) ? "piece fresh" : "piece"}>
-              <House
+              <Building
                 key={p.type}
                 at={vertexPoint(at(p, "vertex")!)}
                 color={colorOf(p.owner)}
@@ -239,13 +259,13 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             const [cx, cy] = hexCenter(q!, r!);
             // Positioned by a CSS transform, so moving it animates (see .robber in styles.css).
             return (
-              <ellipse
+              <g
                 key={p.id}
                 className="robber"
-                rx={8}
-                ry={13}
-                style={{ transform: `translate(${cx + 26}px, ${cy - 18}px)` }}
-              />
+                style={{ transform: `translate(${cx + 28}px, ${cy - 14}px)` }}
+              >
+                <RobberFigure />
+              </g>
             );
           })}
 

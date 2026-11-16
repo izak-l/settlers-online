@@ -1,43 +1,59 @@
 :root {
   color-scheme: light dark;
-  --bg: #f4f1ea;
-  --surface: #ffffff;
-  --text: #1f2328;
-  --muted: #667085;
-  --border: #d9d4c7;
-  --accent: #2f6fd6;
+  --bg: #efe9dc;
+  --surface: #fffcf5;
+  --surface-2: #f6f0e3;
+  --text: #22252a;
+  --muted: #6b6f78;
+  --border: #ddd3bf;
+  --accent: #1f6fb2;
   --accent-text: #ffffff;
   --error: #b42318;
-  --piece-outline: #1f2328;
-  --target: #fff7c2;
+  --ok: #2e7d4f;
+  --piece-outline: #1d1f24;
+  --target: #fff3a8;
+  --shadow: 0 1px 2px #0000000f, 0 2px 8px #00000012;
 
-  /* Terrain */
-  --t-sea: #6aa6d6;
-  --t-forest: #2f7a3e;
-  --t-pasture: #9ccc65;
-  --t-fields: #e9c84f;
-  --t-hills: #c56a3d;
-  --t-mountains: #8e939b;
-  --t-desert: #e3d4a8;
+  /* Terrain (the -light shade is the middle of each hex) */
+  --t-sea: #4f8fc4;
+  --t-sea-light: #6ba7d8;
+  --t-forest: #2e7039;
+  --t-forest-light: #3f8a49;
+  --t-pasture: #8fc45a;
+  --t-pasture-light: #a8d873;
+  --t-fields: #e3bd3f;
+  --t-fields-light: #f0d26a;
+  --t-hills: #c2643a;
+  --t-hills-light: #d47c51;
+  --t-mountains: #8a909a;
+  --t-mountains-light: #a2a8b1;
+  --t-desert: #e2d1a1;
+  --t-desert-light: #ede0b9;
+  --coast: #e8d9a8;
 
-  /* Resources (chips) */
+  /* Resources (cards, chips, icons) */
   --r-wood: #2f7a3e;
   --r-brick: #c56a3d;
-  --r-sheep: #9ccc65;
-  --r-wheat: #e9c84f;
-  --r-ore: #8e939b;
+  --r-sheep: #86bb4f;
+  --r-wheat: #d9b53a;
+  --r-ore: #7d838d;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #15181d;
-    --surface: #1f242b;
+    --bg: #121519;
+    --surface: #1c2027;
+    --surface-2: #232933;
     --text: #e8eaed;
     --muted: #9aa3ad;
-    --border: #343b45;
-    --accent: #5b93ec;
+    --border: #313844;
+    --accent: #5b9be6;
+    --ok: #5cc28a;
     --piece-outline: #0b0d10;
-    --t-sea: #2b5878;
+    --shadow: 0 1px 2px #0006, 0 4px 14px #0004;
+    --t-sea: #234f71;
+    --t-sea-light: #2d6189;
+    --coast: #b9aa7d;
   }
 }
 
@@ -227,48 +243,96 @@ input {
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   border-radius: 12px;
   padding: 0.9rem 1rem;
 }
 
 /* ---- Board ---- */
 .hex {
-  stroke: var(--bg);
-  stroke-width: 3;
+  stroke: #00000038;
+  stroke-width: 1.5;
 }
 .hex.sea {
-  stroke-width: 1;
-  opacity: 0.85;
+  stroke: #ffffff14;
 }
-.token circle:first-child {
-  fill: #fbf6e8;
-  stroke: #00000033;
+.coast {
+  fill: var(--coast);
+  stroke: var(--coast);
+  stroke-width: 2;
+}
+.art,
+.token,
+.port,
+.piece,
+.robber {
+  pointer-events: none;
+}
+.token-shadow {
+  fill: #0005;
+}
+.token-disc {
+  fill: #fbf3dc;
+  stroke: #0000002e;
+}
+.token-ring {
+  fill: none;
+  stroke: #00000014;
 }
 .token text {
   font-size: 17px;
-  font-weight: 700;
-  fill: #1f2328;
+  font-weight: 800;
+  fill: #22252a;
 }
 .token .pip {
-  fill: #1f2328;
+  fill: #22252a;
 }
 .token.hot text,
 .token.hot .pip {
   fill: #b42318;
 }
-.port line {
-  stroke: #fbf6e8;
-  stroke-width: 3;
-  stroke-dasharray: 3 3;
+.token.hot text {
+  font-size: 19px;
 }
-.port rect {
-  fill: #fbf6e8;
-  stroke: #00000040;
+.pier {
+  stroke: #8a5a2b;
+  stroke-width: 4;
+  stroke-linecap: round;
 }
-.port text {
+.port-sign {
+  fill: #fbf3dc;
+  stroke: #8a5a2b;
+  stroke-width: 2;
+  filter: url(#soft-shadow);
+}
+.port-rate {
   font-size: 10px;
-  font-weight: 600;
-  fill: #1f2328;
+  font-weight: 800;
+  fill: #22252a;
+}
+.port-any {
+  font-size: 13px;
+  font-weight: 800;
+  fill: #5b4a8c;
+}
+/* A thin dark halo keeps light icons (wheat) readable on the cream sign. */
+.port-icon {
+  filter: drop-shadow(0 0 0.7px #000c);
+}
+.port-icon.res-wood {
+  color: var(--r-wood);
+}
+.port-icon.res-brick {
+  color: var(--r-brick);
+}
+.port-icon.res-sheep {
+  color: var(--r-sheep);
+}
+.port-icon.res-wheat {
+  color: var(--r-wheat);
+}
+.port-icon.res-ore {
+  color: var(--r-ore);
 }
 .road {
   stroke-width: 7;
@@ -276,13 +340,30 @@ input {
 }
 .road-outline {
   stroke: var(--piece-outline);
-  stroke-width: 10;
+  stroke-width: 10.5;
   stroke-linecap: round;
 }
-.robber {
-  fill: #2b2b2b;
-  stroke: #f4f1ea;
-  stroke-width: 2;
+.road-shine {
+  stroke: #ffffff59;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.building .outline {
+  stroke: var(--piece-outline);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.building .roofline {
+  stroke: #ffffff66;
+  stroke-width: 1.2;
+}
+.building {
+  filter: url(#soft-shadow);
+}
+.robber-body {
+  fill: #2b2830;
+  stroke: #f4efe2;
+  stroke-width: 1.5;
 }
 .target {
   cursor: pointer;
@@ -339,7 +420,8 @@ input {
   border-radius: 6px;
 }
 .players li.current {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: color-mix(in srgb, var(--seat, var(--accent)) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--seat, var(--accent));
 }
 .players .vp {
   font-weight: 700;
@@ -374,12 +456,17 @@ input {
   gap: 2px;
 }
 .chip {
-  min-width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 3px;
+  border-radius: 5px;
   font-size: 11px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 20px;
   text-align: center;
   color: #fff;
   text-shadow: 0 1px 1px #0006;
@@ -406,13 +493,26 @@ input {
   gap: 0.4rem;
 }
 .die {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
   border-radius: 7px;
   display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   place-items: center;
-  font-weight: 700;
-  color: #fff;
+  box-shadow:
+    inset 0 -2px 0 #0003,
+    0 1px 2px #0004;
+}
+.die .pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.die .pip.on {
+  background: #fff;
+  box-shadow: 0 0.5px 0 #0004;
 }
 .die-red {
   background: #c0392b;
@@ -618,9 +718,12 @@ select {
   gap: 0.3rem;
 }
 .award {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 0.7rem;
   font-weight: 600;
-  padding: 0 0.4rem;
+  padding: 0 0.45rem;
   border-radius: 999px;
   background: color-mix(in srgb, #d4a017 25%, transparent);
 }
@@ -1364,4 +1467,32 @@ button.card-group:focus-visible {
     width: min(380px, 100%);
     border: 1px solid var(--border);
   }
+}
+
+/* ---- M7c: log icons ---- */
+.log-res {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.log-res .icon {
+  vertical-align: -2px;
+}
+.log-res.res-wood .icon {
+  color: var(--r-wood);
+}
+.log-res.res-brick .icon {
+  color: var(--r-brick);
+}
+.log-res.res-sheep .icon {
+  color: var(--r-sheep);
+}
+.log-res.res-wheat .icon {
+  color: var(--r-wheat);
+}
+.log-res.res-ore .icon {
+  color: var(--r-ore);
+}
+.chip .icon {
+  color: #fff;
 }

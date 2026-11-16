@@ -49,9 +49,27 @@ None. (`createGame` already takes any resolved map and ruleset.)
 - `pnpm sim` gains `--map <id>`; run the fuzzer clean on each new map.
 - Manual: pick each map in the sandbox and in an online lobby; check the board fits and zooms.
 
+## Draft maps (in `packages/maps/maps/drafts/`, reviewed)
+
+Written by a separate session from ASCII shapes in `drafts/build.ts`; `drafts/check.ts` validates them and `drafts/preview.ts` renders `preview.html` (gitignored). All four pass the schema, pool accounting and 200 generated seeds each.
+
+| File | Name | Land hexes | VP | Modules | Playable now |
+| --- | --- | --- | --- | --- | --- |
+| `grand-diamond.json` | Grand Diamond | 49 | 12 | base | yes: the first catalog map |
+| `twin-isles.json` | Twin Isles | 66 | 13 | base, seafaring | after seafaring (islands) |
+| `world.json` | Six Shores | 82 | 14 | base, seafaring | after seafaring |
+| `archipelagos.json` | Scattered Isles | 61 | 13 | base, seafaring | after seafaring |
+
+Review notes for when they move into the catalog:
+
+- **Fewer 6s and 8s on big maps.** To keep the random no-adjacent-6/8 shuffle from failing, `build.ts` uses only 1–2 copies of the base token set and tops up with 4/5/9/10, so about 17% of tokens are red instead of 22%. Better: teach the generator to place red tokens first on non-adjacent hexes, then restore full copies.
+- **Auto ports on multi-island maps** are spread by angle around the board centre, so two can land close together on one island (two "2:1 wheat" on Twin Isles' smaller island; overlapping labels in Six Shores around the southern peninsula). Fix the island maps' ports by hand, or spread ports per island, when seafaring lands.
+- The island maps fail "land is connected", as expected; seafaring (M10) relaxes that check for maps that use it.
+- Display names are our own; real place names appear only in descriptions.
+
 ## Open questions
 
-- Which example maps? Proposal: **"Small isle"**, a smaller random board for 1–2 players (about 13 land hexes, 8 VP), and **"Fixed classic"**, the base board with every tile, token and port fixed (handy for repeatable games and for testing fixed layouts). Or tell me the maps you want.
+- None. (Decided: the drafted maps above; Grand Diamond goes in the catalog first, the island maps with seafaring.)
 
 ## Status
 

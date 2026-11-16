@@ -114,7 +114,7 @@ export const SetUsernameSchema = z.object({ username: UsernameSchema });
 /** Turn timer choices; 0 means off. */
 export const TURN_SECONDS_CHOICES = [0, 30, 60, 90, 120] as const;
 export const CreateLobbySchema = z.object({
-  maxSeats: z.union([z.literal(3), z.literal(4)]),
+  maxSeats: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   allowSpectators: z.boolean(),
   turnSeconds: z
     .union([z.literal(0), z.literal(30), z.literal(60), z.literal(90), z.literal(120)])

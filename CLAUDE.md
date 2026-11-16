@@ -15,6 +15,7 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M4 Socket.IO server, Supabase auth, lobbies, spectators, reconnect, Postgres log
 - [x] M5 Robber, dev cards, trades, awards, win
 - [x] M6 Friends, presence, invites, history, polish, turn timers (specs 001–005 in docs/features/)
+- [x] 1–4 player games (docs/features/010-one-and-two-player-games.md)
 - [ ] M7 UI overhaul: individual cards instead of counts, better graphics, a resizable/zoomable board, sounds ← next
 - [ ] M8 Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers
 - [ ] M9+ Deploy to free tiers

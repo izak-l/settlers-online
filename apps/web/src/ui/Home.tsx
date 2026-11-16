@@ -14,7 +14,7 @@ function lobbyIdFrom(input: string): string {
 
 export function Home() {
   const { socket, me } = useSession();
-  const [seats, setSeats] = useState<3 | 4>(4);
+  const [seats, setSeats] = useState<1 | 2 | 3 | 4>(4);
   const [spectators, setSpectators] = useState(true);
   const [turnSeconds, setTurnSeconds] = useState<(typeof TURN_SECONDS_CHOICES)[number]>(0);
   const [invite, setInvite] = useState("");
@@ -39,7 +39,7 @@ export function Home() {
           <h3>New game</h3>
           <fieldset className="count">
             <legend>Players</legend>
-            {([3, 4] as const).map((n) => (
+            {([1, 2, 3, 4] as const).map((n) => (
               <label key={n}>
                 <input
                   type="radio"

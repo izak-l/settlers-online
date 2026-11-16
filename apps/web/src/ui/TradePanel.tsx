@@ -50,26 +50,29 @@ export function TradePanel({ snap, send }: { snap: Snapshot; send(a: Action): vo
           </button>
         </div>
       </div>
-      <details>
-        <summary>Offer a trade to the other players</summary>
-        <div className="stack">
-          <span className="muted small">You give</span>
-          <ResourcePicker value={offerGive} onChange={setOfferGive} max={hand} label="You give" />
-          <span className="muted small">You want</span>
-          <ResourcePicker value={offerWant} onChange={setOfferWant} label="You want" />
-          <button
-            className="primary"
-            disabled={sum(offerGive) === 0 || sum(offerWant) === 0}
-            onClick={() => {
-              send({ type: "OFFER_TRADE", give: nonZero(offerGive), want: nonZero(offerWant) });
-              setOfferGive({});
-              setOfferWant({});
-            }}
-          >
-            Offer
-          </button>
-        </div>
-      </details>
+      {/* Solo games have nobody to offer to (the server rejects it too). */}
+      {snap.players.length > 1 && (
+        <details>
+          <summary>Offer a trade to the other players</summary>
+          <div className="stack">
+            <span className="muted small">You give</span>
+            <ResourcePicker value={offerGive} onChange={setOfferGive} max={hand} label="You give" />
+            <span className="muted small">You want</span>
+            <ResourcePicker value={offerWant} onChange={setOfferWant} label="You want" />
+            <button
+              className="primary"
+              disabled={sum(offerGive) === 0 || sum(offerWant) === 0}
+              onClick={() => {
+                send({ type: "OFFER_TRADE", give: nonZero(offerGive), want: nonZero(offerWant) });
+                setOfferGive({});
+                setOfferWant({});
+              }}
+            >
+              Offer
+            </button>
+          </div>
+        </details>
+      )}
     </section>
   );
 }

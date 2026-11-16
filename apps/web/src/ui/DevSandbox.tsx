@@ -38,7 +38,7 @@ export function DevSandbox() {
       </p>
       <fieldset className="count">
         <legend>Seats</legend>
-        {[3, 4].map((n) => (
+        {[1, 2, 3, 4].map((n) => (
           <label key={n}>
             <input type="radio" name="count" checked={count === n} onChange={() => setCount(n)} />
             {n}

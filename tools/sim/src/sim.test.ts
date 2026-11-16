@@ -15,6 +15,15 @@ describe("fuzz: random bots", () => {
     for (let i = 0; i < 15; i++) playGame(`ci3-${i}`, { seats: 3 });
   }, 120_000);
 
+  it("10 two-player games run clean", () => {
+    for (let i = 0; i < 10; i++) playGame(`ci2-${i}`, { seats: 2 });
+  }, 120_000);
+
+  it("10 one-player games run clean, including seed 1-1 (the bot used to offer trades solo)", () => {
+    playGame("1-1", { seats: 1 });
+    for (let i = 0; i < 10; i++) playGame(`ci1-${i}`, { seats: 1 });
+  }, 120_000);
+
   it("games produce winners", () => {
     const winners = Array.from({ length: 10 }, (_, i) => playGame(`ci-win-${i}`).winner);
     expect(winners.filter((w) => w !== null).length).toBeGreaterThan(5);

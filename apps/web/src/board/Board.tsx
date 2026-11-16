@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { Action, ActionSpec, Piece } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
@@ -59,6 +60,21 @@ function House({ at, color, city }: { at: Point; color: string; city: boolean })
   return <path d={d} fill={color} stroke="var(--piece-outline)" strokeWidth={2} />;
 }
 
+const FRESH_MS = 700;
+
+/**
+ * Keys that appeared in the last moment, for the "pop in" animation. Nothing counts as fresh on
+ * the first render, so joining a game mid-way doesn't animate every piece. Kept for FRESH_MS so
+ * a quick re-render doesn't cut the animation short.
+ */
+function useFreshKeys(keys: string[]): Set<string> {
+  const firstSeen = useRef<Map<string, number> | null>(null);
+  const now = Date.now();
+  if (!firstSeen.current) firstSeen.current = new Map(keys.map((k) => [k, 0]));
+  for (const k of keys) if (!firstSeen.current.has(k)) firstSeen.current.set(k, now);
+  return new Set(keys.filter((k) => now - firstSeen.current!.get(k)! < FRESH_MS));
+}
+
 export function Board({ snap, seats, mode, onAction }: Props) {
   const { view } = snap;
   const graph = graphFor(view);
@@ -67,15 +83,20 @@ export function Board({ snap, seats, mode, onAction }: Props) {
     view.map.hexes.filter((h) => h.terrain !== "sea").map((h) => `${h.q},${h.r}`),
   );
 
-  // Fit the viewBox around every hex, sea included.
-  const centers = view.map.hexes.map((h) => hexCenter(h.q, h.r));
-  const pad = HEX_SIZE * 1.1;
-  const minX = Math.min(...centers.map((c) => c[0])) - pad;
-  const minY = Math.min(...centers.map((c) => c[1])) - pad;
-  const width = Math.max(...centers.map((c) => c[0])) + pad - minX;
-  const height = Math.max(...centers.map((c) => c[1])) + pad - minY;
+  // Fit the viewBox to the land plus enough sea for the port labels; the outer sea is cropped,
+  // so the land is as large as possible (it matters most on narrow screens).
+  const centers = view.map.hexes.filter((h) => h.terrain !== "sea").map((h) => hexCenter(h.q, h.r));
+  const padX = HEX_SIZE * 1.85;
+  const padY = HEX_SIZE * 1.6;
+  const minX = Math.min(...centers.map((c) => c[0])) - padX;
+  const minY = Math.min(...centers.map((c) => c[1])) - padY;
+  const width = Math.max(...centers.map((c) => c[0])) + padX - minX;
+  const height = Math.max(...centers.map((c) => c[1])) + padY - minY;
 
   const pieces = Object.values(view.pieces);
+  // Keyed by id and type, so a settlement upgraded to a city (same id) pops in too.
+  const pieceKey = (p: Piece) => `${p.id}:${p.type}`;
+  const fresh = useFreshKeys(pieces.map(pieceKey));
   const at = <K extends "vertex" | "edge" | "hex">(p: Piece, k: K): string | undefined =>
     k in p.at ? (p.at as Record<K, string>)[k] : undefined;
 
@@ -158,7 +179,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
         .map((p) => {
           const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, at(p, "edge")!);
           return (
-            <g key={p.id}>
+            <g key={p.id} className={fresh.has(pieceKey(p)) ? "piece fresh" : "piece"}>
               <line className="road-outline" x1={x1} y1={y1} x2={x2} y2={y2} />
               <line className="road" x1={x1} y1={y1} x2={x2} y2={y2} stroke={colorOf(p.owner)} />
             </g>
@@ -169,12 +190,14 @@ export function Board({ snap, seats, mode, onAction }: Props) {
       {pieces
         .filter((p) => p.type === "settlement" || p.type === "city")
         .map((p) => (
-          <House
-            key={p.id}
-            at={vertexPoint(at(p, "vertex")!)}
-            color={colorOf(p.owner)}
-            city={p.type === "city"}
-          />
+          <g key={p.id} className={fresh.has(pieceKey(p)) ? "piece fresh" : "piece"}>
+            <House
+              key={p.type}
+              at={vertexPoint(at(p, "vertex")!)}
+              color={colorOf(p.owner)}
+              city={p.type === "city"}
+            />
+          </g>
         ))}
 
       {/* Robber */}
@@ -183,7 +206,16 @@ export function Board({ snap, seats, mode, onAction }: Props) {
         .map((p) => {
           const [q, r] = at(p, "hex")!.split(",").map(Number);
           const [cx, cy] = hexCenter(q!, r!);
-          return <ellipse key={p.id} className="robber" cx={cx + 26} cy={cy - 18} rx={8} ry={13} />;
+          // Positioned by a CSS transform, so moving it animates (see .robber in styles.css).
+          return (
+            <ellipse
+              key={p.id}
+              className="robber"
+              rx={8}
+              ry={13}
+              style={{ transform: `translate(${cx + 26}px, ${cy - 18}px)` }}
+            />
+          );
         })}
 
       {/* Clickable targets for legal moves */}
@@ -191,17 +223,12 @@ export function Board({ snap, seats, mode, onAction }: Props) {
         if ("edge" in a) {
           const [[x1, y1], [x2, y2]] = edgeEndpoints(graph, a.edge);
           return (
-            <line
-              key={`${a.type}-${a.edge}`}
-              className="target target-edge"
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              {...activate(a, "Place road here")}
-            >
+            <g key={`${a.type}-${a.edge}`} className="target" {...activate(a, "Place road here")}>
               <title>Place road here</title>
-            </line>
+              {/* A wide invisible stroke makes the tap area comfortable on touch screens. */}
+              <line className="hit" x1={x1} y1={y1} x2={x2} y2={y2} />
+              <line className="target-edge" x1={x1} y1={y1} x2={x2} y2={y2} />
+            </g>
           );
         }
         if (a.type === "MOVE_ROBBER") {
@@ -222,20 +249,13 @@ export function Board({ snap, seats, mode, onAction }: Props) {
         }
         if ("vertex" in a) {
           const [x, y] = vertexPoint(a.vertex);
+          const label = a.type === "BUILD_CITY" ? "Upgrade to city here" : "Place settlement here";
           return (
-            <circle
-              key={`${a.type}-${a.vertex}`}
-              className="target target-vertex"
-              cx={x}
-              cy={y}
-              r={11}
-              {...activate(
-                a,
-                a.type === "BUILD_CITY" ? "Upgrade to city here" : "Place settlement here",
-              )}
-            >
-              <title>{a.type === "BUILD_CITY" ? "Upgrade to city" : "Place settlement here"}</title>
-            </circle>
+            <g key={`${a.type}-${a.vertex}`} className="target" {...activate(a, label)}>
+              <title>{label}</title>
+              <circle className="hit" cx={x} cy={y} r={22} />
+              <circle className="target-vertex" cx={x} cy={y} r={11} />
+            </g>
           );
         }
         return null;

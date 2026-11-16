@@ -153,7 +153,12 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
       {((lastRoll && snap.view.turn.number > 0) || snap.clock) && (
         <div className="action-head">
           {lastRoll && snap.view.turn.number > 0 && (
-            <div className="dice" aria-label="Last roll">
+            <div
+              // Remount on every roll so the roll animation plays again.
+              key={snap.log.filter((e) => e.type === "ROLLED").length}
+              className="dice"
+              aria-label="Last roll"
+            >
               {Object.entries(lastRoll).map(([die, n]) => (
                 <span key={die} className={`die die-${die}`}>
                   {n}

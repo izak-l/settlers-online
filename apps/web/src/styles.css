@@ -125,7 +125,8 @@ input {
   display: grid;
   gap: 0.9rem;
 }
-.start fieldset {
+.start fieldset,
+.home fieldset {
   border: none;
   padding: 0;
   margin: 0;
@@ -871,4 +872,174 @@ button.danger {
 }
 .chat-form .error {
   flex-basis: 100%;
+}
+
+/* ---- M6: board tap areas and animations ---- */
+.target .hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 26;
+  pointer-events: all;
+}
+.target:hover .target-vertex,
+.target:hover .target-edge,
+.target:focus-visible .target-vertex,
+.target:focus-visible .target-edge {
+  opacity: 1;
+  animation: none;
+}
+.target:focus-visible {
+  outline: none;
+}
+.target:focus-visible .target-vertex,
+.target:focus-visible .target-edge {
+  stroke: var(--accent);
+}
+.piece.fresh {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+}
+.robber {
+  transition: transform 0.6s ease-in-out;
+}
+.dice .die {
+  animation: roll 0.5s ease-out;
+}
+.dice .die:nth-child(2) {
+  animation-delay: 0.05s;
+}
+@keyframes roll {
+  from {
+    transform: rotate(-200deg) scale(0.6);
+  }
+}
+.hand li {
+  position: relative;
+}
+.hand .gained .res-count {
+  animation: gain 1.2s ease-out;
+}
+@keyframes gain {
+  15% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+.gain {
+  position: absolute;
+  top: -0.55rem;
+  right: -0.2rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  animation: rise 1.5s ease-out forwards;
+}
+@keyframes rise {
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-0.6rem);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .piece.fresh,
+  .dice .die,
+  .hand .gained .res-count,
+  .gain,
+  .target-vertex,
+  .target-edge,
+  .target-hex {
+    animation: none;
+  }
+  .robber,
+  .timer-bar span {
+    transition: none;
+  }
+}
+
+/* ---- M6: small screens ---- */
+@media (max-width: 860px) {
+  /* What you act on comes first, right under the board. */
+  .side > .winner {
+    order: -3;
+  }
+  .side > .actions {
+    order: -2;
+  }
+  .side > .hand-panel {
+    order: -1;
+  }
+  .board {
+    max-height: 70vh;
+  }
+}
+@media (max-width: 600px) {
+  button,
+  select,
+  input:not([type="radio"]):not([type="checkbox"]) {
+    min-height: 44px;
+  }
+  fieldset label,
+  label.check {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  button.link {
+    min-height: 44px;
+    padding: 0.25rem 0.5rem;
+  }
+  .layout {
+    padding: 8px 8px 16px;
+    gap: 10px;
+  }
+  .side {
+    gap: 10px;
+  }
+  .panel {
+    padding: 0.75rem;
+  }
+  .card {
+    padding: 1rem;
+  }
+  .home {
+    margin: 12px auto;
+    padding: 0 12px;
+  }
+  .start {
+    margin: 12px auto;
+    max-width: calc(100% - 24px);
+  }
+  .topbar {
+    gap: 0.5rem;
+    padding: 0.4rem 12px;
+  }
+  .builds {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pm button {
+    min-width: 2.4rem;
+  }
+  .toasts {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+  .toast {
+    max-width: none;
+    width: 100%;
+  }
 }

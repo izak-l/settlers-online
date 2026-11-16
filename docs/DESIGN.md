@@ -468,15 +468,16 @@ The engine is tested hardest, because a rules bug ruins a game and the engine is
 
 ## 12. Hosting and ops
 
-Deployment is M9 (spec 012); the runbook is `docs/DEPLOY.md`. Cost target: $0, on free tiers that keep running (no sleeping server).
+Deployment is M9 (spec 012, shipped 2026-11-15); the runbook is `docs/DEPLOY.md`. Cost target: $0, on free tiers that keep running (no sleeping server).
 
-- **Frontend:** Cloudflare Pages, uploaded with `scripts/deploy-web.sh` (Wrangler direct upload of `apps/web/dist`). The build gets only `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SERVER_URL`. Routes are hash-based, so no rewrite rules are needed.
+- **Frontend:** a classic Cloudflare Pages project (`settlers-online`, served at `https://settlers-online.pages.dev`), uploaded with `scripts/deploy-web.sh` (Wrangler direct upload of `apps/web/dist`). Wrangler 4.162+ needs `--force` once to create a classic Pages project from a monorepo root. The build gets only `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SERVER_URL`. Routes are hash-based, so no rewrite rules are needed.
 - **Server and database:** one Oracle Cloud Always Free Ampere (arm64) VM running Docker Compose (`deploy/compose.yaml`):
   - `db`: Postgres 16 on a named volume. The VM's disk persists, so the database lives next to the server.
   - `server`: the game server image (built by the root `Dockerfile`: esbuild bundles the server and workspace packages into one `server.mjs` on `node:22-alpine`, running as `node`, health-checked on `/health`).
   - `caddy`: the only public service. It does automatic Let's Encrypt HTTPS for `API_DOMAIN` and proxies HTTP and WebSockets to the server.
-- **Shipping:** `scripts/deploy-server.sh` builds the image on the Mac (Apple Silicon is arm64, like the VM), streams it over SSH (`docker save | docker load`, no registry), tags it with the git commit and `latest`, restarts the stack, and checks `/health`.
-- **Auth:** Supabase Auth (email + Discord) only. The Pages URL is the Site URL and a redirect URL. The server's `WEB_ORIGIN` is a comma-separated list of allowed origins.
+- **Network:** `API_DOMAIN` is a subdomain on Cloudflare DNS, an A record set to DNS-only so Caddy can get its certificate. Ports 80/443 are open in both the VCN security list and the VM's iptables (above Oracle's REJECT rule).
+- **Shipping:** the live server is built on the VM from an HTTPS clone of the repo (`docker compose up -d --build` in `deploy/`, with its `.env` beside it). The alternative, `scripts/deploy-server.sh`, builds the image on the Mac (Apple Silicon is arm64, like the VM), streams it over SSH (`docker save | docker load`, no registry), tags it with the git commit and `latest`, restarts the stack, and checks `/health`.
+- **Auth:** Supabase Auth (email + Discord) only. The Pages URL is the Site URL and a redirect URL. The server's `WEB_ORIGIN` is a comma-separated list of allowed origins. Email sign-up needs custom SMTP: Supabase's built-in sender is limited to a couple of emails per hour. Profiles (usernames) live in the VM's Postgres, not in Supabase.
 - Every action is written to Postgres before it's broadcast, so a restart loses nothing; rooms rebuild from snapshot + log when a game is next opened. Migrations run when the server starts (`MIGRATIONS_DIR` points at them inside the image).
 - **Ops:** `docker compose logs`, the `/health` endpoint, nightly `pg_dump` backups kept 14 days, rollback by retagging an older image. An admin page is not built.
 
@@ -486,7 +487,7 @@ Each milestone ends with something playable or testable; don't start the next un
 
 Online play comes before the remaining rules (M4 before M5), so friends can play real online games early and every rule added afterwards ships straight into online play. The engine doesn't depend on the server, so the order is safe. There is no hot-seat mode.
 
-After M7 the order is: a map selector (M8, maps as JSON files in the repo rather than an in-app editor), then deployment (M9) so friends can play on the hosted site, then the expansions (M10–M13). The editor comes later.
+After M7, deployment (M9) shipped first so friends could play on the hosted site; next is the map selector (M8, maps as JSON files in the repo rather than an in-app editor), then the expansions (M10–M13). The editor comes later.
 
 | # | Milestone | Done when |
 | --- | --- | --- |

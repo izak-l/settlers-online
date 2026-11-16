@@ -30,17 +30,26 @@ project, Docker Desktop running on the Mac, and an SSH key (`~/.ssh/id_ed25519.p
    - Networking: a public subnet, **assign a public IPv4 address**.
    - SSH keys: paste your public key.
    - "Out of capacity" is common for A1; try another availability domain, or retry later.
-2. Make the IP permanent: **Networking → IP management → Reserved public IPs**. Reserve one and
-   attach it to the instance's VNIC (or convert the ephemeral one), so it never changes.
+2. Make the IP permanent with a reserved public IP: **instance → Attached VNICs → the VNIC → IPv4
+   Addresses → ⋮ → Edit**, set "No public IP" and update, then edit again and pick "Reserved
+   public IP → Create new". The address changes, so do this before the DNS record, or update the
+   A record afterwards (the certificate is tied to the name, not the IP). An ephemeral IP is fine
+   to start with: it survives stop/start and is lost only if unassigned or the instance is
+   terminated.
 3. Open the ports in Oracle's network: **instance → subnet → Security list → Add ingress rules**,
    source `0.0.0.0/0`: TCP **80**, TCP **443**, UDP **443** (HTTP/3, optional).
-4. Open them on the VM too. Oracle's Ubuntu image rejects everything but SSH in iptables:
+4. Open them on the VM too. Oracle's Ubuntu image rejects everything but SSH in iptables. The new
+   rules must go above its `REJECT all … icmp-host-prohibited` rule, so find that rule's line
+   number `<n>` first (it was 5 on the Ubuntu 24.04 image in November 2026). Chain names are
+   case-sensitive: `INPUT`, not `input`.
 
    ```sh
    ssh ubuntu@<vm-ip>
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-   sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 443 -j ACCEPT
+   sudo iptables -L INPUT -n --line-numbers        # note the REJECT line's number <n>
+   sudo iptables -I INPUT <n> -m state --state NEW -p tcp --dport 80 -j ACCEPT
+   sudo iptables -I INPUT <n> -m state --state NEW -p tcp --dport 443 -j ACCEPT
+   sudo iptables -I INPUT <n> -m state --state NEW -p udp --dport 443 -j ACCEPT
+   sudo iptables -L INPUT -n --line-numbers        # the ACCEPT rules now sit above REJECT
    sudo netfilter-persistent save
    sudo apt update && sudo apt -y upgrade
    ```
@@ -67,28 +76,37 @@ image: no GitHub access needed on the VM.
 
 ### A. Build on the VM from a clone
 
-The VM needs to read the repo. First push `main` from the Mac (`git push origin main`). Then, on
-the VM, add a read-only deploy key:
+The VM needs to read the repo, so push the branch you deploy from the Mac first. The repo is
+public, so clone it over HTTPS:
 
 ```sh
 sudo apt install -y git
-ssh-keygen -t ed25519 -C settlers-vm -f ~/.ssh/github_deploy -N ""
-cat ~/.ssh/github_deploy.pub
+git clone https://github.com/izak-l/settlers-online.git ~/settlers-online
 ```
 
-On GitHub, go to **repo → Settings → Deploy keys → Add deploy key**, paste the key, and leave
-write access off. Then, on the VM:
+(If the repo is ever made private, use a read-only deploy key instead: `ssh-keygen -t ed25519
+-C settlers-vm -f ~/.ssh/github_deploy -N ""`, add the `.pub` under **repo → Settings → Deploy
+keys** with write access off, add `Host github.com` / `IdentityFile ~/.ssh/github_deploy` /
+`IdentitiesOnly yes` to `~/.ssh/config`, check with `ssh -T git@github.com`, and clone
+`git@github.com:izak-l/settlers-online.git`.)
+
+Then fill in `.env` and start the stack. The two `sed` lines write the known values, and the
+password goes straight into the file without being shown:
 
 ```sh
-printf 'Host github.com\n  IdentityFile ~/.ssh/github_deploy\n' >> ~/.ssh/config
-git clone git@github.com:izak-l/settlers-online.git ~/settlers-online
 cd ~/settlers-online/deploy
 cp env.example .env && chmod 600 .env
-nano .env                         # fill it in (below)
-docker compose up -d --build      # builds the arm64 image here, starts db, server, caddy
+sed -i "s|^API_DOMAIN=.*|API_DOMAIN=<API_DOMAIN>|" .env
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
+nano .env                         # WEB_ORIGIN and SUPABASE_URL (below)
+docker compose up -d --build      # builds the arm64 image here (a few minutes), starts db, server, caddy
 docker compose logs -f server     # "migrated …" lines, then "Settlers server listening"
 curl https://<API_DOMAIN>/health  # {"ok":true}; the first certificate can take a minute
 ```
+
+`docker compose ps` should show `db` and `server` healthy, and `docker compose logs caddy` should
+say "certificate obtained successfully". Caddy's "no account for configured email" lines on the
+first start are info, not errors.
 
 To update later: `cd ~/settlers-online && git pull && cd deploy && docker compose up -d --build`.
 
@@ -131,8 +149,13 @@ Once, on the Mac:
 
 ```sh
 npx --yes wrangler@4 login
-npx --yes wrangler@4 pages project create settlers-online --production-branch main
+npx --yes wrangler@4 pages project create settlers-online --production-branch main --force
 ```
+
+`--force` is needed on this one command. Since Wrangler 4.162, `pages project create` hands off
+to Workers, whose app detection refuses to run at a monorepo root ("detection logic has been run
+in the root of a workspace"). `--force` creates a classic Pages project instead. Once the
+project exists, `pages deploy` goes straight to Pages, so the deploy script needs no flag.
 
 If the name is taken, pick another; the site is `https://<name>.pages.dev`. Then, every time:
 
@@ -141,27 +164,43 @@ SERVER_URL=https://<API_DOMAIN> scripts/deploy-web.sh settlers-online
 ```
 
 `SUPABASE_URL` and `SUPABASE_ANON_KEY` come from your local `.env`. Only those two and
-`SERVER_URL` are built into the page.
+`SERVER_URL` are built into the page. Wrangler ends by printing a per-deployment URL
+(`https://<hash>.<name>.pages.dev`); players use `https://<name>.pages.dev`, which is the only
+one allowed by `WEB_ORIGIN` and the Supabase redirect list.
 
 To use a custom domain, add it in **Pages → your project → Custom domains**, then add it to
 `WEB_ORIGIN` (comma-separated).
 
 ## 5. Connect everything and smoke-test
 
-1. **Server origin:** on the VM, make sure `WEB_ORIGIN` in `~/settlers/.env` matches the Pages
-   URL exactly (scheme, no trailing slash), then `cd ~/settlers && docker compose up -d`.
+The stack folder is `~/settlers-online/deploy` with option A, `~/settlers` with option B.
+
+1. **Server origin:** on the VM, make sure `WEB_ORIGIN` in the stack folder's `.env` matches the
+   Pages URL exactly (scheme, no trailing slash), then `docker compose up -d` there. Check from
+   the Mac: `curl -sI -H 'Origin: https://<name>.pages.dev'
+   'https://<API_DOMAIN>/socket.io/?EIO=4&transport=polling'` echoes that origin in
+   `access-control-allow-origin`.
 2. **Supabase:** dashboard → **Authentication → URL Configuration**:
    - Site URL: `https://<name>.pages.dev`
-   - Redirect URLs: add `https://<name>.pages.dev/**` (and any custom domain).
+   - Redirect URLs: add `https://<name>.pages.dev/**` (and any custom domain). Keep
+     `http://localhost:5173/**` for local dev.
 
-   Discord sign-in needs no change; its callback is Supabase's own URL. Before inviting many
-   friends, set up custom SMTP (Supabase's built-in email sender is rate-limited).
-3. **Smoke test:**
-   - Open the site, sign in, pick a username.
+   Discord sign-in needs no change; its callback is Supabase's own URL.
+3. **Email (required for email sign-up):** Supabase's built-in sender allows only a couple of
+   emails per hour for the whole project, and its limit can't be raised; friends signing up hit
+   "email rate limit exceeded" at once. Set up custom SMTP: e.g. with Resend, add your domain
+   (or a subdomain like `mail.<domain>`) and its DNS records in Cloudflare, create a sending-only
+   API key, then **Authentication → Emails → SMTP Settings**: host `smtp.resend.com`, port
+   `465`, user `resend`, the API key as password, a sender on that domain. Then raise
+   **Authentication → Rate Limits → emails per hour**. Until then, Discord sign-in works.
+4. **Smoke test:**
+   - Open the site, sign in, pick a username. The VM's database starts empty, so everyone picks
+     a username once, even if they had one in local dev.
    - Create a lobby; open the invite link in a second browser (or a friend's) and join.
    - Play a few turns, using chat and a trade.
-   - Restart the server mid-game: `ssh ubuntu@<vm-ip> 'cd ~/settlers && docker compose restart server'`.
-     Both browsers should reconnect and the game should continue where it was.
+   - Restart the server mid-game: on the VM, `docker compose restart server` in the stack
+     folder. `docker compose ps server` shows "Up N seconds"; both browsers reconnect without a
+     refresh and the game continues where it was.
 
 ---
 
@@ -227,3 +266,11 @@ docker compose start server
     means it doesn't match.
 - **Sign-in sends you back to localhost:** add the Pages URL to Supabase's Site URL and redirect
   URLs (step 5.2).
+- **"email rate limit exceeded" on sign-up:** Supabase's built-in sender; set up custom SMTP
+  (step 5.3).
+- **Sign-up says "check your email" but nothing arrives:** if the address already has an
+  account (for example one created by Discord sign-in with the same email), Supabase reports
+  success and sends nothing, so it doesn't reveal which emails are registered. Sign in with
+  that account's method instead. Otherwise check spam and the **Logs → Auth** page.
+- **`wrangler pages project create` fails with "run in the root of a workspace":** add
+  `--force` (step 4).

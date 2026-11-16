@@ -34,13 +34,18 @@ project, Docker Desktop running on the Mac, and an SSH key (`~/.ssh/id_ed25519.p
    attach it to the instance's VNIC (or convert the ephemeral one), so it never changes.
 3. Open the ports in Oracle's network: **instance → subnet → Security list → Add ingress rules**,
    source `0.0.0.0/0`: TCP **80**, TCP **443**, UDP **443** (HTTP/3, optional).
-4. Open them on the VM too. Oracle's Ubuntu image rejects everything but SSH in iptables:
+4. Open them on the VM too. Oracle's Ubuntu image rejects everything but SSH in iptables. The new
+   rules must go above its `REJECT all … icmp-host-prohibited` rule, so find that rule's line
+   number `<n>` first (it was 5 on the Ubuntu 24.04 image in November 2026). Chain names are
+   case-sensitive: `INPUT`, not `input`.
 
    ```sh
    ssh ubuntu@<vm-ip>
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
-   sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 443 -j ACCEPT
+   sudo iptables -L INPUT -n --line-numbers        # note the REJECT line's number <n>
+   sudo iptables -I INPUT <n> -m state --state NEW -p tcp --dport 80 -j ACCEPT
+   sudo iptables -I INPUT <n> -m state --state NEW -p tcp --dport 443 -j ACCEPT
+   sudo iptables -I INPUT <n> -m state --state NEW -p udp --dport 443 -j ACCEPT
+   sudo iptables -L INPUT -n --line-numbers        # the ACCEPT rules now sit above REJECT
    sudo netfilter-persistent save
    sudo apt update && sudo apt -y upgrade
    ```

@@ -2,7 +2,7 @@
 
 ## Goal
 
-We (the developers) can add a map by writing a JSON file in the repo, and lobby hosts can pick any built-in map for their game. This is part one of M8 (M8a). Part two (M8b, spec 013) adds an in-app map editor whose maps are saved per user and picked in the same lobby picker; this spec lays the ground for it (lobbies keep their own copy of the chosen map, and the protocol already names where a map comes from).
+We (the developers) can add a map by writing a JSON file in the repo, and lobby hosts can pick any built-in map for their game. This is part one of M8 (M8a). Part two (M8b, spec 013, deferred until the expansions are built) adds an in-app map editor whose maps are saved per user and picked in the same lobby picker; this spec lays the ground for it (lobbies keep their own copy of the chosen map, and the protocol already names where a map comes from).
 
 ## Scope / non-scope
 
@@ -83,8 +83,8 @@ Review notes for when they move into the catalog:
 
 ## Open questions
 
-- None. (Decided: Grand Diamond goes in the catalog first; the other base-only drafts stay drafts until they are tuned, possibly in the editor; the island maps wait for seafaring. M8a merges before M8b starts.)
+- None. (Decided: Grand Diamond goes in the catalog first; the other base-only drafts stay drafts until they are tuned, possibly in the editor; the island maps wait for seafaring. M8a merges on its own; M8b waits until after the expansions.)
 
 ## Status
 
-Shipped (M8a). The editor continues in M8b (spec 013).
+Shipped (M8a). The editor (M8b, spec 013) is deferred until after the expansions.

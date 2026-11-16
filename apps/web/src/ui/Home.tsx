@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TURN_SECONDS_CHOICES } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { errorText } from "../game/seats";
@@ -15,6 +16,7 @@ export function Home() {
   const { socket, me } = useSession();
   const [seats, setSeats] = useState<3 | 4>(4);
   const [spectators, setSpectators] = useState(true);
+  const [turnSeconds, setTurnSeconds] = useState<(typeof TURN_SECONDS_CHOICES)[number]>(0);
   const [invite, setInvite] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +25,7 @@ export function Home() {
     const ack = await socket.emitWithAck("lobby:create", {
       maxSeats: seats,
       allowSpectators: spectators,
+      turnSeconds,
     });
     if (ack.ok) go(`/lobby/${ack.lobby.id}`);
     else setError(errorText(ack.code, ack.message));
@@ -48,6 +51,21 @@ export function Home() {
               </label>
             ))}
           </fieldset>
+          <label className="field">
+            <span>Turn timer</span>
+            <select
+              value={turnSeconds}
+              onChange={(e) =>
+                setTurnSeconds(Number(e.target.value) as (typeof TURN_SECONDS_CHOICES)[number])
+              }
+            >
+              {TURN_SECONDS_CHOICES.map((n) => (
+                <option key={n} value={n}>
+                  {n === 0 ? "Off" : `${n} seconds per turn`}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="check">
             <input
               type="checkbox"

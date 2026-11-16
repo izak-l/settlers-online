@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { seedFromString } from "@settlers/engine";
 import { BASE_4P, generateMap } from "@settlers/maps";
-import type { Ack, CreateLobby } from "@settlers/protocol";
+import type { Ack, CreateLobbyParsed } from "@settlers/protocol";
 import { fail } from "./errors";
 import type { KeyedQueue } from "./queue";
 import type { GamePlayer, GameRecord, LobbyRecord, Store } from "./store/types";
@@ -13,12 +13,13 @@ export class LobbyService {
     private queue: KeyedQueue,
   ) {}
 
-  async create(hostId: string, opts: CreateLobby): Promise<LobbyRecord> {
+  async create(hostId: string, opts: CreateLobbyParsed): Promise<LobbyRecord> {
     const lobby: LobbyRecord = {
       id: randomBytes(6).toString("base64url"),
       hostId,
       maxSeats: opts.maxSeats,
       allowSpectators: opts.allowSpectators,
+      turnSeconds: opts.turnSeconds,
       seats: Array.from({ length: opts.maxSeats }, (_, i) =>
         i === 0 ? { userId: hostId, ready: false } : null,
       ),
@@ -87,6 +88,7 @@ export class LobbyService {
         seed,
         seats: players.map((p) => p.seat),
         status: "active",
+        turnSeconds: lobby.turnSeconds,
       };
       lobby.status = "started";
       lobby.gameId = game.id;

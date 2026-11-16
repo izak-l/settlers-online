@@ -34,6 +34,8 @@ export interface Snapshot {
   /** Events this viewer may see, oldest first. */
   log: GameEvent[];
   players: SnapshotPlayer[];
+  /** The running turn timer: `deadline` is in this browser's clock (epoch ms). */
+  clock?: { kind: "turn" | "short"; deadline: number; totalMs: number };
 }
 
 export interface SendError {

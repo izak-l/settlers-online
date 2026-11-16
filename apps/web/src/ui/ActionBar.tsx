@@ -2,6 +2,7 @@ import { BASE_COSTS, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
 import { DiscardPicker, StealPicker, TradeOfferView } from "./Decisions";
+import { TurnTimer } from "./TurnTimer";
 
 const BUILDS: { mode: Exclude<BuildMode, null>; label: string; action: string }[] = [
   { mode: "road", label: "Road", action: "BUILD_ROAD" },
@@ -149,14 +150,19 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
 
   return (
     <section className="panel actions">
-      {lastRoll && snap.view.turn.number > 0 && (
-        <div className="dice" aria-label="Last roll">
-          {Object.entries(lastRoll).map(([die, n]) => (
-            <span key={die} className={`die die-${die}`}>
-              {n}
-            </span>
-          ))}
-          <span className="muted">= {Object.values(lastRoll).reduce((a, b) => a + b, 0)}</span>
+      {((lastRoll && snap.view.turn.number > 0) || snap.clock) && (
+        <div className="action-head">
+          {lastRoll && snap.view.turn.number > 0 && (
+            <div className="dice" aria-label="Last roll">
+              {Object.entries(lastRoll).map(([die, n]) => (
+                <span key={die} className={`die die-${die}`}>
+                  {n}
+                </span>
+              ))}
+              <span className="muted">= {Object.values(lastRoll).reduce((a, b) => a + b, 0)}</span>
+            </div>
+          )}
+          {snap.clock && <TurnTimer clock={snap.clock} mine={myMove} />}
         </div>
       )}
       {body}

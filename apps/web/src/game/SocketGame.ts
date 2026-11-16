@@ -47,6 +47,15 @@ export class SocketGame implements GameClient {
       ratios: msg.ratios,
       log: this.log,
       players: msg.players.map((p) => ({ id: p.seat, name: p.username, connected: p.connected })),
+      ...(msg.clock
+        ? {
+            clock: {
+              kind: msg.clock.kind,
+              deadline: Date.now() + msg.clock.remainingMs,
+              totalMs: msg.clock.totalMs,
+            },
+          }
+        : {}),
     };
     for (const l of this.listeners) l(this.latest);
   }

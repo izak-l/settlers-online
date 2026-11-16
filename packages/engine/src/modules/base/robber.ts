@@ -39,6 +39,7 @@ export function startSevenFlow(draft: GameState, roller: PlayerId): void {
       allowed: ["DISCARD"],
       module: "base",
       data: { amounts },
+      timer: "short",
     });
   }
 }

@@ -14,12 +14,16 @@ import { devAuthenticator } from "../auth";
 import { startServer, type RunningServer } from "../server";
 import type { Store } from "../store/types";
 
+/** Timer "seconds" are 2 ms in tests, so a 30-second turn times out after 60 ms. */
+export const TEST_SECOND_MS = 2;
+
 export function startTestServer(store: Store): Promise<RunningServer> {
   return startServer({
     config: { WEB_ORIGIN: "*", SNAPSHOT_EVERY: 10 },
     store,
     auth: devAuthenticator,
     port: 0,
+    secondMs: TEST_SECOND_MS,
   });
 }
 

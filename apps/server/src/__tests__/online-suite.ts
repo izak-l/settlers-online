@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { RunningServer } from "../server";
 import type { Store } from "../store/types";
-import { pick, startTestServer, TestClient } from "./harness";
+import { pick, startTestServer, TEST_SECOND_MS, TestClient } from "./harness";
 
 /**
  * The M4 "done when" scenario, end to end over real sockets:
@@ -30,7 +30,7 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
     });
 
     /** Lobby → started game with all five clients joined. */
-    async function setUpGame() {
+    async function setUpGame(turnSeconds: 0 | 30 = 0) {
       const [ada, bo, cy, di] = await Promise.all(
         ["dev:Ada", "dev:Bo_b", "dev:Cyd", "dev:Dia"].map(connect),
       );
@@ -40,9 +40,11 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       const created = await ada!.socket.emitWithAck("lobby:create", {
         maxSeats: 4,
         allowSpectators: true,
+        turnSeconds,
       });
       if (!created.ok) throw new Error(created.code);
       const lobbyId = created.lobby.id;
+      expect(created.lobby.turnSeconds).toBe(turnSeconds);
 
       for (const [i, p] of players.entries()) {
         if (i > 0) {
@@ -239,6 +241,39 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(back[0]!.state!.seq).toBe(before.seq);
       expect(back[0]!.state!.view).toEqual(before.view);
       await playUntilTurn(gameId, back, 8);
+    });
+
+    it("turn timers: idle players are moved by the system actor; replays match; nobody home stops the clock", async () => {
+      const { gameId, spec } = await setUpGame(30);
+      // Nobody acts: setup placements, rolls, robber moves and discards all come from timeouts.
+      await spec.until(() => spec.state!.view.turn.number >= 4, 20_000);
+      expect(spec.state!.clock).toMatchObject({ totalMs: 30 * TEST_SECOND_MS });
+      const stored = await store.actionsAfter(gameId, 0);
+      expect(stored.length).toBeGreaterThan(16); // 8 setup placements + 8 roads, at least
+      expect(new Set(stored.map((a) => a.actor))).toEqual(new Set(["system"]));
+
+      // Everyone leaves: no more timeouts.
+      for (const c of clients.splice(0)) c.close();
+      await new Promise((r) => setTimeout(r, 100));
+      const settled = (await store.actionsAfter(gameId, 0)).length;
+      await new Promise((r) => setTimeout(r, 300));
+      expect((await store.actionsAfter(gameId, 0)).length).toBe(settled);
+
+      // A restarted server replays the system actions to the same point.
+      await server.close();
+      server = await startTestServer(store);
+      const back = await connect("dev:Ada");
+      await back.socket.emitWithAck("game:join", { gameId });
+      await back.until(() => back.state !== null);
+      expect(back.state!.seq).toBe(settled);
+      expect(back.state!.clock?.remainingMs).toBeGreaterThan(0);
+    });
+
+    it("a game without a timer never moves by itself", async () => {
+      const { gameId, spec } = await setUpGame(0);
+      await new Promise((r) => setTimeout(r, 200));
+      expect(spec.state!.clock).toBeUndefined();
+      expect(await store.actionsAfter(gameId, 0)).toEqual([]);
     });
 
     it("lobby rules: seats can't be stolen, unknown lobbies 404, usernames are unique", async () => {

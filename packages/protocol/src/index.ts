@@ -109,9 +109,14 @@ export const _actionSchemaCheck: _SchemaMatchesEngine = true;
 // ---------------------------------------------------------------------------
 
 export const SetUsernameSchema = z.object({ username: UsernameSchema });
+/** Turn timer choices; 0 means off. */
+export const TURN_SECONDS_CHOICES = [0, 30, 60, 90, 120] as const;
 export const CreateLobbySchema = z.object({
   maxSeats: z.union([z.literal(3), z.literal(4)]),
   allowSpectators: z.boolean(),
+  turnSeconds: z
+    .union([z.literal(0), z.literal(30), z.literal(60), z.literal(90), z.literal(120)])
+    .default(0),
 });
 export const LobbyRefSchema = z.object({ lobbyId: Id });
 export const TakeSeatSchema = z.object({
@@ -129,7 +134,9 @@ export const UserRefSchema = z.object({ userId: Id });
 export const InviteSchema = z.object({ lobbyId: Id, userId: Id });
 
 export type SetUsername = z.infer<typeof SetUsernameSchema>;
-export type CreateLobby = z.infer<typeof CreateLobbySchema>;
+/** What the client may send (turnSeconds optional); the server sees it with the default applied. */
+export type CreateLobby = z.input<typeof CreateLobbySchema>;
+export type CreateLobbyParsed = z.infer<typeof CreateLobbySchema>;
 export type LobbyRef = z.infer<typeof LobbyRefSchema>;
 export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
@@ -163,6 +170,8 @@ export interface LobbyState {
   hostId: string;
   maxSeats: number;
   allowSpectators: boolean;
+  /** 0 = no turn timer. */
+  turnSeconds: number;
   seats: (LobbySeat | null)[];
   status: "open" | "started";
   /** Set once the host starts the game. */
@@ -195,6 +204,11 @@ export interface GameStateMessage {
   /** Full visible history, oldest first. Only sent when joining or reconnecting. */
   log?: GameEvent[];
   players: SeatPlayer[];
+  /**
+   * The running turn timer, if the game has one and it's running. Relative times, so the
+   * client's own clock never needs to agree with the server's.
+   */
+  clock?: { kind: "turn" | "short"; remainingMs: number; totalMs: number };
 }
 
 /** Where a friend is. `lobbyId` / `gameId` let you join or watch them. */

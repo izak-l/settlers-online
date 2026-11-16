@@ -62,6 +62,8 @@ export interface ServerOptions {
   auth: Authenticator;
   /** 0 picks a free port (tests). */
   port: number;
+  /** Length of one timer "second" in ms; tests shrink it so timeouts happen fast. */
+  secondMs?: number;
 }
 
 /** Reply to an acknowledgement, turning thrown errors into SERVER_ERROR. */
@@ -81,6 +83,7 @@ export async function startServer({
   store,
   auth,
   port,
+  secondMs = 1000,
 }: ServerOptions): Promise<RunningServer> {
   const http = createHttpServer((req, res) => {
     if (req.url === "/health") {
@@ -93,7 +96,10 @@ export async function startServer({
 
   const lobbyQueue = new KeyedQueue();
   const lobbies = new LobbyService(store, lobbyQueue);
-  const rooms = new RoomManager(store, config.SNAPSHOT_EVERY);
+  const rooms = new RoomManager(store, config.SNAPSHOT_EVERY, secondMs);
+  /** gameId → the pending timeout for that game's running clock. */
+  const timeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  let closing = false;
   const friends = new FriendService(store, new KeyedQueue());
   /** Who is online and where. Seats stay reserved while offline; this only drives "connected". */
   const presence = new PresenceTracker();
@@ -118,6 +124,7 @@ export async function startServer({
       hostId: lobby.hostId,
       maxSeats: lobby.maxSeats,
       allowSpectators: lobby.allowSpectators,
+      turnSeconds: lobby.turnSeconds,
       seats: lobby.seats.map((s) =>
         s
           ? {
@@ -149,11 +156,41 @@ export async function startServer({
     }));
   }
 
-  /** Send every socket in the game its own view. Built once per role, not once per socket. */
+  /** (Re)arm the game's timeout for whichever clock is running now. */
+  function armClock(room: GameRoom, anyoneHome: boolean): void {
+    clearTimeout(timeouts.get(room.id));
+    timeouts.delete(room.id);
+    const running = room.updateClock(Date.now(), anyoneHome && !closing);
+    if (!running) return;
+    const armedAt = room.currentSeq;
+    const fire = () =>
+      inBackground(() =>
+        rooms.queue.run(`game:${room.id}`, async () => {
+          // Someone acted in the meantime: that action's broadcast re-armed the clock.
+          if (room.currentSeq !== armedAt) return;
+          const events = await room.timeout(running.key);
+          if (events.length > 0) await broadcastGame(room, events);
+        }),
+      );
+    timeouts.set(room.id, setTimeout(fire, Math.max(0, running.deadline - Date.now())));
+  }
+
+  /**
+   * Send every socket in the game its own view. Built once per role, not once per socket.
+   * Also re-arms the turn timer, since every change to a game passes through here.
+   */
   async function broadcastGame(room: GameRoom, events: GameEvent[]): Promise<void> {
     const players = await seatPlayers(room);
     const byRole = new Map<Role, GameStateMessage>();
-    for (const s of await io.in(`game:${room.id}`).fetchSockets()) {
+    const sockets = await io.in(`game:${room.id}`).fetchSockets();
+    armClock(
+      room,
+      sockets.some((s) => {
+        const role = s.data.games.get(room.id);
+        return role !== undefined && role !== "spectator";
+      }),
+    );
+    for (const s of sockets) {
       const role = s.data.games.get(room.id);
       if (!role) continue;
       if (!byRole.has(role)) byRole.set(role, room.messageFor(role, events, players, false));
@@ -368,8 +405,12 @@ export async function startServer({
         if (!p.success) return fail("BAD_REQUEST");
         const { gameId } = p.data;
         // Synchronous before any await, so a rejoin sent right after can't be undone by this.
+        const role = socket.data.games.get(gameId);
         socket.data.games.delete(gameId);
         void socket.leave(`game:${gameId}`);
+        // A player leaving may leave nobody home, which stops the clock.
+        const room = role && role !== "spectator" ? await rooms.get(gameId) : null;
+        if (room) await broadcastGame(room, []);
         await tellFriends(
           userId,
           presence.leave(socket.id, (pl) => pl.kind === "game" && pl.gameId === gameId),
@@ -451,10 +492,10 @@ export async function startServer({
     socket.on("disconnect", () => {
       const status = presence.disconnect(socket.id);
       inBackground(() => tellFriends(userId, status));
-      if (presence.isOnline(userId)) return;
-      // Seats stay reserved; just tell everyone this player dropped.
+      const stillOnline = presence.isOnline(userId);
+      // Seats stay reserved; just tell everyone this player dropped (and re-check game clocks).
       inBackground(async () => {
-        for (const id of socket.data.lobbies) await broadcastLobby(id);
+        if (!stillOnline) for (const id of socket.data.lobbies) await broadcastLobby(id);
         for (const id of socket.data.games.keys()) {
           const room = await rooms.get(id);
           if (room) await broadcastGame(room, []);
@@ -470,6 +511,9 @@ export async function startServer({
     url: `http://localhost:${actual}`,
     io,
     async close() {
+      closing = true;
+      for (const t of timeouts.values()) clearTimeout(t);
+      timeouts.clear();
       await io.close(); // also closes the HTTP server and disconnects every socket
       // Disconnect handlers may still be broadcasting; let them finish before storage closes.
       while (background.size > 0) await Promise.allSettled([...background]);

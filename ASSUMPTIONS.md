@@ -134,3 +134,23 @@ The win is checked after every action, for the player whose turn it is. After EN
 ### A21: When the game ends, the decision stack is emptied and every further action is rejected with GAME_OVER
 
 **Test:** `awards.test.ts` — "the active player wins on reaching 10 VP, and the game stops".
+
+## M6 — Turn timers
+
+### A22: The turn clock covers a whole turn, keyed by turn number and the player being waited on
+
+Actions within a turn don't reset it. During setup the turn number stays 0, so a player with two placements in a row (the end of the snake) gets one clock for both. A timeout plays default moves until the clock no longer applies: for a turn, roll, cancel an open offer, place free roads at random, then end the turn.
+
+**Test:** `apps/server/src/__tests__/timers.test.ts` — "keeps one deadline for the whole turn, and restarts for the next player"; `online-suite.ts` — "turn timers: idle players are moved by the system actor…".
+
+### A23: Discards get a separate 30-second clock; the turn clock pauses meanwhile
+
+While a decision the engine marks `timer: "short"` (discards) is on top, the turn clock is paused and resumes with the time it had left. On timeout everyone still pending discards at random.
+
+**Test:** `timers.test.ts` — "pauses the turn clock while a discard runs, then resumes with the time left"; `robber.test.ts` — "marks discards as using the short clock".
+
+### A24: Clocks only run while a seated player is connected, and restart from full
+
+When no seated player has the game open, the clock stops, so an abandoned game doesn't play itself. When someone comes back (or the server restarts and the game loads), the current clock starts again from full.
+
+**Test:** `online-suite.ts` — the "nobody home" and restart parts of the turn timer test; `timers.test.ts` — "starts from full after a reset".

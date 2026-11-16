@@ -17,6 +17,8 @@ export interface LobbyRecord {
   hostId: string;
   maxSeats: number;
   allowSpectators: boolean;
+  /** 0 = no turn timer. */
+  turnSeconds: number;
   seats: (LobbySeatRecord | null)[];
   status: "open" | "started";
   gameId: string | null;
@@ -30,6 +32,8 @@ export interface GameRecord {
   seed: string;
   seats: PlayerId[];
   status: "active" | "finished";
+  /** 0 = no turn timer. */
+  turnSeconds: number;
 }
 
 /** Seat ↔ account mapping. The engine only ever sees the seat. */

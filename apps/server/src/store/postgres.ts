@@ -20,6 +20,7 @@ interface LobbyRow {
   host_id: string;
   max_seats: number;
   allow_spectators: boolean;
+  turn_seconds: number;
   seats: LobbyRecord["seats"];
   status: LobbyRecord["status"];
   game_id: string | null;
@@ -30,6 +31,7 @@ const toLobby = (r: LobbyRow): LobbyRecord => ({
   hostId: r.host_id,
   maxSeats: r.max_seats,
   allowSpectators: r.allow_spectators,
+  turnSeconds: r.turn_seconds,
   seats: r.seats,
   status: r.status,
   gameId: r.game_id,
@@ -120,9 +122,19 @@ export class PgStore implements Store {
 
   async createLobby(l: LobbyRecord): Promise<void> {
     await this.pool.query(
-      `insert into lobbies (id, host_id, max_seats, allow_spectators, seats, status, game_id)
-       values ($1, $2, $3, $4, $5::jsonb, $6, $7)`,
-      [l.id, l.hostId, l.maxSeats, l.allowSpectators, json(l.seats), l.status, l.gameId],
+      `insert into lobbies
+         (id, host_id, max_seats, allow_spectators, seats, status, game_id, turn_seconds)
+       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)`,
+      [
+        l.id,
+        l.hostId,
+        l.maxSeats,
+        l.allowSpectators,
+        json(l.seats),
+        l.status,
+        l.gameId,
+        l.turnSeconds,
+      ],
     );
   }
 
@@ -143,9 +155,18 @@ export class PgStore implements Store {
     try {
       await client.query("begin");
       await client.query(
-        `insert into games (id, lobby_id, map, modules, seed, seats, status)
-         values ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
-        [game.id, game.lobbyId, json(game.map), game.modules, game.seed, game.seats, game.status],
+        `insert into games (id, lobby_id, map, modules, seed, seats, status, turn_seconds)
+         values ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)`,
+        [
+          game.id,
+          game.lobbyId,
+          json(game.map),
+          game.modules,
+          game.seed,
+          game.seats,
+          game.status,
+          game.turnSeconds,
+        ],
       );
       for (const p of players) {
         await client.query(
@@ -175,7 +196,11 @@ export class PgStore implements Store {
       seed: string;
       seats: string[];
       status: GameRecord["status"];
-    }>("select id, lobby_id, map, modules, seed, seats, status from games where id = $1", [id]);
+      turn_seconds: number;
+    }>(
+      "select id, lobby_id, map, modules, seed, seats, status, turn_seconds from games where id = $1",
+      [id],
+    );
     const g = rows[0];
     if (!g) return null;
     const players = await this.pool.query<GamePlayer & { user_id: string }>(
@@ -191,6 +216,7 @@ export class PgStore implements Store {
         seed: g.seed,
         seats: g.seats,
         status: g.status,
+        turnSeconds: g.turn_seconds,
       },
       players: players.rows.map((r) => ({ seat: r.seat, userId: r.user_id })),
     };

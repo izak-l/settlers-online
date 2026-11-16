@@ -768,3 +768,48 @@ button.danger {
 .history .row {
   gap: 0.2rem 0.75rem;
 }
+
+/* ---- M6: turn timer ---- */
+.action-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.timer {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  margin-left: auto;
+  min-width: 7.5rem;
+}
+.timer-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.timer-text {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.timer-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.timer-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+.timer.urgent .timer-text {
+  color: var(--error);
+}
+.timer.urgent .timer-bar span {
+  background: var(--error);
+}

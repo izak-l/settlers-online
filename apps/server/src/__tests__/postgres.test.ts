@@ -37,6 +37,7 @@ if (!url) {
           hostId: "u1",
           maxSeats: 3,
           allowSpectators: false,
+          turnSeconds: 0,
           seats: [null, null, null],
           status: "open",
           gameId: null,
@@ -48,6 +49,7 @@ if (!url) {
           seed: "s",
           seats: ["p0"],
           status: "active" as const,
+          turnSeconds: 0,
           map: { id: "m", vpToWin: 10, hexes: [], ports: [] },
         };
         await store.startGame(
@@ -56,6 +58,7 @@ if (!url) {
             hostId: "u1",
             maxSeats: 3,
             allowSpectators: false,
+            turnSeconds: 0,
             seats: [null, null, null],
             status: "started",
             gameId: game.id,
@@ -81,6 +84,7 @@ if (!url) {
           hostId: "u1",
           maxSeats: 3,
           allowSpectators: true,
+          turnSeconds: 0,
           seats: [{ userId: "u1", ready: true }, null, null],
           status: "open" as const,
           gameId: null,

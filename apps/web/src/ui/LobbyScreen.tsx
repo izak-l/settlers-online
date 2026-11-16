@@ -112,6 +112,12 @@ export function LobbyScreen({ id }: { id: string }) {
         Send this link to your friends.{" "}
         {lobby.allowSpectators ? "Anyone with it can watch once the game starts." : ""}
       </p>
+      <p className="muted small">
+        Turn timer:{" "}
+        {lobby.turnSeconds > 0
+          ? `${lobby.turnSeconds} seconds per turn, 30 seconds to discard. When time runs out, a default move is made.`
+          : "off"}
+      </p>
 
       <ol className="seats">
         {lobby.seats.map((s, i) => (

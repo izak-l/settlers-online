@@ -61,6 +61,11 @@ export interface Decision {
   /** Module that owns the resolution logic. */
   module: ModuleId;
   data?: Record<string, unknown>;
+  /**
+   * Which clock the server's turn timer uses while this is on top: omitted means the turn clock;
+   * "short" is a quick clock for decisions others must answer (e.g. discards).
+   */
+  timer?: "short";
 }
 
 export interface GameState {

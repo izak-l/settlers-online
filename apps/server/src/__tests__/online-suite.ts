@@ -171,6 +171,25 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(await spec.socket.emitWithAck("games:history", {})).toEqual({ ok: true, games: [] });
     });
 
+    it("a one-seat lobby starts a solo game that plays like any other", async () => {
+      const ada = await connect("dev:Ada");
+      const created = await ada.socket.emitWithAck("lobby:create", {
+        maxSeats: 1,
+        allowSpectators: false,
+      });
+      if (!created.ok) throw new Error(created.code);
+      const lobbyId = created.lobby.id;
+      expect((await ada.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
+      const started = await ada.socket.emitWithAck("lobby:start", { lobbyId });
+      if (!started.ok) throw new Error(started.code);
+      expect(await ada.socket.emitWithAck("game:join", { gameId: started.gameId })).toEqual({
+        ok: true,
+        you: "p0",
+      });
+      await playUntilTurn(started.gameId, [ada], 4);
+      expect(ada.state!.view.players).toEqual(["p0"]);
+    });
+
     it("history lists games in progress, newest first", async () => {
       const first = await setUpGame();
       const again = await first.players[0]!.socket.emitWithAck("lobby:create", {

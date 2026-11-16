@@ -117,7 +117,9 @@ function chooseAction(state: GameState, rng: BotRng): { player: PlayerId; action
   const bank = legal.filter((a) => a.type === "BANK_TRADE");
   if (plays.length > 0 && rng.chance(0.4)) return { player, action: rng.pick(plays) };
   if (bank.length > 0 && rng.chance(0.6)) return { player, action: rng.pick(bank) };
-  if (top.allowed.includes("OFFER_TRADE") && rng.chance(0.05)) {
+  // Offers are built here (too many to list), but only when the engine lists one as possible,
+  // which it doesn't with nobody else in the game.
+  if (legal.some((a) => a.type === "OFFER_TRADE") && rng.chance(0.05)) {
     const offer = randomOffer(state, player, rng);
     if (offer) return { player, action: offer };
   }

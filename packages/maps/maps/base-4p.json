@@ -1,7 +1,7 @@
 {
   "id": "base-4p",
   "version": 1,
-  "players": { "min": 3, "max": 4 },
+  "players": { "min": 1, "max": 4 },
   "vpToWin": 10,
   "hexes": [
     { "q": 0, "r": 0, "terrain": "pool:land", "token": "pool:tokens" },

@@ -33,13 +33,16 @@ export function TradePanel({ snap, pick, setPick }: Props) {
         >
           With the bank
         </button>
-        <button
-          aria-pressed={pick?.purpose === "offer"}
-          className={pick?.purpose === "offer" ? "active" : ""}
-          onClick={() => setPick(pick?.purpose === "offer" ? null : startPick("offer"))}
-        >
-          Offer to players
-        </button>
+        {/* Solo games have nobody to offer to (the server rejects it too). */}
+        {snap.players.length > 1 && (
+          <button
+            aria-pressed={pick?.purpose === "offer"}
+            className={pick?.purpose === "offer" ? "active" : ""}
+            onClick={() => setPick(pick?.purpose === "offer" ? null : startPick("offer"))}
+          >
+            Offer to players
+          </button>
+        )}
       </div>
       <p className="muted small">
         Bank rate 4:1

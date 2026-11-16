@@ -30,8 +30,10 @@ describe("protocol schemas", () => {
     expect(UsernameSchema.safeParse("no spaces").success).toBe(false);
   });
 
-  it("only allows 3 or 4 seats for now", () => {
-    expect(CreateLobbySchema.safeParse({ maxSeats: 4, allowSpectators: true }).success).toBe(true);
-    expect(CreateLobbySchema.safeParse({ maxSeats: 6, allowSpectators: true }).success).toBe(false);
+  it("allows 1 to 4 seats", () => {
+    for (const maxSeats of [1, 2, 3, 4])
+      expect(CreateLobbySchema.safeParse({ maxSeats, allowSpectators: true }).success).toBe(true);
+    for (const maxSeats of [0, 5, 6])
+      expect(CreateLobbySchema.safeParse({ maxSeats, allowSpectators: true }).success).toBe(false);
   });
 });

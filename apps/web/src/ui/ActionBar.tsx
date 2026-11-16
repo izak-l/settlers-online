@@ -155,6 +155,11 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
                 <Cost cost={BASE_COSTS["devCard"]!} />
               </button>
             </div>
+            {!mode && (
+              <p className="prompt muted small">
+                Click an edge or corner on the map to see build options.
+              </p>
+            )}
             {mode && (
               <p className="prompt">
                 Pick a highlighted spot, or press the button again to cancel.

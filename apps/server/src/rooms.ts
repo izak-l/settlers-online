@@ -1,5 +1,6 @@
 import {
   apply,
+  buildOptions,
   computeVP,
   createGame,
   defaultAction,
@@ -179,6 +180,7 @@ export class GameRoom {
       you,
       view: viewFor(this.state, you),
       legal: you === "spectator" ? [] : legalActions(this.state, you),
+      builds: you === "spectator" ? [] : buildOptions(this.state, you),
       scores,
       ratios: you === "spectator" ? {} : tradeRatios(this.state, you),
       events: newEvents.filter(visible),

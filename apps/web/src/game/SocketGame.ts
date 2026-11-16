@@ -65,6 +65,7 @@ export class SocketGame implements GameClient {
       seat: msg.you,
       view: msg.view,
       legal: msg.legal,
+      builds: msg.builds ?? [],
       scores: msg.scores,
       ratios: msg.ratios,
       log: this.log,

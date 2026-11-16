@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   Action,
   ActionSpec,
+  BuildOption,
   ErrorCode,
   GameEvent,
   PlayerId,
@@ -225,6 +226,8 @@ export interface GameStateMessage {
   view: PlayerView;
   /** What `you` may legally send right now (always empty for spectators). */
   legal: ActionSpec[];
+  /** Own-seat map build previews, including costs and disabled reasons. Empty for spectators. */
+  builds: BuildOption[];
   /** VP per seat as this viewer may see it (others' hidden VP cards excluded until the game ends). */
   scores: Record<PlayerId, number>;
   /** Your bank rate per resource (4, or 3/2 with ports). Empty for spectators. */

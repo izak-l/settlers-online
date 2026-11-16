@@ -4,6 +4,14 @@
  */
 
 const PATHS: Record<string, React.ReactNode> = {
+  road: <path d="M4 19 L17 3 L22 7 L9 23 Z" fill="currentColor" />,
+  settlement: <path d="M3 11 L12 3 L21 11 V22 H14 V15 H10 V22 H3 Z" fill="currentColor" />,
+  city: <path d="M2 9 L7 4 L12 9 V13 L17 8 L22 13 V22 H2 Z" fill="currentColor" />,
+  ship: (
+    <>
+      <path d="M3 17 H22 L18 22 H7 Z M12 2 V15 H3 Z M14 4 L21 15 H14 Z" fill="currentColor" />
+    </>
+  ),
   wood: (
     <>
       <path d="M12 2 L5 11 h3 L4 16 h6 v6 h4 v-6 h6 L16 11 h3 Z" fill="currentColor" />

@@ -1,5 +1,13 @@
 import type { Action, ActionType } from "./actions";
-import type { GameEvent, GameState, ModuleId, PlayerId, Rejection, ResourceId } from "./types";
+import type {
+  GameEvent,
+  GameState,
+  ModuleId,
+  PlayerId,
+  Rejection,
+  ResourceId,
+  Resources,
+} from "./types";
 
 /** Dice are an object so an event die or a chosen roll can be added later. */
 export type Dice = Record<string, number>;
@@ -10,11 +18,25 @@ export interface ActionContext {
   modules: RulesModule[];
 }
 
+/** Display data for a paid map build, provided by the module owning its rules. */
+export interface BuildInfo {
+  piece: string;
+  label: string;
+  cost: Resources;
+}
+
+export interface BuildOption extends BuildInfo {
+  action: Action;
+  disabledReason?: Rejection;
+}
+
 /**
  * Validate + apply for one action type. `validate` sees the untouched state;
  * `apply` mutates a private copy (the draft) and is only called after validate passes.
  */
 export interface ActionHandler<T extends ActionType = ActionType> {
+  /** Map build previews. Validate placement/other restrictions before cost so CANNOT_AFFORD means a valid location. */
+  build?: BuildInfo;
   validate(
     state: GameState,
     player: PlayerId,

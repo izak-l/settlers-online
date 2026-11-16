@@ -1,5 +1,6 @@
 import {
   apply,
+  buildOptions,
   computeVP,
   createGame,
   eventVisibleTo,
@@ -9,6 +10,7 @@ import {
   viewFor,
   type Action,
   type ActionSpec,
+  type BuildOption,
   type GameEvent,
   type GameState,
   type PlayerId,
@@ -28,6 +30,8 @@ export interface Snapshot {
   seat: PlayerId | "spectator";
   view: PlayerView;
   legal: ActionSpec[];
+  /** Own-seat map choices, including disabled builds; absent with older servers. */
+  builds?: BuildOption[];
   /** VP per seat as this viewer may see it. */
   scores: Record<PlayerId, number>;
   /** Your bank rate per resource. Empty for spectators. */
@@ -91,6 +95,7 @@ export class LocalGame implements GameClient {
       seat,
       view: viewFor(this.state, seat),
       legal: legalActions(this.state, seat),
+      builds: buildOptions(this.state, seat),
       scores,
       ratios: tradeRatios(this.state, seat),
       log: this.events.filter((e) => eventVisibleTo(e, seat)),

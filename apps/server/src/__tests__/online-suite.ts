@@ -127,6 +127,30 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(spec.log.filter((l) => / stole 1 | drew /.test(l))).toEqual([]);
     });
 
+    it("sends build costs and disabled reasons only to the current actor", async () => {
+      const { gameId, players, spec } = await setUpGame();
+      const everyone = [...players, spec];
+      for (let guard = 0; guard < 100; guard++) {
+        const actor = players.find((c) => (c.state?.legal.length ?? 0) > 0)!;
+        if (actor.state!.view.decisions.at(-1)?.kind === "MAIN") {
+          const builds = actor.state!.builds;
+          expect(builds.length).toBeGreaterThan(0);
+          expect(builds.find((b) => b.piece === "road")?.cost).toEqual({ wood: 1, brick: 1 });
+          expect(builds.filter((b) => !b.disabledReason).map((b) => b.action)).toEqual(
+            actor.state!.legal.filter((a) => a.type.startsWith("BUILD_")),
+          );
+          expect(builds.some((b) => b.disabledReason)).toBe(true);
+          for (const other of everyone.filter((c) => c !== actor))
+            expect(other.state!.builds).toEqual([]);
+          return;
+        }
+        const ack = await actor.act(gameId, pick(actor.state!));
+        if (!ack.ok) throw new Error(ack.message);
+        await Promise.all(everyone.map((c) => c.until(() => c.state!.seq === ack.seq)));
+      }
+      throw new Error("didn't reach main step");
+    });
+
     it("plays a whole game to a winner; everyone sees it and the game is stored as finished", async () => {
       const { gameId, players, spec } = await setUpGame();
       const everyone = [...players, spec];

@@ -7,6 +7,7 @@ import { LobbyScreen } from "./ui/LobbyScreen";
 import { OnlineGame } from "./ui/OnlineGame";
 import { PickUsername } from "./ui/PickUsername";
 import { SignIn } from "./ui/SignIn";
+import { Toasts } from "./ui/Toasts";
 
 const STATUS_TEXT = {
   connecting: "Connecting…",
@@ -86,6 +87,7 @@ function Shell(props: {
         </p>
       )}
       {props.children}
+      <Toasts />
     </div>
   );
 }

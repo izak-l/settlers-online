@@ -24,6 +24,10 @@ export const PROTOCOL_ERROR_CODES = [
   "LOBBY_STARTED",
   "NOT_READY",
   "SPECTATORS_DISABLED",
+  "USER_NOT_FOUND",
+  "ALREADY_FRIENDS",
+  "NOT_FRIENDS",
+  "FRIEND_OFFLINE",
   "SERVER_ERROR",
 ] as const;
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[number];
@@ -40,6 +44,10 @@ export const PROTOCOL_ERROR_MESSAGES: Record<ProtocolErrorCode, string> = {
   LOBBY_STARTED: "This game has already started.",
   NOT_READY: "Every seat must be filled and ready first.",
   SPECTATORS_DISABLED: "This game doesn't allow spectators.",
+  USER_NOT_FOUND: "Nobody has that username.",
+  ALREADY_FRIENDS: "You're already friends, or a request is already waiting.",
+  NOT_FRIENDS: "You can only do that with a friend.",
+  FRIEND_OFFLINE: "That friend isn't online right now.",
   SERVER_ERROR: "Something went wrong on the server.",
 };
 
@@ -114,6 +122,11 @@ export const TakeSeatSchema = z.object({
 export const SetReadySchema = z.object({ lobbyId: Id, ready: z.boolean() });
 export const JoinGameSchema = z.object({ gameId: Id });
 export const GameActionSchema = z.object({ gameId: Id, action: ActionSchema });
+export const GameRefSchema = z.object({ gameId: Id });
+export const FriendRequestSchema = z.object({ username: UsernameSchema });
+export const FriendRespondSchema = z.object({ userId: Id, accept: z.boolean() });
+export const UserRefSchema = z.object({ userId: Id });
+export const InviteSchema = z.object({ lobbyId: Id, userId: Id });
 
 export type SetUsername = z.infer<typeof SetUsernameSchema>;
 export type CreateLobby = z.infer<typeof CreateLobbySchema>;
@@ -122,6 +135,11 @@ export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
 export type JoinGame = z.infer<typeof JoinGameSchema>;
 export type GameAction = z.infer<typeof GameActionSchema>;
+export type GameRef = z.infer<typeof GameRefSchema>;
+export type FriendRequest = z.infer<typeof FriendRequestSchema>;
+export type FriendRespond = z.infer<typeof FriendRespondSchema>;
+export type UserRef = z.infer<typeof UserRefSchema>;
+export type Invite = z.infer<typeof InviteSchema>;
 
 // ---------------------------------------------------------------------------
 // Server → client payloads (trusted; typed only)
@@ -179,6 +197,36 @@ export interface GameStateMessage {
   players: SeatPlayer[];
 }
 
+/** Where a friend is. `lobbyId` / `gameId` let you join or watch them. */
+export type Presence =
+  | { state: "offline" }
+  | { state: "online" }
+  | { state: "lobby"; lobbyId: string }
+  | { state: "game"; gameId: string; playing: boolean };
+
+export interface UserSummary {
+  userId: string;
+  username: string;
+}
+
+export interface Friend extends UserSummary {
+  presence: Presence;
+}
+
+/** Your whole friends list. Sent on connect and whenever it changes. */
+export interface FriendsState {
+  friends: Friend[];
+  /** Requests waiting for your answer. */
+  incoming: UserSummary[];
+  /** Requests you sent that haven't been answered. */
+  outgoing: UserSummary[];
+}
+
+export interface InviteMessage {
+  lobbyId: string;
+  from: UserSummary;
+}
+
 // ---------------------------------------------------------------------------
 // Socket.IO event maps
 // ---------------------------------------------------------------------------
@@ -194,10 +242,25 @@ export interface ClientToServerEvents {
   "lobby:start": (payload: LobbyRef, reply: Reply<{ gameId: string }>) => void;
   "game:join": (payload: JoinGame, reply: Reply<{ you: PlayerId | "spectator" }>) => void;
   "game:action": (payload: GameAction, reply: Reply<{ seq: number }>) => void;
+  /** Stop receiving a lobby's or game's updates (you navigated away). Seats are kept. */
+  "lobby:leave": (payload: LobbyRef, reply: Reply) => void;
+  "game:leave": (payload: GameRef, reply: Reply) => void;
+  "friends:list": (payload: Record<string, never>, reply: Reply<{ friends: FriendsState }>) => void;
+  "friends:request": (payload: FriendRequest, reply: Reply) => void;
+  "friends:respond": (payload: FriendRespond, reply: Reply) => void;
+  /** Remove a friend, or withdraw / decline a request. */
+  "friends:remove": (payload: UserRef, reply: Reply) => void;
+  "lobby:invite": (payload: Invite, reply: Reply) => void;
 }
 
 export interface ServerToClientEvents {
   welcome: (me: Me) => void;
   lobby: (lobby: LobbyState) => void;
   state: (state: GameStateMessage) => void;
+  friends: (friends: FriendsState) => void;
+  /** One friend's presence changed. */
+  presence: (update: { userId: string; presence: Presence }) => void;
+  invite: (invite: InviteMessage) => void;
+  /** The lobby you were invited to has started; drop the invite. */
+  "invite:closed": (update: { lobbyId: string }) => void;
 }

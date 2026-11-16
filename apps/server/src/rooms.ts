@@ -65,6 +65,10 @@ export class GameRoom {
     );
   }
 
+  get finished(): boolean {
+    return this.state.winner !== undefined;
+  }
+
   get currentSeq(): number {
     return this.seq;
   }

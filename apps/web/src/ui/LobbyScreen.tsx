@@ -4,6 +4,47 @@ import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { SEAT_COLORS, errorText } from "../game/seats";
 
+/** Online friends who aren't seated here yet, each with an Invite button. */
+function InviteFriends({ lobby }: { lobby: LobbyState }) {
+  const { socket, friends } = useSession();
+  const [sent, setSent] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+  if (!socket || !friends || lobby.status !== "open") return null;
+  const seated = new Set(lobby.seats.flatMap((s) => (s ? [s.userId] : [])));
+  const online = friends.friends.filter(
+    (f) => f.presence.state !== "offline" && !seated.has(f.userId),
+  );
+  if (online.length === 0 && friends.friends.length === 0) return null;
+
+  async function invite(userId: string) {
+    const ack = await socket!.emitWithAck("lobby:invite", { lobbyId: lobby.id, userId });
+    if (ack.ok) setSent((s) => new Set(s).add(userId));
+    setError(ack.ok ? null : errorText(ack.code, ack.message));
+  }
+
+  return (
+    <section className="stack">
+      <h3>Invite friends</h3>
+      {online.length === 0 ? (
+        <p className="muted small">None of your friends are online.</p>
+      ) : (
+        <ul className="people">
+          {online.map((f) => (
+            <li key={f.userId}>
+              <span className="dot online" aria-hidden />
+              <span className="name">{f.username}</span>
+              <button disabled={sent.has(f.userId)} onClick={() => void invite(f.userId)}>
+                {sent.has(f.userId) ? "Invited" : "Invite"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error && <p className="error">{error}</p>}
+    </section>
+  );
+}
+
 export function LobbyScreen({ id }: { id: string }) {
   const { socket, me } = useSession();
   const [lobby, setLobby] = useState<LobbyState | null>(null);
@@ -24,6 +65,7 @@ export function LobbyScreen({ id }: { id: string }) {
     return () => {
       socket.off("lobby", onLobby);
       socket.off("connect", join);
+      if (socket.connected) void socket.emitWithAck("lobby:leave", { lobbyId: id });
     };
   }, [socket, id]);
 
@@ -125,6 +167,7 @@ export function LobbyScreen({ id }: { id: string }) {
           </button>
         </div>
       )}
+      <InviteFriends lobby={lobby} />
       {isHost && (
         <button
           className="primary"

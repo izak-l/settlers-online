@@ -1,5 +1,13 @@
 import type { StateSnapshot } from "@settlers/engine";
-import type { GamePlayer, GameRecord, LobbyRecord, Profile, Store, StoredAction } from "./types";
+import type {
+  FriendshipRecord,
+  GamePlayer,
+  GameRecord,
+  LobbyRecord,
+  Profile,
+  Store,
+  StoredAction,
+} from "./types";
 
 const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -10,6 +18,7 @@ export class MemoryStore implements Store {
   private games = new Map<string, { game: GameRecord; players: GamePlayer[] }>();
   private actions = new Map<string, StoredAction[]>();
   private snapshots = new Map<string, { seq: number; state: StateSnapshot }[]>();
+  private friendships: FriendshipRecord[] = [];
 
   async ensureProfile(userId: string): Promise<Profile> {
     if (!this.profiles.has(userId)) this.profiles.set(userId, { id: userId, username: null });
@@ -27,6 +36,29 @@ export class MemoryStore implements Store {
     }
     this.profiles.set(userId, { id: userId, username });
     return "ok";
+  }
+
+  async findProfileByUsername(username: string): Promise<Profile | null> {
+    const lower = username.toLowerCase();
+    const p = [...this.profiles.values()].find((x) => x.username?.toLowerCase() === lower);
+    return p ? copy(p) : null;
+  }
+
+  async listFriendships(userId: string): Promise<FriendshipRecord[]> {
+    return copy(
+      this.friendships.filter((f) => f.requesterId === userId || f.addresseeId === userId),
+    );
+  }
+  async saveFriendship(f: FriendshipRecord): Promise<void> {
+    await this.deleteFriendship(f.requesterId, f.addresseeId);
+    this.friendships.push(copy(f));
+  }
+  async deleteFriendship(a: string, b: string): Promise<void> {
+    this.friendships = this.friendships.filter(
+      (f) =>
+        !(f.requesterId === a && f.addresseeId === b) &&
+        !(f.requesterId === b && f.addresseeId === a),
+    );
   }
 
   async createLobby(lobby: LobbyRecord): Promise<void> {

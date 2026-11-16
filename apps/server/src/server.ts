@@ -4,24 +4,32 @@ import { Server, type Socket } from "socket.io";
 import type { GameEvent } from "@settlers/engine";
 import {
   CreateLobbySchema,
+  FriendRequestSchema,
+  FriendRespondSchema,
   GameActionSchema,
+  GameRefSchema,
+  InviteSchema,
   JoinGameSchema,
   LobbyRefSchema,
   SetReadySchema,
   SetUsernameSchema,
   TakeSeatSchema,
+  UserRefSchema,
   type Ack,
   type ClientToServerEvents,
   type GameStateMessage,
   type LobbyState,
   type Me,
+  type Presence,
   type SeatPlayer,
   type ServerToClientEvents,
 } from "@settlers/protocol";
 import type { Authenticator } from "./auth";
 import type { Config } from "./config";
 import { fail } from "./errors";
+import { FriendService } from "./friends";
 import { LobbyService } from "./lobbies";
+import { PresenceTracker } from "./presence";
 import { KeyedQueue } from "./queue";
 import { RoomManager, type GameRoom, type Role } from "./rooms";
 import type { LobbyRecord, Store } from "./store/types";
@@ -86,9 +94,12 @@ export async function startServer({
   const lobbyQueue = new KeyedQueue();
   const lobbies = new LobbyService(store, lobbyQueue);
   const rooms = new RoomManager(store, config.SNAPSHOT_EVERY);
-  /** userId → number of open sockets. Seats stay reserved at 0; this only drives "connected". */
-  const presence = new Map<string, number>();
-  const isConnected = (userId: string) => (presence.get(userId) ?? 0) > 0;
+  const friends = new FriendService(store, new KeyedQueue());
+  /** Who is online and where. Seats stay reserved while offline; this only drives "connected". */
+  const presence = new PresenceTracker();
+  const isConnected = (userId: string) => presence.isOnline(userId);
+  /** Open invites per lobby (in memory only), so they can be withdrawn when it starts. */
+  const invites = new Map<string, Set<string>>();
   /** Work started outside a request (disconnect broadcasts); `close` waits for it. */
   const background = new Set<Promise<void>>();
   const inBackground = (work: () => Promise<void>) => {
@@ -150,6 +161,27 @@ export async function startServer({
     }
   }
 
+  // ---- friends and presence ----
+
+  async function sendFriends(userId: string): Promise<void> {
+    io.to(`user:${userId}`).emit(
+      "friends",
+      await friends.stateFor(userId, (id) => presence.status(id)),
+    );
+  }
+
+  /**
+   * Tell `userId`'s friends where they are now (no-op when nothing changed). Sends the status as
+   * of sending, not `changed`: several of these can be in flight at once and finish out of order,
+   * so the last message to arrive must still be the truth.
+   */
+  async function tellFriends(userId: string, changed: Presence | null): Promise<void> {
+    if (!changed) return;
+    const ids = await friends.friendIds(userId);
+    const presenceNow = presence.status(userId);
+    for (const id of ids) io.to(`user:${id}`).emit("presence", { userId, presence: presenceNow });
+  }
+
   // ---- sign-in ----
 
   io.use(async (socket, next) => {
@@ -178,10 +210,14 @@ export async function startServer({
 
   io.on("connection", (socket: ServerSocket) => {
     const { userId } = socket.data;
-    presence.set(userId, (presence.get(userId) ?? 0) + 1);
+    const arrived = presence.connect(socket.id, userId);
     void socket.join(`user:${userId}`);
     const me: Me = { id: userId, username: socket.data.username };
     socket.emit("welcome", me);
+    inBackground(async () => {
+      socket.emit("friends", await friends.stateFor(userId, (id) => presence.status(id)));
+      await tellFriends(userId, arrived);
+    });
 
     const needUsername = () => (socket.data.username ? null : fail("NEED_USERNAME"));
 
@@ -205,6 +241,7 @@ export async function startServer({
         const lobby = await lobbies.create(userId, p.data);
         void socket.join(`lobby:${lobby.id}`);
         socket.data.lobbies.add(lobby.id);
+        await tellFriends(userId, presence.move(socket.id, { kind: "lobby", lobbyId: lobby.id }));
         return { ok: true, lobby: await lobbyState(lobby) };
       }),
     );
@@ -219,6 +256,8 @@ export async function startServer({
         if (!lobby) return fail("NOT_FOUND");
         void socket.join(`lobby:${lobby.id}`);
         socket.data.lobbies.add(lobby.id);
+        if (lobby.status === "open")
+          await tellFriends(userId, presence.move(socket.id, { kind: "lobby", lobbyId: lobby.id }));
         return { ok: true, lobby: await lobbyState(lobby) };
       }),
     );
@@ -250,7 +289,12 @@ export async function startServer({
         const p = LobbyRefSchema.safeParse(payload);
         if (!p.success) return fail("BAD_REQUEST");
         const ack = await lobbies.start(p.data.lobbyId, userId);
-        if (ack.ok) await broadcastLobby(p.data.lobbyId);
+        if (ack.ok) {
+          await broadcastLobby(p.data.lobbyId);
+          for (const id of invites.get(p.data.lobbyId) ?? [])
+            io.to(`user:${id}`).emit("invite:closed", { lobbyId: p.data.lobbyId });
+          invites.delete(p.data.lobbyId);
+        }
         return ack;
       }),
     );
@@ -272,6 +316,14 @@ export async function startServer({
         });
         // Let everyone else see that this player is connected.
         if (role !== "spectator") await broadcastGame(room, []);
+        await tellFriends(
+          userId,
+          presence.move(socket.id, {
+            kind: "game",
+            gameId: room.id,
+            playing: role !== "spectator" && !room.finished,
+          }),
+        );
         return { ok: true, you: role };
       }),
     );
@@ -294,13 +346,108 @@ export async function startServer({
       }),
     );
 
+    socket.on("lobby:leave", (payload, reply) =>
+      respond(reply, async () => {
+        const p = LobbyRefSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const { lobbyId } = p.data;
+        // Synchronous before any await, so a rejoin sent right after can't be undone by this.
+        socket.data.lobbies.delete(lobbyId);
+        void socket.leave(`lobby:${lobbyId}`);
+        await tellFriends(
+          userId,
+          presence.leave(socket.id, (pl) => pl.kind === "lobby" && pl.lobbyId === lobbyId),
+        );
+        return { ok: true };
+      }),
+    );
+
+    socket.on("game:leave", (payload, reply) =>
+      respond(reply, async () => {
+        const p = GameRefSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const { gameId } = p.data;
+        // Synchronous before any await, so a rejoin sent right after can't be undone by this.
+        socket.data.games.delete(gameId);
+        void socket.leave(`game:${gameId}`);
+        await tellFriends(
+          userId,
+          presence.leave(socket.id, (pl) => pl.kind === "game" && pl.gameId === gameId),
+        );
+        return { ok: true };
+      }),
+    );
+
+    socket.on("friends:list", (_payload, reply) =>
+      respond(reply, async () => ({
+        ok: true,
+        friends: await friends.stateFor(userId, (id) => presence.status(id)),
+      })),
+    );
+
+    socket.on("friends:request", (payload, reply) =>
+      respond(reply, async () => {
+        const p = FriendRequestSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST", p.error.issues[0]?.message);
+        const ack = await friends.request(userId, p.data.username);
+        if (!ack.ok) return ack;
+        await sendFriends(userId);
+        await sendFriends(ack.userId);
+        return { ok: true };
+      }),
+    );
+
+    socket.on("friends:respond", (payload, reply) =>
+      respond(reply, async () => {
+        const p = FriendRespondSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const ack = await friends.respond(userId, p.data.userId, p.data.accept);
+        if (ack.ok) {
+          await sendFriends(userId);
+          await sendFriends(p.data.userId);
+        }
+        return ack;
+      }),
+    );
+
+    socket.on("friends:remove", (payload, reply) =>
+      respond(reply, async () => {
+        const p = UserRefSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const ack = await friends.remove(userId, p.data.userId);
+        if (ack.ok) {
+          await sendFriends(userId);
+          await sendFriends(p.data.userId);
+        }
+        return ack;
+      }),
+    );
+
+    socket.on("lobby:invite", (payload, reply) =>
+      respond(reply, async () => {
+        const p = InviteSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const { lobbyId, userId: friendId } = p.data;
+        const lobby = await lobbies.get(lobbyId);
+        if (!lobby || !socket.data.lobbies.has(lobbyId)) return fail("NOT_FOUND");
+        if (lobby.status !== "open") return fail("LOBBY_STARTED");
+        if (!(await friends.areFriends(userId, friendId))) return fail("NOT_FRIENDS");
+        if (!presence.isOnline(friendId)) return fail("FRIEND_OFFLINE");
+        const open = invites.get(lobbyId) ?? new Set<string>();
+        open.add(friendId);
+        invites.set(lobbyId, open);
+        io.to(`user:${friendId}`).emit("invite", {
+          lobbyId,
+          from: { userId, username: socket.data.username ?? "?" },
+        });
+        return { ok: true };
+      }),
+    );
+
     socket.on("disconnect", () => {
-      const left = (presence.get(userId) ?? 1) - 1;
-      if (left > 0) {
-        presence.set(userId, left);
-        return;
-      }
-      presence.delete(userId);
+      const status = presence.disconnect(socket.id);
+      inBackground(() => tellFriends(userId, status));
+      if (presence.isOnline(userId)) return;
       // Seats stay reserved; just tell everyone this player dropped.
       inBackground(async () => {
         for (const id of socket.data.lobbies) await broadcastLobby(id);

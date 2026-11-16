@@ -1,6 +1,14 @@
 import type { StateSnapshot } from "@settlers/engine";
 import pg from "pg";
-import type { GamePlayer, GameRecord, LobbyRecord, Profile, Store, StoredAction } from "./types";
+import type {
+  FriendshipRecord,
+  GamePlayer,
+  GameRecord,
+  LobbyRecord,
+  Profile,
+  Store,
+  StoredAction,
+} from "./types";
 
 /** jsonb parameters are always passed as JSON text: node-postgres would turn JS arrays into Postgres arrays. */
 const json = (v: unknown) => JSON.stringify(v);
@@ -59,6 +67,53 @@ export class PgStore implements Store {
       if ((err as { code?: string }).code === "23505") return "taken"; // unique_violation
       throw err;
     }
+  }
+
+  async findProfileByUsername(username: string): Promise<Profile | null> {
+    const { rows } = await this.pool.query<Profile>(
+      "select id, username from profiles where lower(username) = lower($1)",
+      [username],
+    );
+    return rows[0] ?? null;
+  }
+
+  async listFriendships(userId: string): Promise<FriendshipRecord[]> {
+    const { rows } = await this.pool.query<FriendshipRecord>(
+      `select requester_id as "requesterId", addressee_id as "addresseeId", status
+       from friendships where requester_id = $1 or addressee_id = $1`,
+      [userId],
+    );
+    return rows;
+  }
+
+  async saveFriendship(f: FriendshipRecord): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(
+        `delete from friendships where (requester_id = $1 and addressee_id = $2)
+                                    or (requester_id = $2 and addressee_id = $1)`,
+        [f.requesterId, f.addresseeId],
+      );
+      await client.query(
+        "insert into friendships (requester_id, addressee_id, status) values ($1, $2, $3)",
+        [f.requesterId, f.addresseeId, f.status],
+      );
+      await client.query("commit");
+    } catch (err) {
+      await client.query("rollback");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteFriendship(a: string, b: string): Promise<void> {
+    await this.pool.query(
+      `delete from friendships where (requester_id = $1 and addressee_id = $2)
+                                  or (requester_id = $2 and addressee_id = $1)`,
+      [a, b],
+    );
   }
 
   async createLobby(l: LobbyRecord): Promise<void> {

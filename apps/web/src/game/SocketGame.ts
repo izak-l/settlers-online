@@ -65,6 +65,7 @@ export class SocketGame implements GameClient {
   }
 
   dispose(): void {
+    if (this.socket.connected) void this.socket.emitWithAck("game:leave", { gameId: this.gameId });
     this.socket.off("state", this.onState);
     this.socket.off("connect", this.onConnect);
     this.listeners.clear();

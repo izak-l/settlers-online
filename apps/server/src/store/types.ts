@@ -37,6 +37,13 @@ export interface GamePlayer {
   userId: string;
 }
 
+/** A friend request (pending) or friendship (accepted). One per pair of users. */
+export interface FriendshipRecord {
+  requesterId: string;
+  addresseeId: string;
+  status: "pending" | "accepted";
+}
+
 export interface StoredAction {
   /** 1-based, contiguous per game. */
   seq: number;
@@ -53,6 +60,15 @@ export interface Store {
   ensureProfile(userId: string): Promise<Profile>;
   getProfiles(userIds: string[]): Promise<Profile[]>;
   setUsername(userId: string, username: string): Promise<"ok" | "taken">;
+  /** Case-insensitive. */
+  findProfileByUsername(username: string): Promise<Profile | null>;
+
+  /** Every request or friendship that involves `userId`, either way round. */
+  listFriendships(userId: string): Promise<FriendshipRecord[]>;
+  /** Insert, or replace the row for the same pair (either direction). */
+  saveFriendship(f: FriendshipRecord): Promise<void>;
+  /** Delete the row between `a` and `b`, whichever way round it is. */
+  deleteFriendship(a: string, b: string): Promise<void>;
 
   createLobby(lobby: LobbyRecord): Promise<void>;
   getLobby(id: string): Promise<LobbyRecord | null>;

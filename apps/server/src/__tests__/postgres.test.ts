@@ -4,6 +4,7 @@ import { loadEnvFiles } from "../config";
 import { migrate } from "../db/migrate";
 import { PgStore } from "../store/postgres";
 import { onlineSuite } from "./online-suite";
+import { socialSuite } from "./social-suite";
 
 loadEnvFiles();
 const url = process.env["TEST_DATABASE_URL"];
@@ -12,7 +13,9 @@ const url = process.env["TEST_DATABASE_URL"];
 async function freshStore(): Promise<PgStore> {
   const pool = new pg.Pool({ connectionString: url });
   await migrate(pool, () => undefined);
-  await pool.query("truncate profiles, lobbies, games, game_players, actions, snapshots cascade");
+  await pool.query(
+    "truncate profiles, lobbies, games, game_players, actions, snapshots, friendships cascade",
+  );
   return new PgStore(pool);
 }
 
@@ -22,6 +25,7 @@ if (!url) {
   });
 } else {
   onlineSuite("online play (Postgres)", freshStore);
+  socialSuite("friends, presence and invites (Postgres)", freshStore);
 
   describe("PgStore", () => {
     it("refuses a duplicate action sequence number", async () => {

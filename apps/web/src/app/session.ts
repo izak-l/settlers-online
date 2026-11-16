@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Me } from "@settlers/protocol";
+import type { FriendsState, InviteMessage, Me } from "@settlers/protocol";
 import { getDevUser, setDevUser, supabase } from "../net/auth";
 import { openSocket, type AppSocket } from "../net/socket";
 import { errorText } from "../game/seats";
@@ -11,6 +11,11 @@ interface Session {
   me: Me | null;
   socket: AppSocket | null;
   error: string | null;
+  /** Your friends list, kept live by the server. */
+  friends: FriendsState | null;
+  /** Lobby invites from friends this session; dropped when the lobby starts or you dismiss them. */
+  invites: InviteMessage[];
+  dismissInvite(lobbyId: string): void;
   /** Call once on startup. */
   start(): void;
   signInDev(name: string): void;
@@ -48,6 +53,23 @@ export const useSession = create<Session>()((set, get) => {
       set({ me, status: "online", error: null });
       restoreRoute();
     });
+    socket.on("friends", (friends) => set({ friends }));
+    socket.on("presence", ({ userId, presence }) => {
+      const friends = get().friends;
+      if (!friends) return;
+      set({
+        friends: {
+          ...friends,
+          friends: friends.friends.map((f) => (f.userId === userId ? { ...f, presence } : f)),
+        },
+      });
+    });
+    socket.on("invite", (invite) =>
+      set({
+        invites: [...get().invites.filter((i) => i.lobbyId !== invite.lobbyId), invite],
+      }),
+    );
+    socket.on("invite:closed", ({ lobbyId }) => get().dismissInvite(lobbyId));
     socket.on("disconnect", (reason) => {
       // The client reconnects by itself unless we closed it.
       if (reason !== "io client disconnect") set({ status: "offline" });
@@ -67,7 +89,7 @@ export const useSession = create<Session>()((set, get) => {
 
   function disconnect() {
     get().socket?.disconnect();
-    set({ socket: null, me: null });
+    set({ socket: null, me: null, friends: null, invites: [] });
   }
 
   return {
@@ -75,6 +97,12 @@ export const useSession = create<Session>()((set, get) => {
     me: null,
     socket: null,
     error: null,
+    friends: null,
+    invites: [],
+
+    dismissInvite(lobbyId) {
+      set({ invites: get().invites.filter((i) => i.lobbyId !== lobbyId) });
+    },
 
     start() {
       if (getDevUser()) connect();

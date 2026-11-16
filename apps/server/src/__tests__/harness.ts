@@ -2,9 +2,12 @@ import { io as connectSocket, type Socket } from "socket.io-client";
 import type { Action } from "@settlers/engine";
 import type {
   ClientToServerEvents,
+  FriendsState,
   GameStateMessage,
+  InviteMessage,
   LobbyState,
   Me,
+  Presence,
   ServerToClientEvents,
 } from "@settlers/protocol";
 import { devAuthenticator } from "../auth";
@@ -27,6 +30,11 @@ export class TestClient {
   state: GameStateMessage | null = null;
   /** Every event received via `state`, in order (log on join + events after). */
   log: string[] = [];
+  friends: FriendsState | null = null;
+  /** Latest presence update per friend (from `presence` messages). */
+  presence = new Map<string, Presence>();
+  invites: InviteMessage[] = [];
+  closedInvites: string[] = [];
 
   private constructor(readonly socket: Socket<ServerToClientEvents, ClientToServerEvents>) {
     socket.on("welcome", (me) => (this.me = me));
@@ -36,6 +44,10 @@ export class TestClient {
       this.log.push(...s.events.map((e) => e.text));
       this.state = s;
     });
+    socket.on("friends", (f) => (this.friends = f));
+    socket.on("presence", (u) => this.presence.set(u.userId, u.presence));
+    socket.on("invite", (i) => this.invites.push(i));
+    socket.on("invite:closed", (u) => this.closedInvites.push(u.lobbyId));
   }
 
   static async connect(url: string, token: string): Promise<TestClient> {

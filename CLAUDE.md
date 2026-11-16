@@ -17,10 +17,15 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M6 Friends, presence, invites, history, polish, turn timers (specs 001–005 in docs/features/)
 - [x] 1–4 player games (docs/features/010-one-and-two-player-games.md)
 - [x] M7 UI overhaul: cards instead of counts, original art, a resizable/zoomable board, sounds (specs 006–009)
-- [ ] M8 Map editor, then the expansions in this order: seafaring, knights-and-cities, traders, explorers ← next (planning)
-- [ ] M9+ Deploy to free tiers
+- [ ] M8 Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md)
+- [ ] M9 Deploy: Cloudflare Pages + Oracle ARM VM (docs/features/012-deploy.md) ← now, on `m9`
+- [ ] M10 Base-game feature switches, then seafaring
+- [ ] M11 Knights-and-cities
+- [ ] M12 Traders scenarios
+- [ ] M13 Explorers
+- [ ] Later: in-app map editor
 
-Tick these off as milestones finish. Online play (M4) deliberately comes before the remaining rules (M5), and deployment comes last so everything is developed and played locally first; see DESIGN.md §13.
+Tick these off as milestones finish. Online play (M4) deliberately came before the remaining rules (M5); deployment (M9) comes before the expansions so friends can play the hosted game; see DESIGN.md §13.
 
 ## Repo layout
 

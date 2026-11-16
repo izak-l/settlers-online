@@ -1,6 +1,6 @@
 import type { EdgeId, VertexId } from "../../board/graph";
 import { reject } from "../../module";
-import type { Decision, GameState, Piece, PlayerId, Resources } from "../../types";
+import type { Decision, FeatureId, GameState, Piece, PlayerId, Resources } from "../../types";
 import { COSTS, PIECE_LIMITS } from "./data";
 
 // ---------------------------------------------------------------------------
@@ -51,6 +51,11 @@ export interface BaseModuleState {
   playedDevThisTurn: boolean;
   longestRoad: PlayerId | null;
   largestArmy: PlayerId | null;
+}
+
+/** Is this base-game feature on? Games saved before switches existed have none: all on. */
+export function featureOn(state: GameState, id: FeatureId): boolean {
+  return state.options.features?.[id] !== false;
 }
 
 export function baseState(state: GameState): BaseModuleState {

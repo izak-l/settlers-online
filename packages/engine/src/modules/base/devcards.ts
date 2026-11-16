@@ -11,6 +11,7 @@ import {
   countOwned,
   decision,
   describe,
+  featureOn,
   handOf,
   pay,
   popDecision,
@@ -58,7 +59,11 @@ export function vpCards(state: GameState, player: PlayerId): number {
   );
 }
 
+const DEV_CARDS_OFF = () =>
+  reject("WRONG_DECISION", "Development cards are switched off in this game.");
+
 function checkPlayable(state: GameState, player: PlayerId, card: string): Rejection | null {
+  if (!featureOn(state, "devCards")) return DEV_CARDS_OFF();
   if (baseState(state).playedDevThisTurn) {
     return reject("INVALID_CHOICE", "You've already played a development card this turn.");
   }
@@ -98,6 +103,7 @@ function pairs(): Resources[] {
 export const devCardActions: ActionHandlers = {
   BUY_DEV_CARD: {
     validate(state, player) {
+      if (!featureOn(state, "devCards")) return DEV_CARDS_OFF();
       if (!canAfford(state, player, COSTS["devCard"]!)) {
         return reject("CANNOT_AFFORD", `A development card costs ${describe(COSTS["devCard"]!)}.`);
       }
@@ -130,8 +136,8 @@ export const devCardActions: ActionHandlers = {
     apply(draft, player, _action, { events }) {
       playCard(draft, player, "knight", events);
       updateAwards(draft, events);
-      // Same as a 7 but with no discards.
-      draft.decisions.push(moveRobberDecision(player));
+      // Same as a 7 but with no discards. With the robber off, a knight only counts for the army.
+      if (featureOn(draft, "robber")) draft.decisions.push(moveRobberDecision(player));
     },
     candidates: () => [{ type: "PLAY_KNIGHT" }],
   },

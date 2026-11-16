@@ -21,16 +21,34 @@ export interface MapInput {
   hexes: { q: number; r: number; terrain: string; token?: number }[];
   ports: { edgeId: EdgeId; type: string }[];
   robberStart?: string;
+  /** Base-game parts this map turns on or off (spec 014). */
+  features?: Partial<Record<FeatureId, boolean>>;
 }
 
 export interface RulesetDef {
   /** Module ids in the order their hooks run. */
   modules: ModuleId[];
-  options?: Partial<GameOptions>;
+  options?: { vpToWin?: number; features?: Partial<Features> };
 }
+
+/** Parts of the base game that a map, the lobby or a module can switch off (spec 014). */
+export const FEATURE_IDS = ["devCards", "robber", "longestRoad", "largestArmy", "ports"] as const;
+export type FeatureId = (typeof FEATURE_IDS)[number];
+export type Features = Record<FeatureId, boolean>;
+
+/** Every feature on: the plain base game. */
+export const BASE_FEATURES: Features = {
+  devCards: true,
+  robber: true,
+  longestRoad: true,
+  largestArmy: true,
+  ports: true,
+};
 
 export interface GameOptions {
   vpToWin: number;
+  /** Which base-game features are on. Games saved before switches existed have none: all on. */
+  features: Features;
 }
 
 export type PieceLocation = { vertex: VertexId } | { edge: EdgeId } | { hex: HexKey };

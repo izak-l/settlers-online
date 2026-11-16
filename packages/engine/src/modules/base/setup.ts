@@ -10,6 +10,7 @@ import {
   decision,
   describe,
   distanceRuleOk,
+  featureOn,
   handOf,
   popDecision,
   roadAt,
@@ -43,7 +44,8 @@ export function setupBase(draft: GameState): void {
   }
 
   const start = draft.map.hexes.find((hx) => hx.terrain === draft.map.robberStart);
-  if (start) draft.pieces["robber"] = { id: "robber", type: "robber", at: { hex: hexKey(start) } };
+  if (start && featureOn(draft, "robber"))
+    draft.pieces["robber"] = { id: "robber", type: "robber", at: { hex: hexKey(start) } };
 
   draft.moduleState["base"] = { playedDevThisTurn: false, longestRoad: null, largestArmy: null };
   setupDevCards(draft);

@@ -2,7 +2,7 @@ import { reject, runTradeRatio, type ActionHandlers } from "../../module";
 import type { Action } from "../../actions";
 import type { GameState, PlayerId, Rejection, Resources } from "../../types";
 import { BASE_RESOURCES } from "./data";
-import { buildingAt, describe, handOf, popDecision, transfer } from "./helpers";
+import { buildingAt, describe, featureOn, handOf, popDecision, transfer } from "./helpers";
 
 const DEFAULT_RATIO = 4;
 const isResource = (r: string) => (BASE_RESOURCES as readonly string[]).includes(r);
@@ -10,6 +10,7 @@ const isResource = (r: string) => (BASE_RESOURCES as readonly string[]).includes
 /** Best bank rate for `resource`: 4, or 3 / 2 with a building on a matching port. */
 export function tradeRatio(state: GameState, player: PlayerId, resource: string): number {
   let best = DEFAULT_RATIO;
+  if (!featureOn(state, "ports")) return best;
   for (const port of state.map.ports) {
     const edge = state.graph.edges.get(port.edgeId);
     if (!edge || !edge.vertices.some((v) => buildingAt(state, v)?.owner === player)) continue;

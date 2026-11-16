@@ -6,6 +6,7 @@ import {
   buildingAt,
   cardList,
   decision,
+  featureOn,
   handOf,
   handSize,
   popDecision,
@@ -24,7 +25,7 @@ export const moveRobberDecision = (p: PlayerId): Decision =>
  * then the roller moves the robber. Pushed on top of whatever comes next (the main step).
  */
 export function startSevenFlow(draft: GameState, roller: PlayerId): void {
-  draft.decisions.push(moveRobberDecision(roller));
+  if (featureOn(draft, "robber")) draft.decisions.push(moveRobberDecision(roller));
   const amounts: Record<PlayerId, number> = {};
   for (const p of draft.players) {
     const size = handSize(draft, p);

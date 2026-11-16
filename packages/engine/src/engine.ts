@@ -9,6 +9,7 @@ import {
   type RulesModule,
 } from "./module";
 import { MODULES } from "./modules";
+import { BASE_FEATURES } from "./types";
 import type {
   Actor,
   ApplyResult,
@@ -74,7 +75,11 @@ export function createGame(
   const state: GameState = {
     rulesetId: modules.map((m) => `${m.id}@${m.version}`).join("+"),
     modules: modules.map((m) => m.id),
-    options: { vpToWin: map.vpToWin, ...ruleset.options },
+    options: {
+      vpToWin: ruleset.options?.vpToWin ?? map.vpToWin,
+      // Defaults, then the map, then the ruleset (the lobby's house rules) win.
+      features: { ...BASE_FEATURES, ...map.features, ...ruleset.options?.features },
+    },
     rng: seedFromString(seed),
     map,
     graph: buildGraph(map.hexes.filter((h) => h.terrain !== "sea")),

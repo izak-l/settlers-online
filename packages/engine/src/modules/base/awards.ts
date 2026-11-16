@@ -1,5 +1,5 @@
 import type { GameEvent, GameState, PlayerId } from "../../types";
-import { baseState, buildingAt, roadAt } from "./helpers";
+import { baseState, buildingAt, featureOn, roadAt } from "./helpers";
 
 export const LONGEST_ROAD_MIN = 5;
 export const LARGEST_ARMY_MIN = 3;
@@ -69,7 +69,10 @@ export function updateAwards(draft: GameState, events: GameEvent[]): void {
     roads[p] = longestRoad(draft, p);
     army[p] = knightsPlayed(draft, p);
   }
-  const road = awardHolder(base.longestRoad, roads, LONGEST_ROAD_MIN);
+  // A switched-off award is never held (nor announced).
+  const road = featureOn(draft, "longestRoad")
+    ? awardHolder(base.longestRoad, roads, LONGEST_ROAD_MIN)
+    : null;
   if (road !== base.longestRoad) {
     events.push({
       type: "AWARD",
@@ -80,7 +83,10 @@ export function updateAwards(draft: GameState, events: GameEvent[]): void {
     });
     base.longestRoad = road;
   }
-  const largest = awardHolder(base.largestArmy, army, LARGEST_ARMY_MIN);
+  const largest =
+    featureOn(draft, "largestArmy") && featureOn(draft, "devCards")
+      ? awardHolder(base.largestArmy, army, LARGEST_ARMY_MIN)
+      : null;
   if (largest !== base.largestArmy) {
     events.push({
       type: "AWARD",

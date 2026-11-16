@@ -27,7 +27,7 @@ None.
 
 ## Server/UI changes
 
-- Migration `002_m6.sql`: `games.winner_seat text`, `games.final_scores jsonb`.
+- Migration `003_history.sql`: `games.winner_seat text`, `games.final_scores jsonb`.
 - `Store.finishGame` also takes the winner and final scores; new `Store.gamesForUser(userId, limit)` returns game summaries with player usernames.
 - Protocol: C→S `games:history` → `{ games: GameSummary[] }`.
 - Web: `GameHistory.tsx` on Home.
@@ -42,4 +42,4 @@ None.
 
 ## Status
 
-In progress
+Shipped

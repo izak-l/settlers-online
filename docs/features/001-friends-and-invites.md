@@ -34,12 +34,12 @@ None.
 
 ## Server/UI changes
 
-- Migration `002_m6.sql`: `friendships (requester_id, addressee_id, status 'pending'|'accepted', created_at)`, primary key on the pair, plus a check that the two differ.
-- `Store`: `listFriendships(userId)`, `findProfileByUsername(name)`, `requestFriend(from, to)`, `acceptFriend(from, to)`, `deleteFriendship(a, b)`.
+- Migration `002_friends.sql`: `friendships (requester_id, addressee_id, status 'pending'|'accepted', created_at)`, with a unique index on the unordered pair and a check that the two differ.
+- `Store`: `findProfileByUsername(name)`, `listFriendships(userId)`, `saveFriendship(f)` (replaces the row for the pair), `deleteFriendship(a, b)`. The rules live in `FriendService`; changes to one pair run one at a time.
 - `apps/server/src/friends.ts`: friendship rules (request, accept, remove) over the store.
 - `apps/server/src/presence.ts`: per-user socket count and per-socket location → status; reports when a user's status changes.
-- Protocol, C→S: `friends:request {username}`, `friends:respond {userId, accept}`, `friends:remove {userId}`, `lobby:invite {lobbyId, userId}`.
-- Protocol, S→C: `friends` (your full list: accepted friends with presence, incoming and outgoing requests), sent on connect and whenever your list or a friend's presence changes; `invite {lobbyId, from}` and `invite:closed {lobbyId}`.
+- Protocol, C→S: `friends:list`, `friends:request {username}`, `friends:respond {userId, accept}`, `friends:remove {userId}`, `lobby:invite {lobbyId, userId}`, and `lobby:leave` / `game:leave` so presence follows the UI when you navigate away.
+- Protocol, S→C: `friends` (your full list: accepted friends with presence, incoming and outgoing requests), sent on connect and whenever the list changes; `presence {userId, presence}` when one friend moves; `invite {lobbyId, from}` and `invite:closed {lobbyId}`.
 - New error codes: `USER_NOT_FOUND`, `ALREADY_FRIENDS`, `NOT_FRIENDS`, `FRIEND_OFFLINE`.
 - Web: a Friends panel on Home (add by username, requests, list with presence and Spectate); an Invite list in the lobby; invite toasts on every screen.
 
@@ -55,4 +55,4 @@ None.
 
 ## Status
 
-In progress
+Shipped

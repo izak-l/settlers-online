@@ -32,8 +32,8 @@ Keep games moving when someone wanders off: each turn has a time limit, and when
 
 ## Server/UI changes
 
-- Migration `002_m6.sql`: `lobbies.turn_seconds int not null default 0`, `games.turn_seconds int not null default 0`.
-- Protocol: `lobby:create` takes `turnSeconds` (0, 30, 60, 90, 120); `LobbyState.turnSeconds`; `GameStateMessage.clock?: { kind: "turn" | "short", deadline: number }` (epoch ms).
+- Migration `004_timers.sql`: `lobbies.turn_seconds int not null default 0`, `games.turn_seconds int not null default 0`.
+- Protocol: `lobby:create` takes `turnSeconds` (0, 30, 60, 90, 120); `LobbyState.turnSeconds`; `GameStateMessage.clock?: { kind: "turn" | "short", remainingMs, totalMs }`. Relative times, so the browser's clock never has to agree with the server's.
 - `apps/server/src/timers.ts`: pure `clockKey(state)` plus a `TurnClock` per room that arms, pauses and fires. `startServer` takes an optional `secondMs` (default 1000) so tests run timers fast.
 - Web: timer choice in the new-game form; a countdown in the action bar (turns urgent under 10 s).
 
@@ -49,4 +49,4 @@ None.
 
 ## Status
 
-In progress
+Shipped

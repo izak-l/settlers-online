@@ -169,6 +169,7 @@ interface Decision {
   allowed: ActionType[];
   data?: unknown;               // e.g. discard counts per player
   module: ModuleId;             // who owns the resolution logic
+  timer?: "short";              // which turn-timer clock runs while this is on top (M6)
 }
 ```
 
@@ -303,17 +304,24 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | Direction | Type | Payload |
 | --- | --- | --- |
 | C→S | `profile:setUsername` | username (3–20 letters, digits, `_`; unique, case-insensitive) |
-| C→S | `lobby:create` | seats (3 or 4), allow spectators |
+| C→S | `lobby:create` | seats (3 or 4), allow spectators, turn timer (0, 30, 60, 90, 120 s) |
 | C→S | `lobby:join` | lobby id (watch it; doesn't take a seat) |
 | C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
 | C→S | `lobby:ready` | lobby id, ready flag |
 | C→S | `lobby:start` | lobby id (host only; every seat filled and ready) |
 | C→S | `game:join` | game id (your seat if you have one, otherwise spectator if allowed) |
 | C→S | `game:action` | game id, `Action` |
-| C→S | `chat` | text (M6) |
+| C→S | `lobby:leave` / `game:leave` | stop following a lobby or game (seats are kept) |
+| C→S | `lobby:invite` | lobby id, friend's user id |
+| C→S | `friends:list` / `friends:request` / `friends:respond` / `friends:remove` | your list / a username / user id + accept / user id |
+| C→S | `games:history` | (none): your last 20 games |
+| C→S | `chat:send` | game id, text (1–300 characters) |
 | S→C | `welcome` | your user id and username (null until picked) |
-| S→C | `lobby` | seats (username, ready, connected), status, game id once started |
-| S→C | `state` | game id, `seq`, `you` (seat or `"spectator"`), filtered `PlayerView`, your `legal` actions, public `scores`, players (username, connected), new `events`; the full `log` only on join |
+| S→C | `lobby` | seats (username, ready, connected), status, turn timer, game id once started |
+| S→C | `state` | game id, `seq`, `you` (seat or `"spectator"`), filtered `PlayerView`, your `legal` actions, public `scores`, players (username, connected), new `events`; the full `log` only on join; the running `clock` (kind, ms left, total) when the game has a timer |
+| S→C | `friends` / `presence` | your whole friends list / one friend's new presence |
+| S→C | `invite` / `invite:closed` | a friend's lobby invite / that lobby started |
+| S→C | `chat` | new messages, or (on join) the last 100 you may see |
 
 - v1 sends the full filtered view on every change. Board state is small (a few KB), so diffs aren't worth the complexity yet.
 - `legalActions` and `computeVP` need the full `GameState`, which clients never get, so the server computes both and sends them with the view. The client highlights moves from `legal` and never works out legality itself.
@@ -321,7 +329,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 
 **As built (M4)**
 
-- Every client→server message is acknowledged: `{ ok: true, ... }` or `{ ok: false, code, message }` with a stable code (engine codes plus `UNAUTHENTICATED`, `BAD_REQUEST`, `NEED_USERNAME`, `USERNAME_TAKEN`, `NOT_FOUND`, `NOT_HOST`, `SEAT_TAKEN`, `LOBBY_STARTED`, `NOT_READY`, `SPECTATORS_DISABLED`, `SERVER_ERROR`). The acknowledgement replaces a separate `rejected` message, and ties each rejection to the request that caused it. Payloads are zod-validated in `packages/protocol`.
+- Every client→server message is acknowledged: `{ ok: true, ... }` or `{ ok: false, code, message }` with a stable code (engine codes plus `UNAUTHENTICATED`, `BAD_REQUEST`, `NEED_USERNAME`, `USERNAME_TAKEN`, `NOT_FOUND`, `NOT_HOST`, `SEAT_TAKEN`, `LOBBY_STARTED`, `NOT_READY`, `SPECTATORS_DISABLED`, `USER_NOT_FOUND`, `ALREADY_FRIENDS`, `NOT_FRIENDS`, `FRIEND_OFFLINE`, `RATE_LIMITED`, `SERVER_ERROR`). The acknowledgement replaces a separate `rejected` message, and ties each rejection to the request that caused it. Payloads are zod-validated in `packages/protocol`.
 - On each action the server: applies it with the engine → writes it (with its events) to `actions` → updates the room → sends each socket in the game its own `state`, built once per role. Nothing is broadcast that a restart would lose.
 - `state` carries only that action's new events; the full log comes on `game:join`, so a reconnecting client rebuilds its log from one message.
 - Rooms load on demand from the latest snapshot plus later actions, so a restarted server picks games up on the first `game:join`. Clients rejoin automatically after any reconnect.
@@ -340,12 +348,20 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - The server verifies the Supabase access token (JWT) on the Socket.IO handshake and binds the socket to a `userId`.
 - **The engine stays account-agnostic.** It only knows seats (`PlayerId`). The server maps seat → `userId` in `game_players`.
 - **Tables:** see section 9. Profiles hold only an id and a unique username (no display names or avatars).
-- **Presence:** connected sockets mark a user online / in lobby / in game; friends get presence updates.
+- **Presence:** each socket records where it is (home, a lobby, a game played or watched); a user's presence is the busiest of their sockets. Only accepted friends see it.
 - **Lobbies:** private, joined by invite link or a friend invite. The host picks the player count, the turn timer and whether spectators are allowed (map and modules are fixed to the random base board for now).
 - **Reconnect:** signing in again reclaims your seat; seats stay reserved while disconnected.
 - **Spectators:** get `viewFor("spectator")`, which shows public information only (hand counts, no contents). Spectator chat is a separate channel. Full reveal is available in the replay after the game ends.
-- **Turn timer:** configurable per lobby (off, or N seconds per turn, with a shorter timer for discards). On timeout the turn ends. If a decision is still pending, the server first applies a default: random discards, robber to a random legal hex with a random steal, open trade offers cancelled, unplaced free roads forfeited.
+- **Turn timer:** configurable per lobby (off, 30, 60, 90 or 120 seconds per turn, plus a 30-second clock for discards). On timeout the server plays `defaultAction` for whoever is being waited on until that clock no longer applies: roll if needed, cancel an open offer, place pending free roads at random, end the turn; a timed-out discard is random.
 - Timeout defaults are logged as normal actions from a `system` actor and use the game RNG, so replays stay deterministic.
+
+**As built (M6)**
+
+- **Friends:** a request by username becomes a friendship when accepted; requesting someone who already asked you accepts theirs. One `friendships` row per pair, either direction. `FriendService` holds the rules and serializes changes per pair.
+- **Presence** (`PresenceTracker`): the server tells a user's friends whenever their status changes, sending the status as of sending (several updates can be in flight and finish out of order). The UI sends `lobby:leave` / `game:leave` when it navigates away.
+- **Invites** go only to online friends, from someone in the open lobby. They live in server memory per lobby and are withdrawn (`invite:closed`) when it starts.
+- **Turn timers** (`timers.ts`): the clock key is the turn number plus the waited-on player, or the depth of a `timer: "short"` decision. The turn clock covers the whole turn and pauses while a short clock runs. Clocks live in server memory: they run only while a seated player has the game open, and start from full when someone returns or the server restarts. A timeout runs in the game's queue and does nothing if any action landed since it was armed.
+- **Chat:** stored in `chat_messages`. Players post to `players` (everyone reads it), spectators to `spectators` (only spectators read it). 5 messages per 10 seconds per user.
 
 ## 9. Persistence, versioning and replay
 
@@ -353,9 +369,10 @@ Postgres stores each game as a header plus an append-only action log; snapshots 
 
 - `games`: id, lobby id, created/ended, map definition (inline JSON), ruleset (module ids + versions), seed, status.
 - `actions`: game id, sequence number (1-based, primary key with the game id), actor (seat or system), action JSON, the events it produced (so the log survives restarts), timestamp.
-- `snapshots`: game id, sequence number, state JSON without the derived graph (`toSnapshot` / `fromSnapshot`), written every 25 actions (`SNAPSHOT_EVERY`). Writing on game end comes with the win condition (M5).
+- `snapshots`: game id, sequence number, state JSON without the derived graph (`toSnapshot` / `fromSnapshot`), written every 25 actions (`SNAPSHOT_EVERY`) and when the game ends.
+- When a game ends, `games` also stores `winner_seat` and `final_scores` (full VP, VP cards included) for the history list.
 - On server restart, rooms resume by loading the latest snapshot and replaying later actions.
-- Also stored: `profiles` (id = auth user id or `dev:<name>`, unique username), `lobbies` (seats as JSON), `game_players` (seat ↔ user). Migrations are plain SQL in `apps/server/migrations`, applied in order by `pnpm db:migrate` and on server start (behind an advisory lock).
+- Also stored: `profiles` (id = auth user id or `dev:<name>`, unique username), `lobbies` (seats as JSON, turn timer), `game_players` (seat ↔ user), `friendships`, `chat_messages`. `games.turn_seconds` is copied from the lobby. Migrations are plain SQL in `apps/server/migrations`, applied in order by `pnpm db:migrate` and on server start (behind an advisory lock).
 - The `Store` interface has a Postgres implementation and an in-memory one for tests; the same online test suite runs against both.
 - Each module has a `version`. A saved game replays with the module versions it was created with; if a version is no longer available, the game opens read-only from its last snapshot.
 - Replay viewer (later): step through the action log with full visibility after the game ends.
@@ -379,7 +396,6 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - `LocalGame` implements `GameClient` with the engine running in the tab. It powers the **dev sandbox** (`pnpm dev`, development builds only), where one person acts for whichever seat is being waited on, and the web tests. It is not a player-facing mode; production builds show a placeholder until online play lands.
 - The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
 - Clickable targets are exactly the actions in `legal`. During setup every legal placement lights up; in the main step the Road / Settlement / City buttons pick which kind, and a button is disabled when `legal` has none of that kind. Targets are keyboard-focusable buttons.
-- Not yet: small-screen layout and animations (M6).
 
 **As built (M5: full rules in the UI)**
 
@@ -388,6 +404,14 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - The dev cards panel lists your cards (cards bought this turn are marked as playable next turn) with Play buttons from `legal`; Bounty and Monopoly open a chooser. The trade panel appears only on your own main step: bank trades show your rate per resource from `ratios`, and an offer builder sends `OFFER_TRADE`.
 - The players panel shows card and dev card counts, knights played, and award badges. A win banner shows the winner and final scores (VP cards revealed).
 - **Account and lobby screens:** sign-in (email, Discord), pick a username, create a lobby (3 or 4 seats, spectators on or off), join by invite link, and the lobby's seats and ready flags. Friends, presence and game history land in M6.
+
+**As built (M6: social screens and polish)**
+
+- **Home:** new game (players, turn timer, spectators), join by link, the friends list (add by username, requests, presence with Join / Watch), and "Your games" (last 20: Rejoin, or View a finished game's final board, with winner and scores). Lobby invites from friends appear as toasts on any screen.
+- **Lobby:** shows the turn timer and an "Invite friends" list of online friends who aren't seated.
+- **Game:** a countdown in the action bar (red under 10 s). Log and chat share one tabbed panel: the log reads oldest-first, auto-scrolls unless you've scrolled up, colours names by seat and marks turn ends; chat shows an unread count. The dev sandbox has no chat.
+- **Small screens:** the board's viewBox fits the land plus a strip of sea (ports stay visible). Below 860px the action bar and hand come straight after the board; below 600px every control is at least 44px tall. Board targets have wide invisible hit areas. Checked at 375px: no sideways scrolling on home, lobby or game.
+- **Animations:** the dice spin on each roll, new pieces (and city upgrades) pop in, the robber slides, gained resources flash with a "+n". All are off under `prefers-reduced-motion`. They come only from comparing views, never from delaying input.
 
 ## 11. Testing strategy
 

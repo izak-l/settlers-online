@@ -25,7 +25,7 @@ None.
 
 ## Server/UI changes
 
-- `styles.css` breakpoints, `Board.tsx` (piece and robber transitions), `ActionBar.tsx` (dice), `HandPanel.tsx` (gain highlight).
+- `styles.css` breakpoints (860px: action bar and hand move under the board; 600px: 44px tap targets, tighter padding), `Board.tsx` (viewBox fits the land plus a strip of sea, invisible wide hit areas on targets, pop-in and robber transitions), `ActionBar.tsx` (dice), `HandPanel.tsx` (gain highlight).
 
 ## Test plan
 
@@ -38,4 +38,4 @@ None.
 
 ## Status
 
-In progress
+Shipped

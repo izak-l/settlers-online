@@ -28,7 +28,7 @@ None (chat is not game state and never goes through the engine).
 
 ## Server/UI changes
 
-- Migration `002_m6.sql`: `chat_messages (id bigserial, game_id, channel, user_id, text, created_at)`.
+- Migration `005_chat.sql`: `chat_messages (id bigserial, game_id, channel, user_id, text, created_at)`.
 - `Store`: `addChat`, `recentChat(gameId, channels, limit)`.
 - Protocol: C→S `chat:send {gameId, text}`; S→C `chat {gameId, messages, replace}` (`replace` on join). New error code `RATE_LIMITED`.
 - Web: `Chat.tsx` beside the log; log restyle in `GameLog.tsx`.
@@ -43,4 +43,4 @@ None.
 
 ## Status
 
-In progress
+Shipped

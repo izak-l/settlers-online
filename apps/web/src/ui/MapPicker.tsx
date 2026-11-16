@@ -10,7 +10,7 @@ export interface MapOption {
   /** Shown under the name (e.g. "draft"). */
   tag?: string;
   /** Why it can't be picked right now; the option is shown but disabled. */
-  disabledReason?: string;
+  disabledReason?: string | undefined;
 }
 
 /** One-line facts: players, VP target and land size. */

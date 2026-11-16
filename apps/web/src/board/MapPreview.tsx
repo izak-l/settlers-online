@@ -9,6 +9,7 @@ import { previewTiles } from "./mapTiles";
  */
 export function MapPreview({ def, label }: { def: MapDef; label?: string }) {
   const tiles = previewTiles(def);
+  if (tiles.length === 0) return <svg className="map-preview" viewBox="0 0 1 1" aria-hidden />;
   const centers = tiles.map((t) => hexCenter(t.q, t.r));
   const xs = centers.map((c) => c[0]);
   const ys = centers.map((c) => c[1]);

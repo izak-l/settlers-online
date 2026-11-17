@@ -44,13 +44,13 @@ const robberHex = (s: GameState) => {
 };
 
 describe("timer kinds (turn timers)", () => {
-  it("marks discards as using the short clock; every other decision uses the turn clock", () => {
+  it("marks discards with the short clock, the robber with its own and MAIN with none", () => {
     let s = aboutToRollSeven({ p1: { wood: 5, ore: 4 } });
-    expect(s.decisions.every((d) => d.timer === undefined)).toBe(true);
+    expect(s.decisions.map((d) => [d.kind, d.timer])).toEqual([["ROLL", "roll"]]);
     s = act(s, "p0", { type: "ROLL" });
     expect(s.decisions.map((d) => [d.kind, d.timer])).toEqual([
       ["MAIN", undefined],
-      ["MOVE_ROBBER", undefined],
+      ["MOVE_ROBBER", "robber"],
       ["DISCARD", "short"],
     ]);
   });

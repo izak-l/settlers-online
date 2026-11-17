@@ -135,17 +135,37 @@ export const tradeActions: ActionHandlers = {
     validate(state, player, { accept }) {
       const offer = offerOf(state);
       if (player === offer.from) return reject("INVALID_TRADE", "You made this offer.");
+      // One answer at a time: you can change your mind, not repeat yourself (spec 231).
+      if (offer.responses[player] === (accept ? "accept" : "decline")) {
+        return reject(
+          "INVALID_TRADE",
+          `You already ${accept ? "accepted" : "declined"} this offer.`,
+        );
+      }
       if (accept && !hasAll(handOf(state, player), offer.want)) {
         return reject("CANNOT_AFFORD", "You don't have what they're asking for.");
       }
       return null;
     },
     apply(draft, player, { accept }, { events }) {
-      offerOf(draft).responses[player] = accept ? "accept" : "decline";
+      const offer = offerOf(draft);
+      offer.responses[player] = accept ? "accept" : "decline";
       events.push({
         type: "RESPONDED_TRADE",
         text: `${player} ${accept ? "accepted" : "declined"} the offer`,
       });
+      // Once everyone else has declined, the server withdraws it after a few seconds (spec 231).
+      const top = draft.decisions.at(-1)!;
+      const others = draft.players.filter((p) => p !== offer.from);
+      // Still waiting on: the offerer, and anyone who could still give a (different) answer.
+      top.pendingFrom = [
+        offer.from,
+        ...others.filter(
+          (p) => offer.responses[p] !== "decline" || hasAll(handOf(draft, p), offer.want),
+        ),
+      ];
+      if (others.every((p) => offer.responses[p] === "decline")) top.timer = "expire";
+      else delete top.timer;
     },
     candidates: () => [
       { type: "RESPOND_TRADE", accept: true },
@@ -205,6 +225,8 @@ export const tradeActions: ActionHandlers = {
 export function baseDefaultAction(state: GameState, player: PlayerId): Action | null {
   const top = state.decisions.at(-1);
   switch (top?.kind) {
+    case "ROLL_FOR_ORDER":
+      return { type: "ROLL_FOR_ORDER" };
     case "ROLL":
       return { type: "ROLL" };
     case "MAIN":

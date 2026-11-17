@@ -7,7 +7,7 @@ import { BASE_RESOURCES, PIECE_LIMITS } from "./data";
 import { countOwned } from "./helpers";
 import { produce } from "./production";
 import { robberActions } from "./robber";
-import { setupActions, setupBase } from "./setup";
+import { afterSetupBase, setupActions, setupBase } from "./setup";
 import { baseDefaultAction, tradeActions, tradeRatio } from "./trade";
 import { rollTwoDice, turnActions } from "./turn";
 
@@ -50,5 +50,6 @@ export const baseModule: RulesModule = {
     },
   },
   setup: setupBase,
+  afterSetup: afterSetupBase,
   defaultAction: baseDefaultAction,
 };

@@ -135,6 +135,11 @@ export interface RulesModule {
   /** Runs once in createGame, in ruleset order: build zones, place starting pieces, push decisions. */
   setup?(draft: GameState): void;
   /**
+   * Runs once in createGame after every module's `setup`, in ruleset order (spec 231): for steps
+   * that must sit on top of whatever the modules queued, like the base game's roll-off.
+   */
+  afterSetup?(draft: GameState): void;
+  /**
    * Checks that must hold after every action when this module is on (tests and the fuzzer).
    * Returns violations; also reports the VP this module adds, recounted independently, so the
    * shared VP check can add it.

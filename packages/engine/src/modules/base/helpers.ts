@@ -31,8 +31,11 @@ export const PLAY_ACTIONS = [
   "PLAY_MONOPOLY",
 ] as const;
 
-export const rollDecision = (p: PlayerId): Decision =>
-  decision("ROLL", p, ["ROLL", ...PLAY_ACTIONS]);
+/** The roll step; the server auto-rolls when its "roll" clock runs out (spec 231). */
+export const rollDecision = (p: PlayerId): Decision => ({
+  ...decision("ROLL", p, ["ROLL", ...PLAY_ACTIONS]),
+  timer: "roll",
+});
 
 export const mainDecision = (p: PlayerId): Decision =>
   decision("MAIN", p, [

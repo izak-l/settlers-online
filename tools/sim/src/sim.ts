@@ -192,8 +192,9 @@ export function playGame(
   const def = findAnyMap(mapId);
   if (!def) throw new Error(`Unknown map: ${mapId}`);
   const { map } = generateMap(def, seedFromString(`${seed}:map`));
+  // Like the server (spec 231): every game opens with a roll-off for the first player.
   const start = createGame(
-    map,
+    { ...map, firstPlayer: "roll" as const },
     { modules: def.modules, ...(opts.features ? { options: { features: opts.features } } : {}) },
     seats,
     seed,

@@ -35,11 +35,26 @@ export function givesStartingResources(data: Record<string, unknown> | undefined
   return typeof data?.["resources"] === "boolean" ? data["resources"] : data?.["round"] === 2;
 }
 
-export const setupSettlement = (p: PlayerId, round: number): Decision =>
-  decision("PLACE_SETTLEMENT", p, ["PLACE_SETTLEMENT"], { round });
+/** Setup steps run on the "setup" clock: one per player per round (spec 231). */
+export const setupSettlement = (p: PlayerId, round: number): Decision => ({
+  ...decision("PLACE_SETTLEMENT", p, ["PLACE_SETTLEMENT"], { round }),
+  timer: "setup",
+});
 
-export const setupRoad = (p: PlayerId, round: number): Decision =>
-  decision("PLACE_ROAD", p, ["PLACE_ROAD"], { round });
+export const setupRoad = (p: PlayerId, round: number): Decision => ({
+  ...decision("PLACE_ROAD", p, ["PLACE_ROAD"], { round }),
+  timer: "setup",
+});
+
+/** Opens the game when the map asks for a roll-off (spec 231): played by the server at once. */
+export const rollForOrderDecision = (p: PlayerId): Decision =>
+  decision("ROLL_FOR_ORDER", p, ["ROLL_FOR_ORDER"]);
+
+/** After every module's setup: put the roll-off on top when the map asks for it. */
+export function afterSetupBase(draft: GameState): void {
+  if (draft.map.firstPlayer === "roll")
+    draft.decisions.push(rollForOrderDecision(draft.players[0]!));
+}
 
 /** Build the bank and hands, place the robber, and queue the snake-order setup. */
 export function setupBase(draft: GameState): void {

@@ -6,6 +6,7 @@ export type Action =
   | { type: "PLACE_SETTLEMENT"; vertex: VertexId }
   | { type: "PLACE_ROAD"; edge: EdgeId }
   | { type: "ROLL" }
+  | { type: "ROLL_FOR_ORDER" }
   | { type: "BUILD_ROAD"; edge: EdgeId }
   | { type: "BUILD_SETTLEMENT"; vertex: VertexId }
   | { type: "BUILD_CITY"; vertex: VertexId }

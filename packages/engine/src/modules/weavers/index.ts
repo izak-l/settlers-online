@@ -142,8 +142,8 @@ export const weaversModule: RulesModule = {
       const round = Math.floor(i / n) + 1;
       const data = { round, resources: round === 3 };
       return [
-        decision("PLACE_SETTLEMENT", p, ["PLACE_SETTLEMENT"], data),
-        decision("PLACE_ROAD", p, ["PLACE_ROAD"], data),
+        { ...decision("PLACE_SETTLEMENT", p, ["PLACE_SETTLEMENT"], data), timer: "setup" as const },
+        { ...decision("PLACE_ROAD", p, ["PLACE_ROAD"], data), timer: "setup" as const },
       ];
     });
     draft.decisions = [draft.decisions[0]!, ...steps.reverse()];

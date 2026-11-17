@@ -77,6 +77,8 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("PLACE_SETTLEMENT"), vertex: VertexOrEdge }),
   z.object({ type: z.literal("PLACE_ROAD"), edge: VertexOrEdge }),
   z.object({ type: z.literal("ROLL") }),
+  // Played by the server at game start (spec 231); the engine refuses it at any other time.
+  z.object({ type: z.literal("ROLL_FOR_ORDER") }),
   z.object({ type: z.literal("BUILD_ROAD"), edge: VertexOrEdge }),
   z.object({ type: z.literal("BUILD_SETTLEMENT"), vertex: VertexOrEdge }),
   z.object({ type: z.literal("BUILD_CITY"), vertex: VertexOrEdge }),

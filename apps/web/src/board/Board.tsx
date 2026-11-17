@@ -27,7 +27,7 @@ import {
 import { TerrainFace } from "../art/TerrainFace";
 import { useArtwork } from "../art/useArtwork";
 import { BuildPopover } from "./BuildPopover";
-import { buildLocations, type BuildLocation } from "./buildLocations";
+import { buildLocations, directBuild, type BuildLocation } from "./buildLocations";
 import { BoardControls } from "./BoardControls";
 import { useViewport } from "./useViewport";
 import { hitRadius, type Box } from "./viewport";
@@ -222,7 +222,12 @@ export function Board({ snap, seats, mode, onAction, fitArea }: Props) {
   const shown = targets(snap, mode, mode === "move" ? moveFrom : null);
   const locationPoint = (location: BuildLocation): Point =>
     location.kind === "edge" ? edgeMidpoint(location.id) : vertexPoint(location.id);
-  const openLocation = (location: BuildLocation) => setSelected(`${location.kind}:${location.id}`);
+  const openLocation = (location: BuildLocation) => {
+    // A build mode from the side panel builds straight away, no popup (spec 231).
+    const direct = mode && mode !== "move" ? directBuild(shown, location.id) : undefined;
+    if (direct) onAction(direct);
+    else setSelected(`${location.kind}:${location.id}`);
+  };
 
   /** A target was picked: a build opens its map popup; a ship to move is remembered first. */
   const pick = (action: ActionSpec) => {

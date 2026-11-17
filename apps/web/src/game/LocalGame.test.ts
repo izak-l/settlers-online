@@ -51,7 +51,17 @@ describe("LocalGame", () => {
     await game.send(game.snapshot().legal[0]!);
     stop();
     await game.send(game.snapshot().legal[0]!);
-    expect(seen).toEqual([0, 1]);
+    // The log opens with the roll-off (spec 231); one action adds one event.
+    expect(seen).toHaveLength(2);
+    expect(seen[1]).toBe(seen[0]! + 1);
+  });
+
+  it("opens with the roll-off, like an online game (spec 231)", () => {
+    const snap = new LocalGame(NAMES, "opening").snapshot();
+    expect(snap.log.some((e) => e.type === "ROLLED_FOR_ORDER")).toBe(true);
+    const first = snap.log.find((e) => e.type === "FIRST_PLAYER")!.data!["player"];
+    expect(snap.view.turn.activePlayer).toBe(first);
+    expect(snap.seat).toBe(first);
   });
 
   it("the same seed gives the same board", () => {

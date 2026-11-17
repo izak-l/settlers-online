@@ -235,7 +235,10 @@ input {
 .board-viewport:active {
   cursor: grabbing;
 }
-.app:has(.layout) > .topbar,
+/* In a game the top bar goes; the map's settings gear has its controls (spec 231). */
+.app:has(.layout) > .topbar {
+  display: none;
+}
 .app:has(.layout) > .banner {
   position: relative;
   z-index: 2;
@@ -249,7 +252,8 @@ input {
 .board-controls {
   position: absolute;
   left: 16px;
-  top: 80px;
+  /* Below the settings gear (spec 231). */
+  top: 68px;
   display: flex;
   width: max-content;
   z-index: 2;
@@ -1108,6 +1112,10 @@ button.danger {
   .board-controls {
     left: 12px;
   }
+  .settings-menu {
+    left: 12px;
+    top: 12px;
+  }
 }
 @media (max-width: 600px) {
   button,
@@ -1556,15 +1564,61 @@ button.card-group:focus-visible {
   color: #fff;
 }
 
-/* ---- M7d: sound control ---- */
-.sound {
-  position: relative;
+/* ---- In-game settings menu (spec 231): appearance, volume, exit ---- */
+.settings-menu {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  pointer-events: auto;
+}
+.settings-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px #0003;
+}
+.settings-trigger[aria-expanded="true"] {
+  color: var(--accent);
+}
+.settings-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 90px);
+  overflow-y: auto;
+  display: grid;
+  gap: 1rem;
+  padding: 0.9rem;
+}
+.settings-popover fieldset {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.settings-popover legend {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+.settings-popover p {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+}
+.sound-row {
   display: flex;
   align-items: center;
-  margin-left: auto;
+  gap: 0.5rem;
 }
-.appearance + .user {
-  margin-left: 0;
+.sound-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
 }
 .icon-button {
   display: inline-grid;
@@ -1576,67 +1630,11 @@ button.card-group:focus-visible {
   background: none;
   color: var(--text);
 }
-.icon-button.narrow {
-  min-width: 22px;
-  padding: 0 2px;
-  color: var(--muted);
-}
 .icon-button[aria-pressed="true"] {
   color: var(--muted);
 }
-.sound-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  width: 200px;
-  padding: 0.75rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-.sound-popover input[type="range"] {
-  width: 100%;
-  padding: 0;
-}
-
-/* Artwork is independent of the panel color scheme. */
-.appearance {
-  position: relative;
-}
-.appearance-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: 0;
-}
-.appearance-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  width: 280px;
-  max-width: calc(100vw - 24px);
-  padding: 0.75rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-}
-.appearance-popover fieldset {
-  min-width: 0;
-  padding: 0;
-  margin: 0;
-  border: 0;
-}
-.appearance-popover legend {
-  font-weight: 700;
-}
-.appearance-popover p {
-  margin: 0.4rem 0 0.75rem;
-  font-size: 0.85rem;
+.exit-game {
+  justify-self: start;
 }
 .artwork-choices {
   display: grid;
@@ -1684,15 +1682,6 @@ button.card-group:focus-visible {
   width: 100%;
   height: 100%;
   pointer-events: none;
-}
-@media (max-width: 600px) {
-  .appearance-label {
-    display: none;
-  }
-  .appearance-trigger {
-    min-width: 44px;
-    justify-content: center;
-  }
 }
 
 /* ---- Map picker and preview (spec 011) ---- */

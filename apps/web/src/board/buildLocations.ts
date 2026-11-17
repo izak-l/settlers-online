@@ -1,4 +1,4 @@
-import type { BuildOption } from "@settlers/engine";
+import type { ActionSpec, BuildOption } from "@settlers/engine";
 
 export interface BuildLocation {
   kind: "edge" | "vertex";
@@ -20,4 +20,14 @@ export function buildLocations(options: BuildOption[]): BuildLocation[] {
     locations.set(key, location);
   }
   return [...locations.values()];
+}
+
+/**
+ * With a build mode picked in the side panel (spec 231), a click on a location builds at once:
+ * the mode's legal action at that edge or corner, if there is one. Otherwise the popup opens.
+ */
+export function directBuild(modeTargets: ActionSpec[], locationId: string): ActionSpec | undefined {
+  return modeTargets.find(
+    (a) => ("edge" in a && a.edge === locationId) || ("vertex" in a && a.vertex === locationId),
+  );
 }

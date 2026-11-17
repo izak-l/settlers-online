@@ -87,12 +87,17 @@ export class LocalGame implements GameClient {
   ) {
     const { map } = generateMap(def, seedFromString(`${seed}:map`));
     const seats = names.map((_, i) => `p${i}`);
-    this.state = createGame(
-      map,
+    const start = createGame(
+      { ...map, firstPlayer: "roll" },
       { modules: def.modules, ...(features ? { options: { features } } : {}) },
       seats,
       seed,
     );
+    // Like the server (spec 231): the roll-off is played at once and opens the log.
+    const opening = apply(start, "system", { type: "ROLL_FOR_ORDER" });
+    if (!opening.ok) throw new Error(opening.message);
+    this.state = opening.state;
+    this.events.push(...opening.events);
   }
 
   private waitingOn(): PlayerId {

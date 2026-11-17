@@ -127,6 +127,19 @@ const PATHS: Record<string, React.ReactNode> = {
       <circle cx="18" cy="10" r="1.3" fill="currentColor" />
     </>
   ),
+  // An original eight-toothed cog (spec 231).
+  gear: (
+    <>
+      <path
+        d="M10.3 2.5 h3.4 l0.5 2.6 a7.4 7.4 0 0 1 1.9 0.8 l2.2 -1.5 2.4 2.4 -1.5 2.2 a7.4 7.4 0 0 1 0.8 1.9 l2.6 0.5 v3.4 l-2.6 0.5 a7.4 7.4 0 0 1 -0.8 1.9 l1.5 2.2 -2.4 2.4 -2.2 -1.5 a7.4 7.4 0 0 1 -1.9 0.8 l-0.5 2.6 h-3.4 l-0.5 -2.6 a7.4 7.4 0 0 1 -1.9 -0.8 l-2.2 1.5 -2.4 -2.4 1.5 -2.2 a7.4 7.4 0 0 1 -0.8 -1.9 l-2.6 -0.5 v-3.4 l2.6 -0.5 a7.4 7.4 0 0 1 0.8 -1.9 l-1.5 -2.2 2.4 -2.4 2.2 1.5 a7.4 7.4 0 0 1 1.9 -0.8 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </>
+  ),
   speaker: (
     <>
       <path d="M3 9 H7 L12 5 V19 L7 15 H3 Z" fill="currentColor" />

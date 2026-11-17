@@ -4,16 +4,26 @@ import { useSession } from "../app/session";
 import { useSounds } from "../audio/useSounds";
 import { Board } from "../board/Board";
 import { HandDock } from "../cards/HandDock";
-import { startPick, type Pick } from "../cards/picking";
+import { pickResetKey, startPick, type Pick } from "../cards/picking";
 import type { GameClient, Snapshot } from "../game/LocalGame";
 import { errorText, seatsOf, type BuildMode } from "../game/seats";
 import { ActionBar } from "./ActionBar";
 import { TradePanel } from "./TradePanel";
 import { GameLog } from "./GameLog";
 import { PlayersPanel } from "./PlayersPanel";
+import { SettingsMenu } from "./SettingsMenu";
 
 /** The board and panels for any GameClient: online (SocketGame) or the dev sandbox (LocalGame). */
-export function GameView({ client }: { client: GameClient }) {
+export function GameView({
+  client,
+  onExit,
+  exitLabel = "Exit game",
+}: {
+  client: GameClient;
+  /** The menu's way out: home for online games (the seat is kept), the picker in the sandbox. */
+  onExit: () => void;
+  exitLabel?: string;
+}) {
   const [fitArea, setFitArea] = useState<HTMLDivElement | null>(null);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [mode, setMode] = useState<BuildMode>(null);
@@ -28,9 +38,10 @@ export function GameView({ client }: { client: GameClient }) {
     useSession((s) => s.me?.id),
   );
 
-  // Cards being picked belong to one decision: start over whenever it changes.
+  // Cards being picked belong to one decision: start over whenever a new one starts (not when
+  // someone else answers the same one, e.g. finishes their discard: bug #1).
   const top = snap?.view.decisions.at(-1);
-  const decisionKey = `${snap?.seat}|${snap?.view.turn.number}|${top?.kind}|${top?.pendingFrom.join(",")}`;
+  const decisionKey = snap ? pickResetKey(snap) : "";
   useEffect(() => setPick(null), [decisionKey]);
 
   async function send(action: Action) {
@@ -94,6 +105,7 @@ export function GameView({ client }: { client: GameClient }) {
         />
       </div>
       <div className="board-space" ref={setFitArea} aria-hidden="true" />
+      <SettingsMenu onExit={onExit} exitLabel={exitLabel} />
       {playing && (
         <HandDock snap={snap} pick={activePick} setPick={setPick} send={(a) => void send(a)} />
       )}

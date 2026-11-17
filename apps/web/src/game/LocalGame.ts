@@ -7,6 +7,7 @@ import {
   legalActions,
   seedFromString,
   tradeRatios,
+  piecesLeft,
   viewFor,
   type Action,
   type ActionSpec,
@@ -37,6 +38,8 @@ export interface Snapshot {
   scores: Record<PlayerId, number>;
   /** Your bank rate per resource. Empty for spectators. */
   ratios: Record<string, number>;
+  /** Pieces you can still place, by type (spec 232). Empty for spectators and older servers. */
+  piecesLeft?: Record<string, number>;
   /** Events this viewer may see, oldest first. */
   log: GameEvent[];
   players: SnapshotPlayer[];
@@ -115,6 +118,7 @@ export class LocalGame implements GameClient {
       builds: buildOptions(this.state, seat),
       scores,
       ratios: tradeRatios(this.state, seat),
+      piecesLeft: piecesLeft(this.state, seat),
       log: this.events.filter((e) => eventVisibleTo(e, seat)),
       players: this.state.players.map((id, i) => ({ id, name: this.names[i]!, connected: true })),
     };

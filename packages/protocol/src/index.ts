@@ -307,6 +307,8 @@ export interface GameStateMessage {
   scores: Record<PlayerId, number>;
   /** Your bank rate per resource (4, or 3/2 with ports). Empty for spectators. */
   ratios: Record<string, number>;
+  /** Spec 232: pieces you can still place, by type. Empty for spectators; absent from older servers. */
+  piecesLeft?: Record<string, number>;
   /** Events this viewer may see from the action that produced this state. */
   events: GameEvent[];
   /** Full visible history, oldest first. Only sent when joining or reconnecting. */

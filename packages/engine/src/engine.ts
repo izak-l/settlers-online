@@ -5,6 +5,7 @@ import {
   allowedFor,
   handlerFor,
   legalFor,
+  pieceLimits,
   reject,
   routeAwardName,
   runCheckWin,
@@ -164,6 +165,18 @@ export function buildOptions(state: GameState, player: PlayerId): BuildOption[] 
     }
   }
   return result;
+}
+
+/** How many of each piece type `player` can still place: each module's limit minus the pieces they own. */
+export function piecesLeft(state: GameState, player: PlayerId): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [type, limit] of Object.entries(pieceLimits(modulesOf(state)))) {
+    const owned = Object.values(state.pieces).filter(
+      (p) => p.owner === player && p.type === type,
+    ).length;
+    out[type] = Math.max(0, limit - owned);
+  }
+  return out;
 }
 
 /** The bank rate `player` gets for each resource (cards given per card received). */

@@ -14,7 +14,7 @@ import {
   type RulesModule,
 } from "./module";
 import { MODULES } from "./modules";
-import { mergeFeatures } from "./types";
+import { DEFAULT_DISCARD_LIMIT, mergeFeatures } from "./types";
 import type {
   Actor,
   ApplyResult,
@@ -77,6 +77,7 @@ export function createGame(
       vpToWin: ruleset.options?.vpToWin ?? map.vpToWin,
       // Defaults, then the map, then the ruleset (the lobby's house rules) win.
       features: mergeFeatures(map.features, ruleset.options?.features),
+      discardLimit: ruleset.options?.discardLimit ?? map.discardLimit ?? DEFAULT_DISCARD_LIMIT,
     },
     rng: seedFromString(seed),
     map,

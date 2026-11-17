@@ -59,9 +59,14 @@ it.each(GOLDEN)(
         s = r.state;
       }
       expect([n, s.winner]).toEqual([steps, winner]);
+      // The discard limit option (spec 229) postdates the fingerprints: it must be the default 7,
+      // and the rest of the state must match them exactly.
+      const snap = toSnapshot(s);
+      expect(snap.options.discardLimit).toBe(7);
+      const { discardLimit: _limit, ...olderOptions } = snap.options;
       expect(
         createHash("sha256")
-          .update(JSON.stringify(toSnapshot(s)))
+          .update(JSON.stringify({ ...snap, options: olderOptions }))
           .digest("hex"),
       ).toBe(hash);
     }

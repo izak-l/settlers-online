@@ -198,7 +198,7 @@ interface Decision {
 - `computeVP(state, player, viewer?)`: hidden VP (VP cards) count only for their owner, or for everyone once the game is over. The public `scores` a client receives are computed for that viewer.
 - `viewFor` returns a `PlayerView`: the state minus `rng` and `graph`, with zones redacted (`public`: contents; `count`: contents for the owner, a count for others; `owner`: contents for the owner only; `hidden`: a count only).
 - `defaultAction` ends the turn when `END_TURN` is allowed; otherwise it picks a random legal action, reading the RNG without advancing it (so it is deterministic for a state, and the chosen action is logged and replayed like any other).
-- A roll of 7 produces nothing. It pushes `MOVE_ROBBER` above `MAIN`, and above that a single `DISCARD` decision listing everyone over 7 cards (`pendingFrom` shrinks as each discards, in any order). Moving the robber pushes `STEAL` only when two or more players can be robbed.
+- A roll of 7 produces nothing. It pushes `MOVE_ROBBER` above `MAIN`, and above that a single `DISCARD` decision listing everyone over the discard limit (`options.discardLimit`: 7 unless the map or lobby sets another, spec 229) (`pendingFrom` shrinks as each discards, in any order). Moving the robber pushes `STEAL` only when two or more players can be robbed.
 
 ## 6. Rules modules and hooks
 
@@ -315,13 +315,13 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | Direction | Type | Payload |
 | --- | --- | --- |
 | C→S | `profile:setUsername` | username (3–20 letters, digits, `_`; unique, case-insensitive) |
-| C→S | `lobby:create` | game type (`base`, `seafaring-3`, `seafaring-4`; default base), seats (1 up to the type's limit), allow spectators, turn timer (0, 30, 60, 90, 120 s) |
+| C→S | `lobby:create` | game type (`base`, `seafaring-3`, `seafaring-4`; default base). Seats, spectators and turn timer are optional (since spec 229 they are lobby settings; defaults: the default map's seat cap, allowed, off) |
 | C→S | `lobby:join` | lobby id (watch it; doesn't take a seat) |
 | C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
 | C→S | `lobby:ready` | lobby id, ready flag |
-| C→S | `lobby:map` | lobby id, `{ builtin: mapId }` or `{ scenario, setup }` (host only, while open; the map must belong to the lobby's game type; clears ready flags) |
-| C→S | `lobby:type` | lobby id, game type (host only, while open; the seated players must fit: they move up into the first seats and empty seats beyond the limit go; picks the type's default map; clears ready flags) |
-| C→S | `lobby:features` | lobby id, house rules: feature switches overriding the map's (host only, while open; clears ready flags) |
+| C→S | `lobby:map` | lobby id, `{ builtin: mapId }` or `{ scenario, setup }` (host only, while open; the map must belong to the lobby's game type and fit the seated players; resets seats, points to win and discard limit to the map's defaults; clears ready flags) |
+| C→S | `lobby:type` | lobby id, game type (host only, while open; the seated players must fit: they move up into the first seats when needed; picks the type's default map and its default settings; clears ready flags) |
+| C→S | `lobby:settings` | lobby id, seats (1 up to the map's cap in the type, at least the number seated), points to win (3–25), discard limit (5–20), turn timer, allow spectators; sent whole (host only, while open; clears ready flags; spec 229) |
 | C→S | `lobby:start` | lobby id (host only; every seat filled and ready) |
 | C→S | `game:join` | game id (your seat if you have one, otherwise spectator if allowed) |
 | C→S | `game:action` | game id, `Action` |
@@ -331,7 +331,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | C→S | `games:history` | (none): your last 20 games |
 | C→S | `chat:send` | game id, text (1–300 characters) |
 | S→C | `welcome` | your user id and username (null until picked) |
-| S→C | `lobby` | seats (username, ready, connected), the map (id, name, description, players, VP, definition), status, turn timer, game id once started |
+| S→C | `lobby` | seats (username, ready, connected), the map (id, name, description, players, VP, definition), the game type, settings (points to win, discard limit, turn timer, spectators), the effective switches, status, game id once started |
 | S→C | `state` | game id, `seq`, `you` (seat or `"spectator"`), filtered `PlayerView`, your `legal` actions, public `scores`, players (username, connected), new `events`; the full `log` only on join; the running `clock` (kind, ms left, total) when the game has a timer |
 | S→C | `friends` / `presence` | your whole friends list / one friend's new presence |
 | S→C | `invite` / `invite:closed` | a friend's lobby invite / that lobby started |
@@ -363,7 +363,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **The engine stays account-agnostic.** It only knows seats (`PlayerId`). The server maps seat → `userId` in `game_players`.
 - **Tables:** see section 9. Profiles hold only an id and a unique username (no display names or avatars).
 - **Presence:** each socket records where it is (home, a lobby, a game played or watched); a user's presence is the busiest of their sockets. Only accepted friends see it.
-- **Lobbies:** private, joined by invite link or a friend invite. The host picks the player count, the turn timer and whether spectators are allowed (map and modules are fixed to the random base board for now).
+- **Lobbies:** private, joined by invite link or a friend invite. In the lobby the host picks the game type and map, then the player count, points to win, discard limit, turn timer and whether spectators are allowed (spec 229).
 - **Reconnect:** signing in again reclaims your seat; seats stay reserved while disconnected.
 - **Spectators:** get `viewFor("spectator")`, which shows public information only (hand counts, no contents). Spectator chat is a separate channel. Full reveal is available in the replay after the game ends.
 - **Turn timer:** configurable per lobby (off, 30, 60, 90 or 120 seconds per turn, plus a 30-second clock for discards). On timeout the server plays `defaultAction` for whoever is being waited on until that clock no longer applies: roll if needed, cancel an open offer, place pending free roads at random, end the turn; a timed-out discard is random.
@@ -379,7 +379,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 
 **House rules (spec 014)**
 
-- Five base-game switches, all on by default: `devCards`, `robber`, `longestRoad`, `largestArmy`, `ports`. A map may set them (`features` in its JSON); the lobby host may override them (`lobby:features`, which clears ready flags and survives a map change). `createGame` merges defaults → map → ruleset options into `options.features`.
+- Five base-game switches, all on by default: `devCards`, `robber`, `longestRoad`, `largestArmy`, `ports`. A map may set them (`features` in its JSON). Lobbies could override them with `lobby:features` until spec 229 removed it; lobbies saved with overrides keep them, and `RulesetDef.options.features` still accepts them (the sandbox uses that). `createGame` merges defaults → map → ruleset options into `options.features`.
 - The server folds the effective switches into the resolved map it stores, so replays need nothing else. Base checks them with `featureOn`: dev card actions are rejected when off; no robber piece and no robber step after a 7 or Knight; a switched-off award is never held; harbors off means 4:1 everywhere.
 
 **One- and two-player games (spec 010)**
@@ -434,7 +434,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 
 **As built (M6: social screens and polish)**
 
-- **Home:** new game (players, turn timer, spectators), join by link, the friends list (add by username, requests, presence with Join / Watch), and "Your games" (last 20: Rejoin, or View a finished game's final board, with winner and scores). Lobby invites from friends appear as toasts on any screen.
+- **Home:** new game (the game type since spec 229; the rest are lobby settings), join by link, the friends list (add by username, requests, presence with Join / Watch), and "Your games" (last 20: Rejoin, or View a finished game's final board, with winner and scores). Lobby invites from friends appear as toasts on any screen.
 - **Lobby:** shows the turn timer and an "Invite friends" list of online friends who aren't seated.
 - **Game:** a countdown in the action bar (red under 10 s). Log and chat share one tabbed panel: the log reads oldest-first, auto-scrolls unless you've scrolled up, colours names by seat and marks turn ends; chat shows an unread count. The dev sandbox has no chat.
 - **Small screens:** the board's viewBox fits the land plus a strip of sea (ports stay visible). Below 860px actions lead a scrollable panel above the hand, over the full-screen map; below 600px every control is at least 44px tall. Board targets have wide invisible hit areas. Checked at 375px: no sideways scrolling on home, lobby or game.
@@ -509,12 +509,13 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 
 **As built (M8a: choosing a map; spec 023: game types)**
 
-- **Game types** (`GAME_TYPES` in `packages/maps`): Base game (up to 4), Seafaring · 3 players, Seafaring · 4 players. Maps belong to types by what they are: base-only maps to the base game; scenarios to the seafaring types at their size (`3p` / `4p` maps); seafaring maps without scenario rules ("free play": Home Waters, Rising Chain) to both seafaring types when big enough. Player counts are upper bounds: every map's minimum is 1.
-- **Home:** "New game" asks for the game type, then the seat count (up to its limit). New lobbies start on the type's default map (the base map, or the first scenario).
-- **Lobby:** its own two-column page (one column below 860px): the game on the left, invite link, players and friends on the right. Everyone sees a summary card (type, kind of map, name, description, players, VP, land). The host picks the game type (radio cards; a type that can't seat everyone already seated is disabled), then a map: base lists its maps; seafaring has Scenarios and Free play tabs; the selected card is marked "Selected", and a scenario's Rulebook / Random layout switch sits inside its card. `ui/GamePicker.tsx` holds these parts; the sandbox uses them too. Changing type, map or house rules clears every ready flag. The server checks each choice against the type (`UNKNOWN_MAP`) and stores a copy of the definition on the lobby, plus the type (migration 009; older lobbies get the type from their map); at start the game is generated from that copy with the map's own `modules`, so a catalog edit never changes an open lobby.
+- **Game types** (`GAME_TYPES` in `packages/maps`): Base game (up to 4), Seafaring · 3 players, Seafaring · 4 players. Maps belong to types by what they are: base-only maps to the base game; scenarios to the seafaring types at their size (`3p` / `4p` maps); seafaring maps without scenario rules ("free play": Home Waters, Rising Chain, Scattered Isles, Inland Sea, Twin Isles, Six Shores) to both seafaring types when big enough. Since spec 229 the base game also offers Crescent Bay, Great Hexagon, Hourglass, Lagoon Ring, Little Harbour (up to 3), Six-Point Star and The Boot, all promoted from the drafts (`maps/drafts/build.ts` now writes catalog files). Player counts are upper bounds: every map's minimum is 1.
+- **Home:** "New game" asks only for the game type (spec 229). New lobbies start on the type's default map (the base map, or the first scenario) with that map's default settings.
+- **Lobby:** its own two-column page (one column below 860px): the game on the left, invite link, players and friends on the right. Everyone sees a summary card (type, kind of map, name, description, players, VP, land). The host picks the game type (radio cards; a type that can't seat everyone already seated is disabled), then a map: base lists its maps; seafaring has Scenarios and Free play tabs; the selected card is marked "Selected", and a scenario's Rulebook / Random layout switch sits inside its card. `ui/GamePicker.tsx` holds these parts; the sandbox uses them too. Changing type, map or settings clears every ready flag. The server checks each choice against the type (`UNKNOWN_MAP`) and stores a copy of the definition on the lobby, plus the type (migration 009; older lobbies get the type from their map); at start the game is generated from that copy with the map's own `modules`, so a catalog edit never changes an open lobby.
 - **Preview:** `board/MapPreview.tsx` draws an unresolved map: fixed tiles as they are, random land as a neutral tile with "?", random tokens as "?"; random ports aren't drawn. `board/mapTiles.ts` is the pure, tested part.
 - **History:** "Your games" shows each game's map name, looked up in the catalog from the stored map's id (the id itself if the map is gone).
-- **Dev sandbox:** the same game-type and map picker, with a Drafts tab listing every draft file (loaded with `import.meta.glob`, so a new file appears on reload). Drafts that don't fit the seat count, need modules the engine lacks, or fail the validator are shown with the reason. The production build contains neither the sandbox nor any draft.
+- **Lobby settings (spec 229):** under the summary card, everyone sees players, points to win, discard limit, turn timer and spectators (`ui/LobbySettings.tsx`, logic in `ui/lobbySettingsModel.ts`). The host edits them: a seat picker from 1 up to `seatCap(type, map)` (counts below the seated players disabled), steppers for points (3–25) and discard limit (5–20), the timer and a spectators box, plus "Map defaults". Each change sends `lobby:settings` whole. They start at `mapDefaults(type, map)` (the seat cap, the map's `vpToWin`, its `discardLimit` or 7) and reset to them on any map or type change; the timer and spectators are kept. Shrinking seats keeps seated players where they are when they fit, otherwise moves them up. The server stores points and limit on the lobby (migration 010; null means the map's) and folds them into the stored game map at start beside the features, so replays need nothing else. The summary card's facts line shows the lobby's values. House-rule checkboxes are gone from the lobby.
+- **Dev sandbox:** the same game-type and map picker, with a Drafts tab (hidden while there are none) listing every draft file (loaded with `import.meta.glob`, so a new file appears on reload). Drafts that don't fit the seat count, need modules the engine lacks, or fail the validator are shown with the reason. The production build contains neither the sandbox nor any draft.
 - **Coast rim:** drawn as a negative inset around each land hex (`hexPolygon(q, r, HEX_SIZE, -7)`), so it stays centred on big maps.
 
 ## 11. Testing strategy

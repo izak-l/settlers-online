@@ -156,6 +156,8 @@ export const MapDefSchema = z.object({
   version: z.number().int().positive(),
   players: z.object({ min: z.number().int(), max: z.number().int() }),
   vpToWin: z.number().int().positive(),
+  /** On a 7, players holding more cards than this discard half (spec 229). Default 7. */
+  discardLimit: z.number().int().positive().max(99).optional(),
   hexes: z
     .array(HexDefSchema)
     .max(MAP_LIMITS.hexes)
@@ -205,6 +207,7 @@ export interface ResolvedMap {
   version: number;
   players: { min: number; max: number };
   vpToWin: number;
+  discardLimit?: number;
   hexes: ResolvedHex[];
   ports: ResolvedPort[];
   robberStart?: string;

@@ -32,8 +32,14 @@ export interface LobbyRecord {
   gameId: string | null;
   /** A copy of the chosen map's definition; the game starts from it. */
   map: MapDef;
-  /** The host's house rules (spec 014): switches overriding the map's. Empty = the map's. */
+  /**
+   * House rules (spec 014): switches overriding the map's. Since spec 229 the lobby no longer
+   * sets them; lobbies saved before keep theirs. Empty = the map's.
+   */
   features: FeatureOverrides;
+  /** Points to win and discard limit (spec 229); they start at the map's values. */
+  vpToWin: number;
+  discardLimit: number;
   /** Base game or a seafaring player size (spec 023); the map always belongs to it. */
   gameType: GameTypeId;
 }

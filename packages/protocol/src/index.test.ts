@@ -4,8 +4,9 @@ import {
   CreateLobbySchema,
   GameActionSchema,
   PROTOCOL_ERROR_MESSAGES,
-  SetLobbyFeaturesSchema,
+  LOBBY_LIMITS,
   SetLobbyMapSchema,
+  SetLobbySettingsSchema,
   SetLobbyTypeSchema,
   UsernameSchema,
 } from "./index";
@@ -106,14 +107,33 @@ describe("protocol schemas", () => {
     }
   });
 
-  it("accepts house rules and rejects unknown switches", () => {
-    const ok = (features: unknown) =>
-      SetLobbyFeaturesSchema.safeParse({ lobbyId: "abc", features }).success;
+  it("creates a lobby from the game type alone; the rest are lobby settings (spec 229)", () => {
+    const parsed = CreateLobbySchema.parse({ gameType: "seafaring-4" });
+    expect(parsed).toEqual({ gameType: "seafaring-4", allowSpectators: true, turnSeconds: 0 });
+  });
+
+  it("accepts lobby settings within range and rejects the rest (spec 229)", () => {
+    const good = {
+      lobbyId: "abc",
+      maxSeats: 3,
+      vpToWin: 12,
+      discardLimit: 9,
+      turnSeconds: 60,
+      allowSpectators: false,
+    };
+    const ok = (over: object) => SetLobbySettingsSchema.safeParse({ ...good, ...over }).success;
     expect(ok({})).toBe(true);
-    expect(ok({ devCards: false, robber: true, ports: false })).toBe(true);
-    expect(ok({ flying: true })).toBe(false);
-    expect(ok({ devCards: "no" })).toBe(false);
-    expect(ok(null)).toBe(false);
+    const { vpToWin: vp, discardLimit: dl } = LOBBY_LIMITS;
+    for (const v of [vp.min, vp.max]) expect(ok({ vpToWin: v })).toBe(true);
+    for (const v of [vp.min - 1, vp.max + 1, 10.5]) expect(ok({ vpToWin: v })).toBe(false);
+    for (const v of [dl.min, dl.max]) expect(ok({ discardLimit: v })).toBe(true);
+    for (const v of [dl.min - 1, dl.max + 1]) expect(ok({ discardLimit: v })).toBe(false);
+    expect(ok({ maxSeats: 0 })).toBe(false);
+    expect(ok({ maxSeats: 5 })).toBe(false);
+    expect(ok({ turnSeconds: 45 })).toBe(false);
+    expect(ok({ features: { robber: false } })).toBe(false);
+    const { allowSpectators: _, ...missing } = good;
+    expect(SetLobbySettingsSchema.safeParse(missing).success).toBe(false);
   });
 
   it("has a UI message for UNKNOWN_MAP", () => {

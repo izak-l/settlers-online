@@ -83,6 +83,18 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       return { gameId, players, spec };
     }
 
+    /** Shrink a lobby to two seats, keeping the given points to win and the usual discard limit. */
+    function twoSeats(host: TestClient, lobbyId: string, vpToWin = 12) {
+      return host.socket.emitWithAck("lobby:settings", {
+        lobbyId,
+        maxSeats: 2,
+        vpToWin,
+        discardLimit: 7,
+        turnSeconds: 0,
+        allowSpectators: false,
+      });
+    }
+
     /** Whoever the game is waiting on acts, until `turns` full turns have been played. */
     async function playUntilTurn(gameId: string, everyone: TestClient[], turn: number) {
       for (let guard = 0; guard < 2000; guard++) {
@@ -250,11 +262,13 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
         players: { min: 1, max: 4 },
         vpToWin: 12,
       });
-      expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false]);
+      // The map's defaults (spec 229): four seats again, ready flags cleared.
+      expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false, undefined, undefined]);
       expect(await ada!.socket.emitWithAck("lobby:start", { lobbyId })).toMatchObject({
         ok: false,
         code: "NOT_READY",
       });
+      expect(await twoSeats(ada!, lobbyId)).toEqual({ ok: true });
 
       for (const p of [ada!, bo!])
         expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
@@ -281,55 +295,86 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(history.games[0]!.mapName).toBe("Grand Diamond");
     });
 
-    it("house rules: the host switches features off; the game starts with them", async () => {
-      const [ada, bo] = await Promise.all(["dev:Ada", "dev:Bo_b"].map(connect));
-      const created = await ada!.socket.emitWithAck("lobby:create", {
-        maxSeats: 2,
-        allowSpectators: false,
-      });
+    it("lobby settings: seats, points, discard limit, timer and spectators (spec 229)", async () => {
+      const [ada, bo, cy] = await Promise.all(["dev:Ada", "dev:Bo_b", "dev:Cyd"].map(connect));
+      // Home sends only the game type; the rest start at the map's defaults.
+      const created = await ada!.socket.emitWithAck("lobby:create", { gameType: "base" });
       if (!created.ok) throw new Error(created.code);
       const lobbyId = created.lobby.id;
-      expect(created.lobby.features).toMatchObject({ devCards: true, robber: true });
-      expect(created.lobby.houseRules).toEqual({});
-
-      expect((await bo!.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
-      expect((await bo!.socket.emitWithAck("lobby:seat", { lobbyId, seat: 1 })).ok).toBe(true);
-      for (const p of [ada!, bo!])
+      expect(created.lobby).toMatchObject({
+        maxSeats: 4,
+        vpToWin: 10,
+        discardLimit: 7,
+        turnSeconds: 0,
+        allowSpectators: true,
+      });
+      for (const [who, seat] of [
+        [bo!, 3],
+        [cy!, 1],
+      ] as const) {
+        expect((await who.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
+        expect((await who.socket.emitWithAck("lobby:seat", { lobbyId, seat })).ok).toBe(true);
+      }
+      for (const p of [ada!, bo!, cy!])
         expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
 
-      const set = (who: TestClient, features: unknown) =>
+      const settings = {
+        maxSeats: 3,
+        vpToWin: 12,
+        discardLimit: 9,
+        turnSeconds: 60,
+        allowSpectators: false,
+      };
+      const set = (who: TestClient, over: object = {}) =>
         // Malformed payloads are part of the test.
-        who.socket.emitWithAck("lobby:features", { lobbyId, features } as never);
-      expect(await set(bo!, { devCards: false })).toMatchObject({ ok: false, code: "NOT_HOST" });
-      expect(await set(ada!, { flying: true })).toMatchObject({ ok: false, code: "BAD_REQUEST" });
-      expect(await set(ada!, { devCards: false, robber: false })).toEqual({ ok: true });
-      await bo!.until(() => bo!.lobby?.features.devCards === false);
-      expect(bo!.lobby!.houseRules).toEqual({ devCards: false, robber: false });
-      expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false]);
+        who.socket.emitWithAck("lobby:settings", { lobbyId, ...settings, ...over } as never);
+      expect(await set(bo!)).toMatchObject({ ok: false, code: "NOT_HOST" });
+      expect(await set(ada!, { maxSeats: 2 })).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+      expect(await set(ada!, { vpToWin: 30 })).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+      expect(await set(ada!, { discardLimit: 4 })).toMatchObject({
+        ok: false,
+        code: "BAD_REQUEST",
+      });
+      // Three seats: Bo moves up from the fourth seat; everyone readies up again.
+      expect(await set(ada!)).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.maxSeats === 3);
+      expect(bo!.lobby).toMatchObject(settings);
+      expect(bo!.lobby!.seats.map((s) => s?.username)).toEqual(["Ada", "Cyd", "Bo_b"]);
+      expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false, false]);
 
-      // House rules survive a map change.
-      expect(
-        await ada!.socket.emitWithAck("lobby:map", { lobbyId, map: { builtin: "grand-diamond" } }),
-      ).toEqual({ ok: true });
+      // A map change resets seats, points and discard limit to that map's defaults.
+      const choose = (id: string) =>
+        ada!.socket.emitWithAck("lobby:map", { lobbyId, map: { builtin: id } });
+      expect(await choose("grand-diamond")).toEqual({ ok: true });
       await bo!.until(() => bo!.lobby?.map.id === "grand-diamond");
-      expect(bo!.lobby!.features.robber).toBe(false);
+      expect(bo!.lobby).toMatchObject({
+        maxSeats: 4,
+        vpToWin: 12,
+        discardLimit: 7,
+        turnSeconds: 60,
+      });
+      expect(await choose("little-harbour")).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.map.id === "little-harbour");
+      expect(bo!.lobby!.maxSeats).toBe(3);
+      // More seats than the map takes are refused.
+      expect(await set(ada!, { maxSeats: 4 })).toMatchObject({ ok: false, code: "BAD_REQUEST" });
 
-      for (const p of [ada!, bo!])
+      expect(await set(ada!, { vpToWin: 3, discardLimit: 5, turnSeconds: 0 })).toEqual({
+        ok: true,
+      });
+      await bo!.until(() => bo!.lobby?.vpToWin === 3);
+      for (const p of [ada!, bo!, cy!])
         expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
       const started = await ada!.socket.emitWithAck("lobby:start", { lobbyId });
       if (!started.ok) throw new Error(started.code);
-      expect(await set(ada!, {})).toMatchObject({ ok: false, code: "LOBBY_STARTED" });
-
+      expect(await set(ada!)).toMatchObject({ ok: false, code: "LOBBY_STARTED" });
+      const stored = await store.getGame(started.gameId);
+      expect(stored!.game.map).toMatchObject({ vpToWin: 3, discardLimit: 5 });
       expect((await ada!.socket.emitWithAck("game:join", { gameId: started.gameId })).ok).toBe(
         true,
       );
       await ada!.until(() => ada!.state !== null);
-      expect(ada!.state!.view.options.features).toMatchObject({
-        devCards: false,
-        robber: false,
-        ports: true,
-      });
-      expect(ada!.state!.view.pieces["robber"]).toBeUndefined();
+      expect(ada!.state!.view.options).toMatchObject({ vpToWin: 3, discardLimit: 5 });
     });
 
     it("scenarios: a seafaring lobby picks a scenario; its game type picks the map size", async () => {
@@ -366,6 +411,7 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       });
 
       expect((await bo!.socket.emitWithAck("lobby:seat", { lobbyId, seat: 1 })).ok).toBe(true);
+      expect(await twoSeats(ada!, lobbyId, 14)).toEqual({ ok: true });
       for (const p of [ada!, bo!])
         expect((await p.socket.emitWithAck("lobby:ready", { lobbyId, ready: true })).ok).toBe(true);
       const started = await ada!.socket.emitWithAck("lobby:start", { lobbyId });
@@ -432,12 +478,13 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(bo!.lobby!.map.scenario).toMatchObject({ setup: "fixed" });
       expect(bo!.lobby!.map.id).toMatch(/-3p-fixed$/);
 
-      // With four seated, a 3-player type is refused.
       const dee = await connect("dev:Dee");
       expect(await setType(ada!, "seafaring-4")).toEqual({ ok: true });
       expect((await dee.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
-      // Still three seats: the lobby doesn't grow when the type allows more.
-      expect((await dee.socket.emitWithAck("lobby:seat", { lobbyId, seat: 3 })).ok).toBe(false);
+      // The new type's map takes four, so the lobby has four seats again (spec 229).
+      expect((await dee.socket.emitWithAck("lobby:seat", { lobbyId, seat: 3 })).ok).toBe(true);
+      // With four seated, a 3-player type is refused.
+      expect(await setType(ada!, "seafaring-3")).toMatchObject({ ok: false, code: "BAD_REQUEST" });
       expect(await setType(ada!, "base")).toEqual({ ok: true });
       await ada!.until(() => ada!.lobby?.gameType === "base");
       expect(ada!.lobby!.map.id).toBe("base-4p");

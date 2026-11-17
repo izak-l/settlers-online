@@ -4,13 +4,12 @@ import type {
   ActionSpec,
   BuildOption,
   ErrorCode,
-  FeatureOverrides,
   Features,
   GameEvent,
   PlayerId,
   PlayerView,
 } from "@settlers/engine";
-import { FeaturesSchema, GAME_TYPE_IDS, type GameTypeId, type MapDef } from "@settlers/maps";
+import { GAME_TYPE_IDS, type GameTypeId, type MapDef } from "@settlers/maps";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -130,16 +129,30 @@ export const _actionSchemaCheck: _SchemaMatchesEngine = true;
 export const SetUsernameSchema = z.object({ username: UsernameSchema });
 /** Turn timer choices; 0 means off. */
 export const TURN_SECONDS_CHOICES = [0, 30, 60, 90, 120] as const;
+const TurnSecondsSchema = z.union([
+  z.literal(0),
+  z.literal(30),
+  z.literal(60),
+  z.literal(90),
+  z.literal(120),
+]);
+/** The ranges the lobby's points-to-win and discard-limit settings allow (spec 229). */
+export const LOBBY_LIMITS = {
+  vpToWin: { min: 3, max: 25 },
+  discardLimit: { min: 5, max: 20 },
+} as const;
 /** The game types a lobby can be (spec 023): see `GAME_TYPES` in `@settlers/maps`. */
 export const GameTypeSchema = z.enum(GAME_TYPE_IDS);
 export const CreateLobbySchema = z.object({
-  /** Older clients send no type: the base game. The seat count must fit the type. */
+  /** Older clients send no type: the base game. */
   gameType: GameTypeSchema.default("base"),
-  maxSeats: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
-  allowSpectators: z.boolean(),
-  turnSeconds: z
-    .union([z.literal(0), z.literal(30), z.literal(60), z.literal(90), z.literal(120)])
-    .default(0),
+  /**
+   * Since spec 229 these are lobby settings; Home sends only the type. Left out: the default
+   * map's seat cap, spectators allowed, no timer. A seat count must fit the type and map.
+   */
+  maxSeats: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
+  allowSpectators: z.boolean().default(true),
+  turnSeconds: TurnSecondsSchema.default(0),
 });
 export const LobbyRefSchema = z.object({ lobbyId: Id });
 /**
@@ -159,10 +172,25 @@ export const SetLobbyMapSchema = z.object({ lobbyId: Id, map: MapChoiceSchema })
  */
 export const SetLobbyTypeSchema = z.object({ lobbyId: Id, gameType: GameTypeSchema });
 /**
- * Host only, while open: the lobby's house rules (spec 014), each overriding the map's value.
- * Sent whole: a switch left out goes back to the map's value. Clears every ready flag.
+ * Host only, while open (spec 229): the lobby's settings, sent whole. `maxSeats` is at most the
+ * map's seat cap for the type and at least the number seated (seated players move up when it
+ * shrinks). Clears every ready flag. A map or type change resets seats, points and discard
+ * limit to the new map's defaults.
  */
-export const SetLobbyFeaturesSchema = z.object({ lobbyId: Id, features: FeaturesSchema });
+export const SetLobbySettingsSchema = z
+  .object({
+    lobbyId: Id,
+    maxSeats: z.number().int().min(1).max(4),
+    vpToWin: z.number().int().min(LOBBY_LIMITS.vpToWin.min).max(LOBBY_LIMITS.vpToWin.max),
+    discardLimit: z
+      .number()
+      .int()
+      .min(LOBBY_LIMITS.discardLimit.min)
+      .max(LOBBY_LIMITS.discardLimit.max),
+    turnSeconds: TurnSecondsSchema,
+    allowSpectators: z.boolean(),
+  })
+  .strict();
 export const TakeSeatSchema = z.object({
   lobbyId: Id,
   /** Seat index, or null to stand up. */
@@ -190,7 +218,7 @@ export type LobbyRef = z.infer<typeof LobbyRefSchema>;
 export type MapChoice = z.infer<typeof MapChoiceSchema>;
 export type SetLobbyMap = z.infer<typeof SetLobbyMapSchema>;
 export type SetLobbyType = z.infer<typeof SetLobbyTypeSchema>;
-export type SetLobbyFeatures = z.infer<typeof SetLobbyFeaturesSchema>;
+export type SetLobbySettings = z.infer<typeof SetLobbySettingsSchema>;
 export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
 export type JoinGame = z.infer<typeof JoinGameSchema>;
@@ -244,10 +272,11 @@ export interface LobbyState {
   turnSeconds: number;
   seats: (LobbySeat | null)[];
   map: LobbyMap;
-  /** The switches the game will start with: the map's, then the host's house rules. */
+  /** Points to win and discard limit the game will start with (spec 229). */
+  vpToWin: number;
+  discardLimit: number;
+  /** The switches the game will start with: the map's (plus house rules saved before spec 229). */
   features: Features;
-  /** Just the host's overrides, for the house-rules toggles. */
-  houseRules: FeatureOverrides;
   status: "open" | "started";
   /** Set once the host starts the game. */
   gameId: string | null;
@@ -361,7 +390,7 @@ export interface ClientToServerEvents {
   "lobby:ready": (payload: SetReady, reply: Reply) => void;
   "lobby:map": (payload: SetLobbyMap, reply: Reply) => void;
   "lobby:type": (payload: SetLobbyType, reply: Reply) => void;
-  "lobby:features": (payload: SetLobbyFeatures, reply: Reply) => void;
+  "lobby:settings": (payload: SetLobbySettings, reply: Reply) => void;
   "lobby:start": (payload: LobbyRef, reply: Reply<{ gameId: string }>) => void;
   "game:join": (payload: JoinGame, reply: Reply<{ you: PlayerId | "spectator" }>) => void;
   "game:action": (payload: GameAction, reply: Reply<{ seq: number }>) => void;

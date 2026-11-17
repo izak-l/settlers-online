@@ -46,6 +46,8 @@ if (!url) {
           map: BASE_4P,
           features: {},
           gameType: "base" as const,
+          vpToWin: 10,
+          discardLimit: 7,
         });
         const game = {
           id: "00000000-0000-0000-0000-000000000001",
@@ -70,6 +72,8 @@ if (!url) {
             map: BASE_4P,
             features: {},
             gameType: "base" as const,
+            vpToWin: 10,
+            discardLimit: 7,
           },
           game,
           [{ seat: "p0", userId: "u1" }],
@@ -99,6 +103,8 @@ if (!url) {
           map: findMap("grand-diamond")!.def,
           features: { devCards: false } as LobbyRecord["features"],
           gameType: "base" as const,
+          vpToWin: 10,
+          discardLimit: 7,
         };
         await store.createLobby(lobby);
         expect(await store.getLobby("L2")).toEqual(lobby);
@@ -107,6 +113,24 @@ if (!url) {
         await store.saveLobby(lobby);
         expect((await store.getLobby("L2"))!.map).toEqual(BASE_4P);
         expect((await store.getLobby("L2"))!.features).toEqual({ robber: false });
+        // Lobby settings (spec 229) are saved; lobbies from before them read the map's values.
+        Object.assign(lobby, {
+          vpToWin: 13,
+          discardLimit: 9,
+          turnSeconds: 60,
+          allowSpectators: false,
+        });
+        await store.saveLobby(lobby);
+        expect(await store.getLobby("L2")).toEqual(lobby);
+        const pool = new pg.Pool({ connectionString: url });
+        await pool.query(
+          "update lobbies set vp_to_win = null, discard_limit = null where id = 'L2'",
+        );
+        await pool.end();
+        expect(await store.getLobby("L2")).toMatchObject({
+          vpToWin: BASE_4P.vpToWin,
+          discardLimit: 7,
+        });
       } finally {
         await store.close();
       }
@@ -128,6 +152,8 @@ if (!url) {
           map: BASE_4P,
           features: {},
           gameType: "base" as const,
+          vpToWin: 10,
+          discardLimit: 7,
         });
         const pool = new pg.Pool({ connectionString: url });
         await pool.query("update lobbies set map = null where id = 'L3'");

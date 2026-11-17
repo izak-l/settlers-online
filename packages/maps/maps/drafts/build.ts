@@ -1,8 +1,10 @@
 /**
- * Builds the draft map JSON files in this folder from the ASCII shapes below.
+ * Builds catalog map JSON files from the ASCII shapes below. Every shape here has been promoted
+ * into the catalog (specs 023, 229), so the files are written to `packages/maps/maps/`; a new
+ * shape still in progress can be written here (`drafts/`) instead by setting `draft: true`.
  *
  *   cd tools/sim && pnpm exec tsx ../../packages/maps/maps/drafts/build.ts
- *   pnpm exec prettier --write packages/maps/maps/drafts   # from the repo root (lint checks it)
+ *   pnpm exec prettier --write packages/maps/maps   # from the repo root (lint checks it)
  *
  * Each shape is drawn on an "odd-r" offset grid: one string per hex row, one character per hex,
  * odd rows sit half a hex to the right (they are indented by one space below so the art looks
@@ -37,6 +39,8 @@ interface Shape {
   tokens?: number[];
   /** Defaults to 2–4. */
   players?: { min: number; max: number };
+  /** Still a draft: write it to `drafts/` for the sandbox's Drafts tab, not the catalog. */
+  draft?: boolean;
   art: string;
 }
 
@@ -455,7 +459,8 @@ function build(shape: Shape) {
   if (tokens.length !== land.length - mix.desert) {
     throw new Error(`${shape.id}: ${tokens.length} tokens for ${land.length - mix.desert} hexes`);
   }
-  const players = shape.players ?? { min: 2, max: 4 };
+  // Player counts are upper bounds (spec 023): every map starts at 1.
+  const players = shape.players ?? { min: 1, max: 4 };
 
   const json = `{
   "id": "${shape.id}",
@@ -481,7 +486,7 @@ function build(shape: Shape) {
 }
 `;
   const here = dirname(fileURLToPath(import.meta.url));
-  writeFileSync(join(here, `${shape.id}.json`), json);
+  writeFileSync(join(here, shape.draft ? "" : "..", `${shape.id}.json`), json);
   const reds = tokens.filter((t) => t === 6 || t === 8).length;
   console.log(
     `${shape.id}: ${land.length} land (${fixed.length} fixed), ${coastal} coastal, ` +

@@ -336,3 +336,9 @@ At the end of a turn with five or more villages out of cloth, the player with th
 The rulebook lets players choose which 12 the robber starts on. We take the first hex with a 12 in the generated map.
 
 **Test:** `scenarios.test.ts` — "generates boards that keep the regions and the token rules" (robber start defined).
+
+### A53: A custom discard limit keeps the "more than N, discard half rounded down" rule
+
+The lobby (or a map) may change the discard limit from 7 (spec 229). Only the threshold moves: on a 7, a player holding more than the limit discards half their hand, rounded down, as in the base game. Games saved before the option existed use 7.
+
+**Test:** `robber.test.ts` — "discard limit (spec 229)".

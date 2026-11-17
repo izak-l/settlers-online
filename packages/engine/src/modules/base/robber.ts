@@ -9,7 +9,14 @@ import {
   type RulesModule,
 } from "../../module";
 import { nextInt, shuffle } from "../../rng";
-import type { Decision, GameEvent, GameState, PlayerId } from "../../types";
+import {
+  DEFAULT_DISCARD_LIMIT,
+  type Decision,
+  type GameEvent,
+  type GameOptions,
+  type GameState,
+  type PlayerId,
+} from "../../types";
 import { BASE_RESOURCES } from "./data";
 import {
   buildingAt,
@@ -24,8 +31,13 @@ import {
   transfer,
 } from "./helpers";
 
-/** Players holding more than this many cards discard on a 7. */
-const HAND_LIMIT = 7;
+/**
+ * Players holding more than this many cards discard on a 7: the game's option (spec 229), or 7
+ * for games saved before it existed.
+ */
+export function discardLimit(state: GameState): number {
+  return (state.options as Partial<GameOptions>).discardLimit ?? DEFAULT_DISCARD_LIMIT;
+}
 
 export const moveRobberDecision = (p: PlayerId): Decision =>
   decision("MOVE_ROBBER", p, ["MOVE_ROBBER"]);
@@ -37,9 +49,10 @@ export const moveRobberDecision = (p: PlayerId): Decision =>
 export function startSevenFlow(draft: GameState, roller: PlayerId): void {
   if (featureOn(draft, "robber")) draft.decisions.push(moveRobberDecision(roller));
   const amounts: Record<PlayerId, number> = {};
+  const limit = discardLimit(draft);
   for (const p of draft.players) {
     const size = handSize(draft, p);
-    if (size > HAND_LIMIT) amounts[p] = Math.floor(size / 2);
+    if (size > limit) amounts[p] = Math.floor(size / 2);
   }
   const discarders = Object.keys(amounts);
   if (discarders.length > 0) {

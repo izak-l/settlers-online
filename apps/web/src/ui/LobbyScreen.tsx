@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
-import { mergeFeatures } from "@settlers/engine";
 import { findGameType } from "@settlers/maps";
 import type { LobbyState } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { SEAT_COLORS, errorText } from "../game/seats";
 import { GameSummary, GameTypePicker, MapChooser, type GameChoice } from "./GamePicker";
-import { HouseRules } from "./HouseRules";
-import { toggleRule } from "./features";
+import { LobbySettings } from "./LobbySettings";
+import { settingsOf, settingsSummary } from "./lobbySettingsModel";
 
 type Ack = { ok: boolean; code?: string; message?: string };
 
 /**
  * The game this lobby will play (spec 023): everyone sees the summary; the host picks the game
- * type, then a map or scenario, and the house rules, while the lobby is open.
+ * type, then a map or scenario, and the settings, while the lobby is open.
  */
 function LobbyGame({
   lobby,
@@ -41,7 +40,15 @@ function LobbyGame({
   return (
     <section className="card stack lobby-game">
       <h2>Game</h2>
-      <GameSummary type={type} choice={choice} />
+      <GameSummary type={type} choice={choice} facts={settingsSummary(settingsOf(lobby))} />
+      <LobbySettings
+        lobby={lobby}
+        editable={editable}
+        disabled={busy}
+        onChange={(settings) =>
+          send(socket.emitWithAck("lobby:settings", { lobbyId: lobby.id, ...settings }))
+        }
+      />
       {editable && (
         <>
           <GameTypePicker
@@ -60,29 +67,14 @@ function LobbyGame({
             disabled={busy}
             onChoose={(map) => send(socket.emitWithAck("lobby:map", { lobbyId: lobby.id, map }))}
           />
-          <p className="muted small">
-            Changing the game, map or house rules asks everyone to ready up again.
-          </p>
         </>
       )}
-      <HouseRules
-        features={lobby.features}
-        editable={editable}
-        disabled={busy}
-        onToggle={(feature, on) =>
-          send(
-            socket.emitWithAck("lobby:features", {
-              lobbyId: lobby.id,
-              features: toggleRule(
-                mergeFeatures(lobby.map.def.features),
-                lobby.houseRules,
-                feature,
-                on,
-              ),
-            }),
-          )
-        }
-      />
+      {editable && (
+        <p className="muted small">
+          Changing the game, map or settings asks everyone to ready up again. A new map brings back
+          its default players, points and discard limit.
+        </p>
+      )}
     </section>
   );
 }
@@ -199,11 +191,9 @@ export function LobbyScreen({ id }: { id: string }) {
         </div>
         <p className="muted small">
           Send this link to your friends.{" "}
-          {lobby.allowSpectators ? "Anyone with it can watch once the game starts." : ""} Turn
-          timer:{" "}
-          {lobby.turnSeconds > 0
-            ? `${lobby.turnSeconds} seconds per turn, 30 seconds to discard; when time runs out, a default move is made.`
-            : "off."}
+          {lobby.allowSpectators ? "Anyone with it can watch once the game starts." : ""}
+          {lobby.turnSeconds > 0 &&
+            ` Turn timer: ${lobby.turnSeconds} seconds per turn, 30 seconds to discard; when time runs out, a default move is made.`}
         </p>
         {error && (
           <p className="error" role="alert">

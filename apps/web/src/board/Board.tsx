@@ -13,7 +13,9 @@ import {
   type Point,
 } from "./geometry";
 import { Icon } from "../art/icons";
-import { Building, RobberFigure, Road, TerrainArt, TerrainDefs, Token } from "../art/board";
+import { Building, RobberFigure, Road, TerrainDefs, Token } from "../art/board";
+import { TerrainFace } from "../art/TerrainFace";
+import { useArtwork } from "../art/useArtwork";
 import { BuildPopover } from "./BuildPopover";
 import { buildLocations, type BuildLocation } from "./buildLocations";
 import { BoardControls } from "./BoardControls";
@@ -80,6 +82,7 @@ function fitBox(hexes: Snapshot["view"]["map"]["hexes"]): Box {
 }
 
 export function Board({ snap, seats, mode, onAction, fitArea }: Props) {
+  const artwork = useArtwork();
   const { view } = snap;
   const [selected, setSelected] = useState<string | null>(null);
   const locationRefs = useRef(new Map<string, SVGGElement>());
@@ -187,14 +190,7 @@ export function Board({ snap, seats, mode, onAction, fitArea }: Props) {
         {view.map.hexes
           .filter((h) => h.terrain === "sea")
           .map((h) => (
-            <g key={`${h.q},${h.r}`}>
-              <polygon
-                points={hexPolygon(h.q, h.r, HEX_SIZE, 1)}
-                fill="url(#tg-sea)"
-                className="hex sea"
-              />
-              <TerrainArt terrain="sea" at={hexCenter(h.q, h.r)} />
-            </g>
+            <TerrainFace key={`${h.q},${h.r}`} q={h.q} r={h.r} terrain="sea" artwork={artwork} />
           ))}
         {view.map.hexes
           .filter((h) => h.terrain !== "sea")
@@ -213,12 +209,7 @@ export function Board({ snap, seats, mode, onAction, fitArea }: Props) {
             const c = hexCenter(h.q, h.r);
             return (
               <g key={`${h.q},${h.r}`}>
-                <polygon
-                  points={hexPolygon(h.q, h.r, HEX_SIZE, 1.5)}
-                  fill={`url(#tg-${h.terrain})`}
-                  className="hex"
-                />
-                <TerrainArt terrain={h.terrain} at={c} />
+                <TerrainFace q={h.q} r={h.r} terrain={h.terrain} artwork={artwork} />
                 {h.token !== undefined && <Token token={h.token} at={c} />}
               </g>
             );

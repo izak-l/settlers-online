@@ -1,5 +1,9 @@
 import { DEV_CARD_NAMES } from "@settlers/engine";
+import { useState } from "react";
 import { Icon } from "../art/icons";
+import type { Artwork } from "../art/appearance";
+import { cardImage } from "../art/artwork";
+import { useArtwork } from "../art/useArtwork";
 
 export const RESOURCE_NAMES: Record<string, string> = {
   wood: "Wood",
@@ -12,11 +16,26 @@ export const resourceName = (r: string) => RESOURCE_NAMES[r] ?? r;
 export const devName = (c: string) => DEV_CARD_NAMES[c] ?? c;
 
 /** A resource card face. Size comes from the --card-w CSS variable of an ancestor. */
-export function ResourceCard({ resource }: { resource: string }) {
+export function ResourceCard({ resource, artwork }: { resource: string; artwork?: Artwork }) {
+  const selected = useArtwork();
+  const src = cardImage(artwork ?? selected, resource);
+  const [failed, setFailed] = useState<string>();
+  const illustrated = src && src !== failed;
   return (
-    <span className={`card-face res-card res-${resource}`}>
-      <Icon name={resource} />
-      <span className="card-label">{resourceName(resource)}</span>
+    <span className={`card-face res-card res-${resource}${illustrated ? " image-card" : ""}`}>
+      {illustrated ? (
+        <img
+          src={src}
+          alt={resourceName(resource)}
+          draggable={false}
+          onError={() => setFailed(src)}
+        />
+      ) : (
+        <>
+          <Icon name={resource} />
+          <span className="card-label">{resourceName(resource)}</span>
+        </>
+      )}
     </span>
   );
 }

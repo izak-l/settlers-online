@@ -8,6 +8,7 @@ import { OnlineGame } from "./ui/OnlineGame";
 import { PickUsername } from "./ui/PickUsername";
 import { SignIn } from "./ui/SignIn";
 import { SoundToggle } from "./ui/SoundToggle";
+import { AppearanceControl } from "./ui/AppearanceControl";
 import { Toasts } from "./ui/Toasts";
 
 const STATUS_TEXT = {
@@ -74,6 +75,7 @@ function Shell(props: {
         </button>
         {props.badge && <span className="badge">{props.badge}</span>}
         <SoundToggle />
+        <AppearanceControl />
         {props.user !== undefined && (
           <span className="user">
             {props.user}

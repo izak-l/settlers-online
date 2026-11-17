@@ -1,5 +1,7 @@
 import type { MapDef } from "@settlers/maps";
-import { TerrainArt, TerrainDefs, Token } from "../art/board";
+import { TerrainDefs, Token } from "../art/board";
+import { TerrainFace } from "../art/TerrainFace";
+import { useArtwork } from "../art/useArtwork";
 import { HEX_SIZE, edgeMidpoint, hexCenter, hexPolygon } from "./geometry";
 import { previewTiles } from "./mapTiles";
 
@@ -8,6 +10,7 @@ import { previewTiles } from "./mapTiles";
  * neutral tile with "?", random tokens as "?". Ports placed at random aren't drawn.
  */
 export function MapPreview({ def, label }: { def: MapDef; label?: string }) {
+  const artwork = useArtwork();
   const tiles = previewTiles(def);
   if (tiles.length === 0) return <svg className="map-preview" viewBox="0 0 1 1" aria-hidden />;
   const centers = tiles.map((t) => hexCenter(t.q, t.r));
@@ -39,12 +42,15 @@ export function MapPreview({ def, label }: { def: MapDef; label?: string }) {
         const token = t.token;
         return (
           <g key={key}>
-            <polygon
-              points={hexPolygon(t.q, t.r, HEX_SIZE, 1.5)}
-              className={t.kind === "random" ? "hex random" : "hex"}
-              fill={t.kind === "random" ? "var(--t-random)" : `url(#tg-${t.terrain})`}
-            />
-            {t.kind === "fixed" && <TerrainArt terrain={t.terrain} at={c} />}
+            {t.kind === "fixed" ? (
+              <TerrainFace q={t.q} r={t.r} terrain={t.terrain} artwork={artwork} />
+            ) : (
+              <polygon
+                points={hexPolygon(t.q, t.r, HEX_SIZE, 1.5)}
+                className="hex random"
+                fill="var(--t-random)"
+              />
+            )}
             {typeof token === "number" && <Token token={token} at={c} />}
             {token === "random" && (
               <text

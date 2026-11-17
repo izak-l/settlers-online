@@ -113,6 +113,20 @@ const PATHS: Record<string, React.ReactNode> = {
       strokeWidth="1"
     />
   ),
+  palette: (
+    <>
+      <path
+        d="M12 3 C6 3 3 7 3 12 S7 21 12 21 H14 A2 2 0 0 0 15 17.3 A2 2 0 0 1 16 14 H18 C23 14 22 3 12 3 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <circle cx="7" cy="11" r="1.3" fill="currentColor" />
+      <circle cx="10" cy="7" r="1.3" fill="currentColor" />
+      <circle cx="15" cy="7" r="1.3" fill="currentColor" />
+      <circle cx="18" cy="10" r="1.3" fill="currentColor" />
+    </>
+  ),
   speaker: (
     <>
       <path d="M3 9 H7 L12 5 V19 L7 15 H3 Z" fill="currentColor" />

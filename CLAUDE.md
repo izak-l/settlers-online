@@ -6,12 +6,19 @@ A free, self-hosted, browser-based hex-tile trading and building game that a pri
 
 ## Current focus
 
-Client feedback work: `fix/immersive-map`, cut from `main`, completes spec 023
-(`docs/features/023-immersive-board.md`, feedback #21), followed by spec 024
-(`docs/features/024-map-build-popovers.md`, feedback #22: map build popups). These are committed
-in checkpoint `0519580`. Spec 025 (`docs/features/025-floating-trade-tray.md`) adds the floating
-trade tray, approved by the user after review and committed separately. Expansion work continues separately
-on `m10`; do not mix its rules changes into this branch.
+Artwork selection on `graphics-upgrades`, cut from local `main` at `29a1e74`:
+spec 026 (`docs/features/026-artwork-selector.md`). One Appearance choice switches tiles
+and resource cards together between Original and supplied Realism art. Source PNGs stay
+unchanged; prepare runtime copies with `scripts/prepare-artwork.py` following
+`docs/ARTWORK.md`. Implemented and approved after visual review; spec 026 is Shipped.
+Its style-registration and fallback rules cover future artwork and expansion integration.
+Keep unrelated audio out of graphics commits. Expansion work remains
+independent on `m10`; do not merge or alter that branch without discussion.
+
+Previous client feedback work on `fix/immersive-map` completed specs 023–025: immersive
+board, contextual build popups and floating trade trays. It was merged into local `main`
+at `29a1e74`; it has not been pushed or deployed in this session. Preserve those behaviors
+while adding the artwork selector.
 
 Work milestone by milestone (DESIGN.md §13). Don't start the next milestone until the current one's "Done when" criteria pass.
 

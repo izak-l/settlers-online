@@ -461,9 +461,29 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 
 **As built (M7c: art)**
 
-- All art is our own inline SVG and CSS; there are no image files, icon sets or web fonts. `art/board.tsx` draws each terrain as a radial gradient (`--t-<terrain>` / `--t-<terrain>-light`) plus a few flat shapes around the centre: pines, sheep and grass, wheat rows, clay mounds with bricks, snow-capped peaks, dunes and sea waves. A sandy rim under the land makes the coast one shape. Tokens are cream discs with a shadow (6 and 8 larger and red). Ports are a two-plank pier to a sign with the rate and the resource icon ("?" for 3:1). Roads have an outline and a light top edge; settlements and cities are shaded buildings; the robber is a hooded figure with a ground shadow. Decoration never takes pointer events.
+- Original art uses inline SVG and CSS, without icon sets or web fonts. `art/board.tsx` draws each terrain as a radial gradient (`--t-<terrain>` / `--t-<terrain>-light`) plus a few flat shapes around the centre: pines, sheep and grass, wheat rows, clay mounds with bricks, snow-capped peaks, dunes and sea waves. A sandy rim under the land makes the coast one shape. Tokens are cream discs with a shadow (6 and 8 larger and red). Ports are a two-plank pier to a sign with the rate and the resource icon ("?" for 3:1). Roads have an outline and a light top edge; settlements and cities are shaded buildings; the robber is a hooded figure with a ground shadow. Decoration never takes pointer events.
 - `art/icons.tsx` icons are reused on cards, cost chips, port signs, award badges (road and knight) and in the log, which puts an icon before each resource word. Dice show pip faces.
 - Palette: warm parchment light theme and slate dark theme as CSS tokens in `styles.css`; panels have a soft shadow; the current player's row has an edge in their seat colour.
+
+**Artwork selection (spec 026, approved on `graphics-upgrades`)**
+
+- Appearance in the top bar offers Original / Realism. One choice changes the six land
+  terrain faces and five resource-card faces together, immediately and per viewer. Guarded
+  local storage (`settlers.artwork`) remembers the preference; Original is the default.
+  This setting is separate from panel themes and the system light/dark preference.
+- `art/TerrainFace.tsx` shares rendering between the live board and fixed map previews.
+  `cards/CardFace.tsx` applies the choice to every resource-card reuse. PNG failures fall
+  back to Original. Numbers, probability dots, pieces, ports, small icons, sea/coast,
+  unresolved preview tiles, dev cards and card backs remain shared. Switching preserves
+  game state, pan/zoom and card picks.
+- Missing style entries fall back per face without resetting the selected pack. Expansions
+  must supply their original terrain/card renderer so this fallback has a complete baseline.
+  A missing static import fails the build; browser image-load failures use the original face.
+  Spec 026 documents the explicit registration steps for additional styles and partial packs.
+- Supplied source files stay unchanged in `assets/images/`. `scripts/prepare-artwork.py`
+  generates explicitly named runtime PNGs under `art/assets/realism/`: 330 × 382 tiles
+  and 300 × 420 cards. `docs/ARTWORK.md` describes source naming, normalization, registration
+  and visual checks for future assets. Audio is outside this workflow.
 
 **As built (M7d: sound)**
 

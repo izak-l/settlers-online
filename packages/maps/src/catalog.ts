@@ -4,6 +4,17 @@ import baseRaw from "../maps/base-4p.json" with { type: "json" };
 import grandDiamondRaw from "../maps/grand-diamond.json" with { type: "json" };
 import homeWatersRaw from "../maps/home-waters.json" with { type: "json" };
 import risingChainRaw from "../maps/rising-chain.json" with { type: "json" };
+import crescentBayRaw from "../maps/crescent-bay.json" with { type: "json" };
+import greatHexagonRaw from "../maps/great-hexagon.json" with { type: "json" };
+import hourglassRaw from "../maps/hourglass.json" with { type: "json" };
+import lagoonRingRaw from "../maps/lagoon-ring.json" with { type: "json" };
+import littleHarbourRaw from "../maps/little-harbour.json" with { type: "json" };
+import sixPointStarRaw from "../maps/six-point-star.json" with { type: "json" };
+import theBootRaw from "../maps/the-boot.json" with { type: "json" };
+import archipelagosRaw from "../maps/archipelagos.json" with { type: "json" };
+import inlandSeaRaw from "../maps/inland-sea.json" with { type: "json" };
+import twinIslesRaw from "../maps/twin-isles.json" with { type: "json" };
+import worldRaw from "../maps/world.json" with { type: "json" };
 
 /** A built-in map: a JSON file in `packages/maps/maps/`, checked in CI. */
 export interface CatalogMap {
@@ -27,9 +38,21 @@ function entry(raw: unknown): CatalogMap {
 export const MAP_CATALOG: readonly CatalogMap[] = [
   entry(baseRaw),
   entry(grandDiamondRaw),
+  // Promoted from the drafts (spec 229): one island each, base rules.
+  entry(crescentBayRaw),
+  entry(greatHexagonRaw),
+  entry(hourglassRaw),
+  entry(lagoonRingRaw),
+  entry(littleHarbourRaw),
+  entry(sixPointStarRaw),
+  entry(theBootRaw),
   // Seafaring free play (spec 023): islands and ships, no scenario rules.
   entry(homeWatersRaw),
   entry(risingChainRaw),
+  entry(archipelagosRaw),
+  entry(inlandSeaRaw),
+  entry(twinIslesRaw),
+  entry(worldRaw),
 ];
 
 export const DEFAULT_MAP_ID = "base-4p";

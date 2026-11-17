@@ -90,6 +90,29 @@ export function defaultMapForType(type: GameType): MapDef {
   return scenariosForType(type)[0]!.maps[`${type.size}-fixed`]!;
 }
 
+/** The most seats a lobby of this type may have on this map (spec 229). */
+export function seatCap(type: GameType, def: MapDef): number {
+  return Math.min(type.maxPlayers, def.players.max);
+}
+
+/** The base game's discard limit, for maps that don't set their own. */
+export const DEFAULT_DISCARD_LIMIT = 7;
+
+/** What a lobby's settings start at, and reset to on a map or type change (spec 229). */
+export interface MapDefaults {
+  maxSeats: number;
+  vpToWin: number;
+  discardLimit: number;
+}
+
+export function mapDefaults(type: GameType, def: MapDef): MapDefaults {
+  return {
+    maxSeats: seatCap(type, def),
+    vpToWin: def.vpToWin,
+    discardLimit: def.discardLimit ?? DEFAULT_DISCARD_LIMIT,
+  };
+}
+
 /**
  * The game type a stored map belongs to (lobbies saved before game types existed): a scenario map
  * by its size, another seafaring map by its player count, anything else the base game.

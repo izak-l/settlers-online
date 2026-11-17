@@ -5,6 +5,7 @@ import {
   defaultMapForType,
   findGameType,
   gameTypeOfMap,
+  mapDefaults,
   mapForType,
   mapsForType,
   scenariosForType,
@@ -60,6 +61,40 @@ describe("game types (spec 023)", () => {
     expect(gameTypeOfMap(SCENARIO_CATALOG[0]!.maps["3p-fixed"]!)).toBe("seafaring-3");
     expect(gameTypeOfMap(SCENARIO_CATALOG[0]!.maps["4p-variable"]!)).toBe("seafaring-4");
     expect(gameTypeOfMap(MAP_CATALOG[0]!.def)).toBe("base");
+  });
+
+  it("offers the promoted drafts (spec 229): one-island maps in base, island maps in free play", () => {
+    const base = mapsForType(type("base")).map((m) => m.id);
+    for (const id of [
+      "crescent-bay",
+      "great-hexagon",
+      "hourglass",
+      "lagoon-ring",
+      "little-harbour",
+      "six-point-star",
+      "the-boot",
+    ]) {
+      expect(base).toContain(id);
+    }
+    for (const t of ["seafaring-3", "seafaring-4"]) {
+      const free = mapsForType(type(t)).map((m) => m.id);
+      for (const id of ["archipelagos", "inland-sea", "twin-isles", "world"]) {
+        expect(free).toContain(id);
+        expect(base).not.toContain(id);
+      }
+    }
+  });
+
+  it("starts lobby settings at the map's defaults, seats capped by type and map", () => {
+    const harbour = MAP_CATALOG.find((m) => m.id === "little-harbour")!.def;
+    expect(mapDefaults(type("base"), harbour)).toEqual({
+      maxSeats: 3,
+      vpToWin: harbour.vpToWin,
+      discardLimit: 7,
+    });
+    const world = MAP_CATALOG.find((m) => m.id === "world")!.def;
+    expect(mapDefaults(type("seafaring-3"), world).maxSeats).toBe(3);
+    expect(mapDefaults(type("seafaring-4"), { ...world, discardLimit: 9 }).discardLimit).toBe(9);
   });
 
   it("every map allows a single player (player counts are upper bounds)", () => {

@@ -292,6 +292,7 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       ports,
       ...(robberStart !== undefined ? { robberStart } : {}),
       ...(def.features !== undefined ? { features: def.features } : {}),
+      ...(def.discardLimit !== undefined ? { discardLimit: def.discardLimit } : {}),
       ...(def.scenario !== undefined ? { scenario: def.scenario } : {}),
       ...(markers !== undefined ? { markers } : {}),
       modules: def.modules,

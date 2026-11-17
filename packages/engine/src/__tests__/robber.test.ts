@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { apply, defaultAction, legalActions } from "../engine";
+import { apply, createGame, defaultAction, legalActions } from "../engine";
 import { eventVisibleTo, type GameState } from "../types";
 import {
   act,
   checkInvariants,
+  fixtureMap,
   h,
   hand,
   inRollPhase,
@@ -183,5 +184,49 @@ describe("stealing", () => {
   it("defaultAction picks a victim apply accepts", () => {
     const s = twoVictims();
     expect(apply(s, "system", defaultAction(s, "p0")).ok).toBe(true);
+  });
+});
+
+describe("discard limit (spec 229)", () => {
+  /** p0 is about to roll a 7 on a game made from `map` / `options`, with the given hands. */
+  function sevenWith(
+    mapLimit: number | undefined,
+    optionLimit: number | undefined,
+    hands: Record<string, Record<string, number>>,
+  ): GameState {
+    const map = { ...fixtureMap(), ...(mapLimit === undefined ? {} : { discardLimit: mapLimit }) };
+    const ruleset = {
+      modules: ["base"],
+      ...(optionLimit === undefined ? {} : { options: { discardLimit: optionLimit } }),
+    };
+    let s = inRollPhase(createGame(map, ruleset, SEATS, seedRolling(7)));
+    for (const [p, res] of Object.entries(hands)) s = setHand(s, p, res);
+    return s;
+  }
+  const discarding = (s: GameState) =>
+    s.decisions.find((d) => d.kind === "DISCARD")?.data?.["amounts"] ?? {};
+
+  it("defaults to 7 when neither the map nor the ruleset sets one", () => {
+    const s = sevenWith(undefined, undefined, { p1: { wood: 8 }, p2: { wood: 7 } });
+    expect(s.options.discardLimit).toBe(7);
+    expect(discarding(act(s, "p0", { type: "ROLL" }))).toEqual({ p1: 4 });
+  });
+
+  it("uses the map's limit: with 9, an 8-card hand keeps its cards", () => {
+    const s = act(sevenWith(9, undefined, { p1: { wood: 8 }, p2: { ore: 10 } }), "p0", {
+      type: "ROLL",
+    });
+    expect(discarding(s)).toEqual({ p2: 5 });
+  });
+
+  it("lets the ruleset (the lobby) override the map: with 5, a 6-card hand discards 3", () => {
+    const s = act(sevenWith(9, 5, { p1: { wood: 6 }, p2: { wood: 5 } }), "p0", { type: "ROLL" });
+    expect(discarding(s)).toEqual({ p1: 3 });
+  });
+
+  it("treats a game saved before the option existed as 7", () => {
+    const s = sevenWith(undefined, undefined, { p1: { wood: 8 } });
+    delete (s.options as { discardLimit?: number }).discardLimit;
+    expect(discarding(act(s, "p0", { type: "ROLL" }))).toEqual({ p1: 4 });
   });
 });

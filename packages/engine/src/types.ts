@@ -29,6 +29,8 @@ export interface MapInput {
   scenario?: Record<string, unknown>;
   /** Base-game parts this map turns on or off (spec 014). */
   features?: FeatureOverrides;
+  /** On a 7, players holding more cards than this discard half (spec 229). Default 7. */
+  discardLimit?: number;
   /**
    * Things lying on the board at the start (decision record 0001), e.g. VP tokens on sea edges.
    * The core only carries them; the modules that know a marker's `kind` give it meaning, and
@@ -47,7 +49,7 @@ export interface MapMarker {
 export interface RulesetDef {
   /** Module ids in the order their hooks run. */
   modules: ModuleId[];
-  options?: { vpToWin?: number; features?: FeatureOverrides };
+  options?: { vpToWin?: number; features?: FeatureOverrides; discardLimit?: number };
 }
 
 /** Parts of the base game that a map, the lobby or a module can switch off (spec 014). */
@@ -82,7 +84,15 @@ export interface GameOptions {
   vpToWin: number;
   /** Which base-game features are on. Games saved before switches existed have none: all on. */
   features: Features;
+  /**
+   * On a 7, players holding more cards than this discard half (spec 229). Games saved before
+   * the option existed have none: read it with `discardLimit(state)`.
+   */
+  discardLimit: number;
 }
+
+/** The base game's discard limit. */
+export const DEFAULT_DISCARD_LIMIT = 7;
 
 export type PieceLocation = { vertex: VertexId } | { edge: EdgeId } | { hex: HexKey };
 

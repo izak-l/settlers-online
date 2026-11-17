@@ -15,10 +15,9 @@ Everything below is merged into local `main` (not pushed or deployed):
   recordings are committed.
 - M10 up to spec 019 (switches, seafaring core, scenarios 1–6) and spec 023 (game types: pick
   Base / Seafaring 3p / Seafaring 4p, then a scenario or free-play map, in a two-column lobby).
-
-On branch `lobby-ui` (not merged yet): client spec 229, lobby settings (players, points to win,
-discard limit, timer, spectators in the lobby; house-rule checkboxes gone; every draft map
-promoted into the catalog). Shipped; waiting for the user's go-ahead to merge.
+- Client spec 229: lobby settings (players, points to win, discard limit, timer, spectators in
+  the lobby; house-rule checkboxes gone; every draft map promoted into the catalog). Deploying
+  it needs the server first (migration 010).
 
 Next: M10 continues with spec 020 (scenario 7) on a branch cut from `main`. Client specs are
 numbered from 223 so expansion specs keep 0xx.

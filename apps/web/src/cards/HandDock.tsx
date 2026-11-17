@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BASE_RESOURCES, DEV_CARD_NAMES, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
@@ -67,6 +67,15 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
   const [resRef, resWidth] = useWidth();
   const [dockRef, dockWidth] = useWidth();
   const dock = useRef<HTMLElement | null>(null);
+  // A stable callback: an inline one is cleared on every render, and the trade tray's layout
+  // effect (which runs before the parent's ref is set again) would see null and never float.
+  const setDock = useCallback(
+    (el: HTMLElement | null) => {
+      dock.current = el;
+      dockRef(el);
+    },
+    [dockRef],
+  );
   const [openDev, setOpenDev] = useState<string | null>(null);
   const moves = useCardMotion(snap);
 
@@ -216,10 +225,7 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
     <section
       className="panel hand-panel"
       style={{ "--card-w": `${cardW}px` } as React.CSSProperties}
-      ref={(el) => {
-        dock.current = el;
-        dockRef(el);
-      }}
+      ref={setDock}
     >
       <h3>Your hand</h3>
       {pick && (

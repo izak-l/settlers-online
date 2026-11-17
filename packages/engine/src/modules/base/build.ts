@@ -16,9 +16,8 @@ import {
 
 export const buildActions: ActionHandlers = {
   BUILD_ROAD: {
+    build: { piece: "road", label: "Road", cost: COSTS["road"]! },
     validate(state, player, { edge }) {
-      const fail = checkLimitAndCost(state, player, "road");
-      if (fail) return fail;
       if (
         !state.graph.edges.has(edge) ||
         roadAt(state, edge) ||
@@ -26,7 +25,7 @@ export const buildActions: ActionHandlers = {
       ) {
         return reject("ILLEGAL_PLACEMENT", "Roads must connect to your own road or building.");
       }
-      return null;
+      return checkLimitAndCost(state, player, "road");
     },
     apply(draft, player, { edge }, { events }) {
       pay(draft, player, COSTS["road"]!);
@@ -38,16 +37,15 @@ export const buildActions: ActionHandlers = {
   },
 
   BUILD_SETTLEMENT: {
+    build: { piece: "settlement", label: "Settlement", cost: COSTS["settlement"]! },
     validate(state, player, { vertex }) {
-      const fail = checkLimitAndCost(state, player, "settlement");
-      if (fail) return fail;
       if (!distanceRuleOk(state, vertex) || !touchesOwnRoad(state, player, vertex)) {
         return reject(
           "ILLEGAL_PLACEMENT",
           "Settlements must touch your road and have no building next to them.",
         );
       }
-      return null;
+      return checkLimitAndCost(state, player, "settlement");
     },
     apply(draft, player, { vertex }, { events }) {
       pay(draft, player, COSTS["settlement"]!);
@@ -59,14 +57,13 @@ export const buildActions: ActionHandlers = {
   },
 
   BUILD_CITY: {
+    build: { piece: "city", label: "City", cost: COSTS["city"]! },
     validate(state, player, { vertex }) {
-      const fail = checkLimitAndCost(state, player, "city");
-      if (fail) return fail;
       const b = buildingAt(state, vertex);
       if (b?.type !== "settlement" || b.owner !== player) {
         return reject("ILLEGAL_PLACEMENT", "Cities replace one of your settlements.");
       }
-      return null;
+      return checkLimitAndCost(state, player, "city");
     },
     apply(draft, player, { vertex }, { events }) {
       pay(draft, player, COSTS["city"]!);

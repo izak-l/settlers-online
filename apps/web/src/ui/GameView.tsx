@@ -14,6 +14,7 @@ import { PlayersPanel } from "./PlayersPanel";
 
 /** The board and panels for any GameClient: online (SocketGame) or the dev sandbox (LocalGame). */
 export function GameView({ client }: { client: GameClient }) {
+  const [fitArea, setFitArea] = useState<HTMLDivElement | null>(null);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [mode, setMode] = useState<BuildMode>(null);
   const [pick, setPick] = useState<Pick | null>(null);
@@ -68,8 +69,15 @@ export function GameView({ client }: { client: GameClient }) {
   return (
     <main className="layout">
       <div className="board-wrap">
-        <Board snap={snap} seats={seats} mode={mode} onAction={(a) => void send(a)} />
+        <Board
+          fitArea={fitArea}
+          snap={snap}
+          seats={seats}
+          mode={mode}
+          onAction={(a) => void send(a)}
+        />
       </div>
+      <div className="board-space" ref={setFitArea} aria-hidden="true" />
       {playing && (
         <HandDock snap={snap} pick={activePick} setPick={setPick} send={(a) => void send(a)} />
       )}

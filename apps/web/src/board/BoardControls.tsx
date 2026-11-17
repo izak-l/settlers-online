@@ -10,12 +10,7 @@ export function BoardControls({ vp }: { vp: Viewport }) {
       <button aria-label="Zoom out" title="Zoom out" disabled={!vp.canZoomOut} onClick={vp.zoomOut}>
         −
       </button>
-      <button
-        aria-label="Fit the board"
-        title="Fit the board"
-        disabled={!vp.canZoomOut}
-        onClick={vp.fit}
-      >
+      <button aria-label="Fit the board" title="Fit the board" onClick={vp.fit}>
         ⤢
       </button>
     </div>

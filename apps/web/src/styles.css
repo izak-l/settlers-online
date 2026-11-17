@@ -179,7 +179,7 @@ input {
   gap: 0.4rem;
   font-weight: 600;
 }
-/* The game screen fills the window: the board takes every pixel the side column and hand don't. */
+/* The map fills the viewport; the grid measures clear space between floating controls. */
 .app:has(.layout) {
   height: 100dvh;
   display: flex;
@@ -187,7 +187,9 @@ input {
 }
 .layout {
   flex: 1 1 0;
-  min-height: 480px;
+  min-height: 0;
+  isolation: isolate;
+  pointer-events: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 380px);
   grid-template-rows: minmax(0, 1fr) auto;
@@ -198,22 +200,41 @@ input {
   padding: 16px;
 }
 .board-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: auto;
+}
+.board-space {
   grid-area: board;
-  position: relative;
   min-width: 0;
   min-height: 0;
 }
 .layout > .hand-panel {
   grid-area: hand;
+  pointer-events: auto;
+  max-height: 38dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .board-viewport {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 12px;
   background: var(--t-sea);
+  cursor: grab;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+.board-viewport:active {
+  cursor: grabbing;
+}
+.app:has(.layout) > .topbar,
+.app:has(.layout) > .banner {
+  position: relative;
+  z-index: 2;
+  flex: none;
 }
 .board {
   width: 100%;
@@ -222,9 +243,11 @@ input {
 }
 .board-controls {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  display: grid;
+  left: 16px;
+  top: 80px;
+  display: flex;
+  width: max-content;
+  z-index: 2;
   gap: 6px;
 }
 .board-controls button {
@@ -237,11 +260,16 @@ input {
 }
 .side {
   grid-area: side;
+  align-self: start;
+  max-height: 100%;
   display: grid;
   gap: 12px;
   align-content: start;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  pointer-events: auto;
 }
 .panel {
   background: var(--surface);
@@ -996,37 +1024,31 @@ button.danger {
 
 /* ---- M6: small screens ---- */
 @media (max-width: 860px) {
-  /* One column that scrolls with the page; what you act on comes right under the board. */
-  .app:has(.layout) {
-    height: auto;
-    display: block;
-  }
   .layout {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(80px, 1fr) minmax(0, auto) auto;
+    grid-template-areas: "board" "side" "hand";
+    gap: 10px;
+    padding: 12px;
   }
-  .side {
-    display: contents;
-  }
-  .board-wrap {
-    order: -5;
-  }
-  .side > .winner {
-    order: -4;
+  .board-space {
+    margin-top: 52px;
   }
   .side > .actions {
-    order: -3;
+    order: -1;
   }
-  .layout > .hand-panel {
+  .side > .winner {
     order: -2;
   }
-  .board-viewport {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    aspect-ratio: var(--board-aspect, 1);
-    max-height: 62dvh;
+  .side {
+    max-height: 32dvh;
+    gap: 10px;
+  }
+  .layout > .hand-panel {
+    max-height: 30dvh;
+  }
+  .board-controls {
+    left: 12px;
   }
 }
 @media (max-width: 600px) {
@@ -1448,30 +1470,6 @@ button.card-group:focus-visible {
   }
 }
 
-/* On wide screens the tray and card details float over the board's bottom edge, so picking
-   cards doesn't shrink the board. Stacked (narrow) layouts keep them in the page flow. */
-@media (min-width: 861px) {
-  .hand-panel {
-    position: relative;
-  }
-  .hand-panel > .tray,
-  .hand-panel > .dev-detail {
-    position: absolute;
-    left: 0;
-    bottom: calc(100% + 8px);
-    width: min(560px, 100%);
-    z-index: 5;
-    background: var(--surface);
-    box-shadow: 0 6px 24px #0006;
-  }
-  .hand-panel > .dev-detail {
-    left: auto;
-    right: 0;
-    width: min(380px, 100%);
-    border: 1px solid var(--border);
-  }
-}
-
 /* ---- M7c: log icons ---- */
 .log-res {
   display: inline-flex;
@@ -1611,4 +1609,99 @@ button.card-group:focus-visible {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Map build inspection and confirmation (spec 024). */
+.build-location {
+  cursor: pointer;
+}
+.build-location .hit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+}
+.build-location circle.hit {
+  stroke-width: 0;
+}
+.build-marker {
+  fill: var(--target);
+  stroke: var(--target);
+  stroke-width: 7;
+  opacity: 0;
+  pointer-events: none;
+}
+.build-location:hover .build-marker,
+.build-location:focus-visible .build-marker,
+.build-location.selected .build-marker {
+  opacity: 0.85;
+}
+/* SVG focus uses the road/corner marker, never the browser's rectangular outline. */
+.board .build-location:focus,
+.board .target:focus {
+  outline: none;
+}
+.build-popover {
+  position: absolute;
+  z-index: 3;
+  padding: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 0 8px 30px #0005;
+  cursor: default;
+  touch-action: pan-y;
+}
+.build-popover .icon-button {
+  min-height: 32px;
+  height: 32px;
+}
+.build-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.build-choice + .build-choice {
+  margin-top: 10px;
+}
+.build-choice-button {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+}
+.build-choice-button > .cost {
+  margin-left: auto;
+}
+.build-choice p {
+  margin: 4px 2px 0;
+}
+
+/* Trade trays (spec 025): float outside the hand's scroll container. */
+.tray-body {
+  display: grid;
+  gap: 0.6rem;
+}
+.trade-tray {
+  position: fixed;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-style: solid;
+  box-shadow: 0 8px 30px #0005;
+  overflow: hidden;
+}
+.trade-tray > .tray-head,
+.trade-tray > .tray-actions {
+  flex: none;
+}
+.trade-tray > .tray-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 4px;
 }

@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Action, ActionSpec, Piece } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
@@ -14,11 +14,14 @@ import {
 } from "./geometry";
 import { Icon } from "../art/icons";
 import { Building, RobberFigure, Road, TerrainArt, TerrainDefs, Token } from "../art/board";
+import { BuildPopover } from "./BuildPopover";
+import { buildLocations, type BuildLocation } from "./buildLocations";
 import { BoardControls } from "./BoardControls";
 import { useViewport } from "./useViewport";
 import { hitRadius, type Box } from "./viewport";
 
 interface Props {
+  fitArea?: HTMLElement | null;
   snap: Snapshot;
   seats: SeatInfo[];
   mode: BuildMode;
@@ -76,8 +79,37 @@ function fitBox(hexes: Snapshot["view"]["map"]["hexes"]): Box {
   };
 }
 
-export function Board({ snap, seats, mode, onAction }: Props) {
+export function Board({ snap, seats, mode, onAction, fitArea }: Props) {
   const { view } = snap;
+  const [selected, setSelected] = useState<string | null>(null);
+  const locationRefs = useRef(new Map<string, SVGGElement>());
+  const locations = buildLocations(snap.builds ?? []);
+  const currentLocation = locations.find(
+    (location) => `${location.kind}:${location.id}` === selected,
+  );
+  const top = view.decisions.at(-1);
+  const decisionKey = `${snap.seat}|${view.turn.number}|${top?.kind}|${top?.pendingFrom.join(",")}`;
+  useEffect(() => setSelected(null), [decisionKey, mode]);
+  const dismissBuild = (restoreFocus = false) => {
+    if (restoreFocus && selected)
+      locationRefs.current.get(selected)?.focus({ preventScroll: true });
+    setSelected(null);
+  };
+  useEffect(() => {
+    if (!selected) return;
+    const outside = (event: PointerEvent) => {
+      if (!(event.target as Element).closest("[data-board-ui], .build-location")) setSelected(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismissBuild(true);
+    };
+    window.addEventListener("pointerdown", outside);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("pointerdown", outside);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [selected]);
   const graph = graphFor(view);
   const colorOf = (owner?: string) => seats.find((s) => s.id === owner)?.color ?? "#888";
   const landKeys = new Set(
@@ -85,7 +117,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
   );
 
   const fit = useMemo(() => fitBox(view.map.hexes), [view.map.hexes]);
-  const vp = useViewport(fit);
+  const vp = useViewport(fit, fitArea);
   const hit = hitRadius(vp.scale);
 
   const pieces = Object.values(view.pieces);
@@ -96,22 +128,37 @@ export function Board({ snap, seats, mode, onAction }: Props) {
     k in p.at ? (p.at as Record<K, string>)[k] : undefined;
 
   const shown = targets(snap, mode);
+  const locationPoint = (location: BuildLocation): Point =>
+    location.kind === "edge" ? edgeMidpoint(location.id) : vertexPoint(location.id);
+  const openLocation = (location: BuildLocation) => setSelected(`${location.kind}:${location.id}`);
+
+  const activateAction = (action: ActionSpec) => {
+    const location = locations.find((location) =>
+      location.options.some(
+        (option) =>
+          option.action.type === action.type &&
+          ("edge" in action
+            ? location.id === action.edge
+            : "vertex" in action && location.id === action.vertex),
+      ),
+    );
+    if (location) openLocation(location);
+    else onAction(action);
+  };
 
   /** Targets are buttons: clickable, focusable, and triggered by Enter or Space. */
   const activate = (a: ActionSpec, label: string, [x, y]: Point) => ({
     role: "button",
     tabIndex: 0,
     "aria-label": label,
-    onClick: () => onAction(a),
-    // Keyboard users tabbing through targets: pan a target into view when zoomed in.
-    // Only for keyboard focus: a mouse press also focuses, and must not move the board.
+    onClick: () => activateAction(a),
     onFocus: (ev: React.FocusEvent<Element>) => {
       if (ev.currentTarget.matches(":focus-visible")) vp.show({ x, y });
     },
     onKeyDown: (ev: React.KeyboardEvent) => {
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
-        onAction(a);
+        activateAction(a);
       }
     },
   });
@@ -122,7 +169,7 @@ export function Board({ snap, seats, mode, onAction }: Props) {
       ref={vp.ref}
       style={
         {
-          touchAction: vp.zoom > 1 ? "none" : "pan-y",
+          touchAction: "none",
           "--board-aspect": fit.w / fit.h,
         } as React.CSSProperties
       }
@@ -269,6 +316,66 @@ export function Board({ snap, seats, mode, onAction }: Props) {
             );
           })}
 
+        {/* Only engine-approved locations are interactive; costs may still be unaffordable. */}
+        {locations.map((location) => {
+          const key = `${location.kind}:${location.id}`;
+          const [x, y] = locationPoint(location);
+          const edge = location.kind === "edge" ? edgeEndpoints(graph, location.id) : null;
+          return (
+            <g
+              key={key}
+              ref={(el) => {
+                if (el) locationRefs.current.set(key, el);
+                else locationRefs.current.delete(key);
+              }}
+              data-location={key}
+              className={`build-location ${selected === key ? "selected" : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-label={
+                location.kind === "edge" ? "Inspect edge builds" : "Inspect corner builds"
+              }
+              aria-haspopup="dialog"
+              aria-expanded={selected === key}
+              onClick={() => openLocation(location)}
+              onFocus={(event) => {
+                if (event.currentTarget.matches(":focus-visible")) vp.show({ x, y });
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openLocation(location);
+                }
+              }}
+            >
+              {edge ? (
+                <>
+                  <line
+                    className="hit"
+                    x1={edge[0][0]}
+                    y1={edge[0][1]}
+                    x2={edge[1][0]}
+                    y2={edge[1][1]}
+                    style={{ strokeWidth: hit * 2 }}
+                  />
+                  <line
+                    className="build-marker"
+                    x1={edge[0][0]}
+                    y1={edge[0][1]}
+                    x2={edge[1][0]}
+                    y2={edge[1][1]}
+                  />
+                </>
+              ) : (
+                <>
+                  <circle className="hit" cx={x} cy={y} r={hit} />
+                  <circle className="build-marker" cx={x} cy={y} r={11} />
+                </>
+              )}
+            </g>
+          );
+        })}
+
         {/* Clickable targets for legal moves */}
         {shown.map((a) => {
           if ("edge" in a) {
@@ -324,6 +431,22 @@ export function Board({ snap, seats, mode, onAction }: Props) {
           return null;
         })}
       </svg>
+      {currentLocation && (
+        <BuildPopover
+          key={selected}
+          options={currentLocation.options}
+          at={vp.screenPoint({
+            x: locationPoint(currentLocation)[0],
+            y: locationPoint(currentLocation)[1],
+          })}
+          frame={vp.frame}
+          onClose={dismissBuild}
+          onBuild={(action) => {
+            setSelected(null);
+            onAction(action);
+          }}
+        />
+      )}
       <BoardControls vp={vp} />
     </div>
   );

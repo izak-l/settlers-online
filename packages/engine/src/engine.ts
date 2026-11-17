@@ -6,6 +6,7 @@ import {
   runTradeRatio,
   runVpSources,
   type ActionHandler,
+  type BuildOption,
   type RulesModule,
 } from "./module";
 import { MODULES } from "./modules";
@@ -143,6 +144,29 @@ export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
     if (!handler) continue;
     for (const a of handler.candidates(state, player)) {
       if (handler.validate(state, player, a, { modules }) === null) result.push(a);
+    }
+  }
+  return result;
+}
+
+/** Spatially valid builds, retaining unaffordable choices for cost previews. */
+export function buildOptions(state: GameState, player: PlayerId): BuildOption[] {
+  const top = state.decisions.at(-1);
+  if (state.winner !== undefined || !top || !top.pendingFrom.includes(player)) return [];
+  const modules = modulesOf(state);
+  const result: BuildOption[] = [];
+  for (const type of top.allowed) {
+    const handler = findHandler(state, top, type as Action["type"]);
+    if (!handler?.build) continue;
+    for (const action of handler.candidates(state, player)) {
+      const rejection = handler.validate(state, player, action, { modules });
+      if (rejection && rejection.code !== "CANNOT_AFFORD") continue;
+      result.push({
+        ...handler.build,
+        cost: { ...handler.build.cost },
+        action,
+        ...(rejection ? { disabledReason: rejection } : {}),
+      });
     }
   }
   return result;

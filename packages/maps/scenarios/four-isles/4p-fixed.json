@@ -4,7 +4,7 @@
   "description": "Four islands and no mainland. Start on one or two of them; every other island you settle is worth 2 extra VP.",
   "version": 1,
   "players": {
-    "min": 4,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 13,

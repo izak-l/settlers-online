@@ -4,7 +4,7 @@
   "description": "Link your roads and ships to the islet villages and trade for cloth: every two bolts are a victory point.",
   "version": 1,
   "players": {
-    "min": 4,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 14,

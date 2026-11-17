@@ -4,7 +4,7 @@
   "description": "Your home island is settled; small islands lie just offshore. Settle each one for 2 extra VP.",
   "version": 1,
   "players": {
-    "min": 4,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 14,

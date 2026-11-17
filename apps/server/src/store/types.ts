@@ -6,7 +6,7 @@ import type {
   PlayerId,
   StateSnapshot,
 } from "@settlers/engine";
-import type { MapDef } from "@settlers/maps";
+import type { GameTypeId, MapDef } from "@settlers/maps";
 import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 
 export interface Profile {
@@ -34,6 +34,8 @@ export interface LobbyRecord {
   map: MapDef;
   /** The host's house rules (spec 014): switches overriding the map's. Empty = the map's. */
   features: FeatureOverrides;
+  /** Base game or a seafaring player size (spec 023); the map always belongs to it. */
+  gameType: GameTypeId;
 }
 
 export interface GameRecord {

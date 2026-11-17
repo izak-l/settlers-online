@@ -247,7 +247,7 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       await bo!.until(() => bo!.lobby?.map.id === "grand-diamond");
       expect(bo!.lobby!.map).toMatchObject({
         name: "Grand Diamond",
-        players: { min: 2, max: 4 },
+        players: { min: 1, max: 4 },
         vpToWin: 12,
       });
       expect(bo!.lobby!.seats.map((s) => s?.ready)).toEqual([false, false]);
@@ -332,16 +332,23 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(ada!.state!.view.pieces["robber"]).toBeUndefined();
     });
 
-    it("scenarios: the host picks a seafaring scenario; the seat count picks its map", async () => {
+    it("scenarios: a seafaring lobby picks a scenario; its game type picks the map size", async () => {
       const [ada, bo] = await Promise.all(["dev:Ada", "dev:Bo_b"].map(connect));
       const created = await ada!.socket.emitWithAck("lobby:create", {
+        gameType: "seafaring-3",
         maxSeats: 2,
         allowSpectators: false,
       });
       if (!created.ok) throw new Error(created.code);
       const lobbyId = created.lobby.id;
+      expect(created.lobby.gameType).toBe("seafaring-3");
       const choose = (map: unknown) =>
         ada!.socket.emitWithAck("lobby:map", { lobbyId, map } as never);
+      // A base map isn't part of a seafaring game type.
+      expect(await choose({ builtin: "base-4p" })).toMatchObject({
+        ok: false,
+        code: "UNKNOWN_MAP",
+      });
       expect(await choose({ scenario: "no-such", setup: "fixed" })).toMatchObject({
         ok: false,
         code: "UNKNOWN_MAP",
@@ -380,19 +387,60 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(history.games[0]!.mapName).toBe("New Horizons");
     });
 
-    it("maps: a map that doesn't allow the lobby's seat count is refused", async () => {
-      const ada = await connect("dev:Ada");
-      const created = await ada.socket.emitWithAck("lobby:create", {
-        maxSeats: 1,
+    it("game types: maps outside the type are refused; the host can switch type (spec 023)", async () => {
+      const [ada, bo, cy] = await Promise.all(["dev:Ada", "dev:Bo_b", "dev:Cyd"].map(connect));
+      // A type that can't take the seat count is refused.
+      expect(
+        await ada!.socket.emitWithAck("lobby:create", {
+          gameType: "seafaring-3",
+          maxSeats: 4,
+          allowSpectators: false,
+        }),
+      ).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+
+      const created = await ada!.socket.emitWithAck("lobby:create", {
+        maxSeats: 4,
         allowSpectators: false,
       });
       if (!created.ok) throw new Error(created.code);
-      const ack = await ada.socket.emitWithAck("lobby:map", {
-        lobbyId: created.lobby.id,
-        map: { builtin: "grand-diamond" },
-      });
-      expect(ack).toMatchObject({ ok: false, code: "BAD_REQUEST" });
-      if (!ack.ok) expect(ack.message).toMatch(/2.4 players/);
+      const lobbyId = created.lobby.id;
+      expect(created.lobby.gameType).toBe("base");
+      expect(
+        await ada!.socket.emitWithAck("lobby:map", {
+          lobbyId,
+          map: { scenario: "new-horizons", setup: "fixed" },
+        }),
+      ).toMatchObject({ ok: false, code: "UNKNOWN_MAP" });
+
+      // Bo sits in the last seat, Cy in the second: switching to a 3-player type moves them up
+      // into the first three seats and drops the fourth.
+      for (const [who, seat] of [
+        [bo!, 3],
+        [cy!, 1],
+      ] as const) {
+        expect((await who.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
+        expect((await who.socket.emitWithAck("lobby:seat", { lobbyId, seat })).ok).toBe(true);
+      }
+      const setType = (who: TestClient, gameType: unknown) =>
+        who.socket.emitWithAck("lobby:type", { lobbyId, gameType } as never);
+      expect(await setType(bo!, "seafaring-3")).toMatchObject({ ok: false, code: "NOT_HOST" });
+      expect(await setType(ada!, "seafaring-6")).toMatchObject({ ok: false, code: "BAD_REQUEST" });
+      expect(await setType(ada!, "seafaring-3")).toEqual({ ok: true });
+      await bo!.until(() => bo!.lobby?.gameType === "seafaring-3");
+      expect(bo!.lobby!.maxSeats).toBe(3);
+      expect(bo!.lobby!.seats.map((s) => s?.username)).toEqual(["Ada", "Cyd", "Bo_b"]);
+      expect(bo!.lobby!.map.scenario).toMatchObject({ setup: "fixed" });
+      expect(bo!.lobby!.map.id).toMatch(/-3p-fixed$/);
+
+      // With four seated, a 3-player type is refused.
+      const dee = await connect("dev:Dee");
+      expect(await setType(ada!, "seafaring-4")).toEqual({ ok: true });
+      expect((await dee.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
+      // Still three seats: the lobby doesn't grow when the type allows more.
+      expect((await dee.socket.emitWithAck("lobby:seat", { lobbyId, seat: 3 })).ok).toBe(false);
+      expect(await setType(ada!, "base")).toEqual({ ok: true });
+      await ada!.until(() => ada!.lobby?.gameType === "base");
+      expect(ada!.lobby!.map.id).toBe("base-4p");
     });
 
     it("history lists games in progress, newest first", async () => {

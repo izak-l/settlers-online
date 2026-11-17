@@ -1,5 +1,5 @@
 import type { StateSnapshot } from "@settlers/engine";
-import { DEFAULT_MAP_DEF, mapName, type MapDef } from "@settlers/maps";
+import { DEFAULT_MAP_DEF, gameTypeOfMap, mapName, type MapDef } from "@settlers/maps";
 import pg from "pg";
 import type { ChatChannel, ChatMessage, GameSummary } from "@settlers/protocol";
 import type {
@@ -28,6 +28,8 @@ interface LobbyRow {
   /** Null for lobbies created before maps could be chosen. */
   map: MapDef | null;
   features: LobbyRecord["features"];
+  /** Null for lobbies created before game types (spec 023): worked out from the map. */
+  game_type: LobbyRecord["gameType"] | null;
 }
 
 const toLobby = (r: LobbyRow): LobbyRecord => ({
@@ -41,6 +43,7 @@ const toLobby = (r: LobbyRow): LobbyRecord => ({
   gameId: r.game_id,
   map: r.map ?? DEFAULT_MAP_DEF,
   features: r.features,
+  gameType: r.game_type ?? gameTypeOfMap(r.map ?? DEFAULT_MAP_DEF),
 });
 
 interface ChatRow {
@@ -148,8 +151,8 @@ export class PgStore implements Store {
     await this.pool.query(
       `insert into lobbies
          (id, host_id, max_seats, allow_spectators, seats, status, game_id, turn_seconds, map,
-          features)
-       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb, $10::jsonb)`,
+          features, game_type)
+       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb, $10::jsonb, $11)`,
       [
         l.id,
         l.hostId,
@@ -161,6 +164,7 @@ export class PgStore implements Store {
         l.turnSeconds,
         json(l.map),
         json(l.features),
+        l.gameType,
       ],
     );
   }
@@ -173,9 +177,18 @@ export class PgStore implements Store {
   async saveLobby(l: LobbyRecord): Promise<void> {
     await this.pool.query(
       `update lobbies set seats = $2::jsonb, status = $3, game_id = $4, map = $5::jsonb,
-              features = $6::jsonb
+              features = $6::jsonb, game_type = $7, max_seats = $8
         where id = $1`,
-      [l.id, json(l.seats), l.status, l.gameId, json(l.map), json(l.features)],
+      [
+        l.id,
+        json(l.seats),
+        l.status,
+        l.gameId,
+        json(l.map),
+        json(l.features),
+        l.gameType,
+        l.maxSeats,
+      ],
     );
   }
 

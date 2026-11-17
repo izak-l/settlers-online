@@ -4,7 +4,7 @@
   "description": "Fog hides the waters between two islands. Explore it with roads and ships: every new land hex you find pays you a card.",
   "version": 1,
   "players": {
-    "min": 4,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 12,

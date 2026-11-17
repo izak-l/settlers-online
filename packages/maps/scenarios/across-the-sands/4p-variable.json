@@ -4,7 +4,7 @@
   "description": "A desert splits your island. Cross it, or sail to the islands to the east: each new region is worth 2 extra VP.",
   "version": 1,
   "players": {
-    "min": 4,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 14,

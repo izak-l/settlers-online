@@ -45,6 +45,7 @@ if (!url) {
           gameId: null,
           map: BASE_4P,
           features: {},
+          gameType: "base" as const,
         });
         const game = {
           id: "00000000-0000-0000-0000-000000000001",
@@ -68,6 +69,7 @@ if (!url) {
             gameId: game.id,
             map: BASE_4P,
             features: {},
+            gameType: "base" as const,
           },
           game,
           [{ seat: "p0", userId: "u1" }],
@@ -96,6 +98,7 @@ if (!url) {
           gameId: null,
           map: findMap("grand-diamond")!.def,
           features: { devCards: false } as LobbyRecord["features"],
+          gameType: "base" as const,
         };
         await store.createLobby(lobby);
         expect(await store.getLobby("L2")).toEqual(lobby);
@@ -124,6 +127,7 @@ if (!url) {
           gameId: null,
           map: BASE_4P,
           features: {},
+          gameType: "base" as const,
         });
         const pool = new pg.Pool({ connectionString: url });
         await pool.query("update lobbies set map = null where id = 'L3'");

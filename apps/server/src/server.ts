@@ -14,6 +14,7 @@ import {
   LobbyRefSchema,
   SetLobbyFeaturesSchema,
   SetLobbyMapSchema,
+  SetLobbyTypeSchema,
   SetReadySchema,
   SetUsernameSchema,
   TakeSeatSchema,
@@ -138,6 +139,7 @@ export async function startServer({
     return {
       id: lobby.id,
       hostId: lobby.hostId,
+      gameType: lobby.gameType,
       maxSeats: lobby.maxSeats,
       allowSpectators: lobby.allowSpectators,
       turnSeconds: lobby.turnSeconds,
@@ -303,6 +305,7 @@ export async function startServer({
         const missing = needUsername();
         if (missing) return missing;
         const lobby = await lobbies.create(userId, p.data);
+        if (!lobby) return fail("BAD_REQUEST", "That game type doesn't take that many players.");
         void socket.join(`lobby:${lobby.id}`);
         socket.data.lobbies.add(lobby.id);
         await tellFriends(userId, presence.move(socket.id, { kind: "lobby", lobbyId: lobby.id }));
@@ -353,6 +356,16 @@ export async function startServer({
         const p = SetLobbyMapSchema.safeParse(payload);
         if (!p.success) return fail("BAD_REQUEST");
         const ack = await lobbies.setMap(p.data.lobbyId, userId, p.data.map);
+        if (ack.ok) await broadcastLobby(p.data.lobbyId);
+        return ack;
+      }),
+    );
+
+    socket.on("lobby:type", (payload, reply) =>
+      respond(reply, async () => {
+        const p = SetLobbyTypeSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const ack = await lobbies.setType(p.data.lobbyId, userId, p.data.gameType);
         if (ack.ok) await broadcastLobby(p.data.lobbyId);
         return ack;
       }),

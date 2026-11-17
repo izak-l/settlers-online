@@ -276,7 +276,7 @@ function build(s: Scenario, layout: Layout) {
 // ---------------------------------------------------------------------------
 
 const THREE = { min: 1, max: 3 };
-const FOUR = { min: 4, max: 4 };
+const FOUR = { min: 1, max: 4 };
 
 const SCENARIOS: Scenario[] = [
   {

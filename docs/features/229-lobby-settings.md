@@ -69,4 +69,12 @@ The lobby is where the game is set up. The game type and map decide how many sea
 
 ## Status
 
-In progress (on `lobby-ui`).
+Shipped (on `lobby-ui`). As built:
+
+- Settings sit right under the summary card (above the game type and map list), so the host doesn't scroll past every map to reach them. Guests see them as a list.
+- `lobby:create` still honours a seat count when one is sent (older clients and the server tests); Home sends only the type.
+- A type change now also resets seats to the new default map's cap, so a lobby can grow again (spec 023 only ever shrank it).
+- Shrinking seats keeps seated players in place when they all fit; otherwise they move up in order.
+- `seatCap` / `mapDefaults` live in `packages/maps` (`gameTypes.ts`); the ranges are `LOBBY_LIMITS` in `packages/protocol`. The web logic is in `ui/lobbySettingsModel.ts` (`lobbySettings.ts` would clash with `LobbySettings.tsx` on case-insensitive disks).
+- The engine's discard limit is `options.discardLimit` (ruleset, then map, then 7); `discardLimit(state)` reads 7 for older snapshots. The golden base replays are unchanged apart from the new field.
+- All 11 drafts were promoted. Fuzzing (500 games per map at full seats and at 2) found no failures. On the island maps the simple bots hit the 400-turn cap in 30–80% of games because they are slow sailors.

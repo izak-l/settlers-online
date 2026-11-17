@@ -521,12 +521,14 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
 
     it("rejects acting out of turn, spectators acting, and malformed actions", async () => {
       const { gameId, players, spec } = await setUpGame();
-      expect(await players[1]!.act(gameId, { type: "ROLL" })).toMatchObject({
+      // The roll-off picks who starts (spec 231): test with someone who isn't placing first.
+      const first = spec.state!.view.turn.activePlayer;
+      const other = players.find((p) => p.state!.you !== first)!;
+      expect(await other.act(gameId, { type: "ROLL" })).toMatchObject({
         ok: false,
         code: "WRONG_DECISION",
       });
-      const wait = players[1]!.state!.legal.length === 0;
-      expect(wait).toBe(true);
+      expect(other.state!.legal).toEqual([]);
       expect(await spec.act(gameId, { type: "END_TURN" })).toMatchObject({
         ok: false,
         code: "NOT_YOUR_TURN",

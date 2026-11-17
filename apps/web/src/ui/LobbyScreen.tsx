@@ -1,86 +1,88 @@
 import { useEffect, useState } from "react";
 import { mergeFeatures } from "@settlers/engine";
-import { mapsForSeats, type SetupMode } from "@settlers/maps";
-import type { LobbyState, MapChoice } from "@settlers/protocol";
+import { findGameType } from "@settlers/maps";
+import type { LobbyState } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
-import { MapPreview } from "../board/MapPreview";
 import { SEAT_COLORS, errorText } from "../game/seats";
+import { GameSummary, GameTypePicker, MapChooser, type GameChoice } from "./GamePicker";
 import { HouseRules } from "./HouseRules";
 import { toggleRule } from "./features";
-import { MapPicker, mapSummary, scenarioOptions } from "./MapPicker";
+
+type Ack = { ok: boolean; code?: string; message?: string };
 
 /**
- * The lobby's map: everyone sees it; the host can change it while the lobby is open.
- * Only maps that allow this many seats are offered (the server checks too).
+ * The game this lobby will play (spec 023): everyone sees the summary; the host picks the game
+ * type, then a map or scenario, and the house rules, while the lobby is open.
  */
-function LobbyMap({
+function LobbyGame({
   lobby,
   isHost,
-  onChoose,
+  call,
 }: {
   lobby: LobbyState;
   isHost: boolean;
-  onChoose: (choice: MapChoice) => Promise<void>;
+  call: (promise: Promise<Ack>) => Promise<void>;
 }) {
-  const [picking, setPicking] = useState(false);
+  const { socket } = useSession();
   const [busy, setBusy] = useState(false);
-  const { map } = lobby;
-  const [setup, setSetup] = useState<SetupMode>(map.scenario?.setup ?? "fixed");
-  const options = [...mapsForSeats(lobby.maxSeats), ...scenarioOptions(lobby.maxSeats, setup)];
-  const value = map.scenario ? `scenario:${map.scenario.id}` : map.id;
-  const canPick = isHost && lobby.status === "open" && options.length > 1;
+  const type = findGameType(lobby.gameType);
+  if (!socket || !type) return null;
+  const choice: GameChoice = lobby.map.scenario
+    ? { scenario: lobby.map.scenario.id, setup: lobby.map.scenario.setup }
+    : { builtin: lobby.map.id };
+  const editable = isHost && lobby.status === "open";
+  const seated = lobby.seats.filter((s) => s !== null).length;
+  const send = (promise: Promise<Ack>) => {
+    setBusy(true);
+    void call(promise).finally(() => setBusy(false));
+  };
 
   return (
-    <section className="stack">
-      <h3>Map</h3>
-      <div className="lobby-map">
-        <MapPreview def={map.def} />
-        <div className="stack">
-          <strong>{map.name}</strong>
-          <span className="small">{map.description}</span>
-          <span className="muted small">{mapSummary(map.def)}</span>
-          {canPick && (
-            <button className="link" onClick={() => setPicking((p) => !p)}>
-              {picking ? "Close" : "Change map"}
-            </button>
-          )}
-        </div>
-      </div>
-      {canPick && picking && (
+    <section className="card stack lobby-game">
+      <h2>Game</h2>
+      <GameSummary type={type} choice={choice} />
+      {editable && (
         <>
-          <p className="muted small">Changing the map asks everyone to ready up again.</p>
-          <fieldset className="count">
-            <legend>Seafaring setup</legend>
-            {(["fixed", "variable"] as const).map((m) => (
-              <label key={m}>
-                <input
-                  type="radio"
-                  name="setup"
-                  checked={setup === m}
-                  onChange={() => setSetup(m)}
-                />
-                {m === "fixed" ? "Fixed (the rulebook map)" : "Variable (random within its areas)"}
-              </label>
-            ))}
-          </fieldset>
-          <MapPicker
-            options={options}
-            value={value}
+          <GameTypePicker
+            value={type.id}
+            seated={seated}
             disabled={busy}
-            onChange={(id) => {
-              setBusy(true);
-              const choice: MapChoice = id.startsWith("scenario:")
-                ? { scenario: id.slice("scenario:".length), setup }
-                : { builtin: id };
-              void onChoose(choice).finally(() => {
-                setBusy(false);
-                setPicking(false);
-              });
-            }}
+            onChange={(t) =>
+              t.id !== type.id &&
+              send(socket.emitWithAck("lobby:type", { lobbyId: lobby.id, gameType: t.id }))
+            }
           />
+          <MapChooser
+            key={type.id}
+            type={type}
+            choice={choice}
+            disabled={busy}
+            onChoose={(map) => send(socket.emitWithAck("lobby:map", { lobbyId: lobby.id, map }))}
+          />
+          <p className="muted small">
+            Changing the game, map or house rules asks everyone to ready up again.
+          </p>
         </>
       )}
+      <HouseRules
+        features={lobby.features}
+        editable={editable}
+        disabled={busy}
+        onToggle={(feature, on) =>
+          send(
+            socket.emitWithAck("lobby:features", {
+              lobbyId: lobby.id,
+              features: toggleRule(
+                mergeFeatures(lobby.map.def.features),
+                lobby.houseRules,
+                feature,
+                on,
+              ),
+            }),
+          )
+        }
+      />
     </section>
   );
 }
@@ -104,8 +106,8 @@ function InviteFriends({ lobby }: { lobby: LobbyState }) {
   }
 
   return (
-    <section className="stack">
-      <h3>Invite friends</h3>
+    <section className="card stack">
+      <h2>Invite friends</h2>
       {online.length === 0 ? (
         <p className="muted small">None of your friends are online.</p>
       ) : (
@@ -170,127 +172,121 @@ export function LobbyScreen({ id }: { id: string }) {
   const allReady = lobby.seats.every((s) => s?.ready);
   const link = `${window.location.origin}${window.location.pathname}#/lobby/${lobby.id}`;
 
-  async function call(promise: Promise<{ ok: boolean; code?: string; message?: string }>) {
+  async function call(promise: Promise<Ack>) {
     const ack = await promise;
     setError(null);
     if (!ack.ok) setError(errorText(ack.code ?? "", ack.message ?? ""));
   }
 
   return (
-    <div className="start card stack lobby">
-      <h1>Lobby</h1>
-      <div className="invite">
-        <input readOnly value={link} aria-label="Invite link" onFocus={(e) => e.target.select()} />
-        <button
-          onClick={() => {
-            void navigator.clipboard?.writeText(link).then(() => setCopied(true));
-          }}
-        >
-          {copied ? "Copied" : "Copy link"}
-        </button>
-      </div>
-      <p className="muted">
-        Send this link to your friends.{" "}
-        {lobby.allowSpectators ? "Anyone with it can watch once the game starts." : ""}
-      </p>
-      <p className="muted small">
-        Turn timer:{" "}
-        {lobby.turnSeconds > 0
-          ? `${lobby.turnSeconds} seconds per turn, 30 seconds to discard. When time runs out, a default move is made.`
-          : "off"}
-      </p>
-
-      <LobbyMap
-        lobby={lobby}
-        isHost={isHost}
-        onChoose={(choice) => call(socket.emitWithAck("lobby:map", { lobbyId: id, map: choice }))}
-      />
-
-      <HouseRules
-        features={lobby.features}
-        editable={isHost && lobby.status === "open"}
-        onToggle={(feature, on) =>
-          void call(
-            socket.emitWithAck("lobby:features", {
-              lobbyId: id,
-              features: toggleRule(
-                mergeFeatures(lobby.map.def.features),
-                lobby.houseRules,
-                feature,
-                on,
-              ),
-            }),
-          )
-        }
-      />
-      {isHost && lobby.status === "open" && (
-        <p className="muted small">Changing house rules asks everyone to ready up again.</p>
-      )}
-
-      <ol className="seats">
-        {lobby.seats.map((s, i) => (
-          <li key={i}>
-            <span className="swatch" style={{ background: SEAT_COLORS[i] }} />
-            {s ? (
-              <>
-                <span className="name">
-                  {s.username}
-                  {s.userId === lobby.hostId && <span className="muted"> (host)</span>}
-                  {!s.connected && <span className="offline-tag">offline</span>}
-                </span>
-                <span className={s.ready ? "ready yes" : "ready"}>
-                  {s.ready ? "Ready" : "Not ready"}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="name muted">Empty seat</span>
-                <button
-                  onClick={() =>
-                    void call(socket.emitWithAck("lobby:seat", { lobbyId: id, seat: i }))
-                  }
-                >
-                  {mySeat >= 0 ? "Move here" : "Sit here"}
-                </button>
-              </>
-            )}
-          </li>
-        ))}
-      </ol>
-
-      {mySeat >= 0 && (
-        <div className="row">
+    <div className="lobby-page">
+      <header className="card stack lobby-head">
+        <h1>Lobby</h1>
+        <div className="invite">
+          <input
+            readOnly
+            value={link}
+            aria-label="Invite link"
+            onFocus={(e) => e.target.select()}
+          />
           <button
-            className={lobby.seats[mySeat]?.ready ? "" : "primary"}
-            onClick={() =>
-              void call(
-                socket.emitWithAck("lobby:ready", {
-                  lobbyId: id,
-                  ready: !lobby.seats[mySeat]?.ready,
-                }),
-              )
-            }
+            onClick={() => {
+              void navigator.clipboard?.writeText(link).then(() => setCopied(true));
+            }}
           >
-            {lobby.seats[mySeat]?.ready ? "Not ready" : "I'm ready"}
-          </button>
-          <button
-            className="link"
-            onClick={() => void call(socket.emitWithAck("lobby:seat", { lobbyId: id, seat: null }))}
-          >
-            Leave seat
+            {copied ? "Copied" : "Copy link"}
           </button>
         </div>
-      )}
-      <InviteFriends lobby={lobby} />
-      {isHost && (
-        <button
-          className="primary"
-          disabled={!allReady}
-          onClick={() => void call(socket.emitWithAck("lobby:start", { lobbyId: id }))}
-        >
-          {allReady ? "Start game" : "Waiting for every seat to be filled and ready"}
-        </button>
-      )}
+        <p className="muted small">
+          Send this link to your friends.{" "}
+          {lobby.allowSpectators ? "Anyone with it can watch once the game starts." : ""} Turn
+          timer:{" "}
+          {lobby.turnSeconds > 0
+            ? `${lobby.turnSeconds} seconds per turn, 30 seconds to discard; when time runs out, a default move is made.`
+            : "off."}
+        </p>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+      </header>
+
+      <div className="lobby-grid">
+        <LobbyGame lobby={lobby} isHost={isHost} call={call} />
+
+        <div className="stack lobby-side">
+          <section className="card stack">
+            <h2>Players</h2>
+            <ol className="seats">
+              {lobby.seats.map((s, i) => (
+                <li key={i}>
+                  <span className="swatch" style={{ background: SEAT_COLORS[i] }} />
+                  {s ? (
+                    <>
+                      <span className="name">
+                        {s.username}
+                        {s.userId === lobby.hostId && <span className="muted"> (host)</span>}
+                        {!s.connected && <span className="offline-tag">offline</span>}
+                      </span>
+                      <span className={s.ready ? "ready yes" : "ready"}>
+                        {s.ready ? "Ready" : "Not ready"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="name muted">Empty seat</span>
+                      <button
+                        onClick={() =>
+                          void call(socket.emitWithAck("lobby:seat", { lobbyId: id, seat: i }))
+                        }
+                      >
+                        {mySeat >= 0 ? "Move here" : "Sit here"}
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            {mySeat >= 0 && (
+              <div className="row">
+                <button
+                  className={lobby.seats[mySeat]?.ready ? "" : "primary"}
+                  onClick={() =>
+                    void call(
+                      socket.emitWithAck("lobby:ready", {
+                        lobbyId: id,
+                        ready: !lobby.seats[mySeat]?.ready,
+                      }),
+                    )
+                  }
+                >
+                  {lobby.seats[mySeat]?.ready ? "Not ready" : "I'm ready"}
+                </button>
+                <button
+                  className="link"
+                  onClick={() =>
+                    void call(socket.emitWithAck("lobby:seat", { lobbyId: id, seat: null }))
+                  }
+                >
+                  Leave seat
+                </button>
+              </div>
+            )}
+            {isHost && (
+              <button
+                className="primary"
+                disabled={!allReady}
+                onClick={() => void call(socket.emitWithAck("lobby:start", { lobbyId: id }))}
+              >
+                {allReady ? "Start game" : "Waiting for every seat to be filled and ready"}
+              </button>
+            )}
+          </section>
+          <InviteFriends lobby={lobby} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,11 +6,12 @@ A free, self-hosted, browser-based hex-tile trading and building game that a pri
 
 ## Current focus
 
-Everything so far is merged into local `main` (not pushed or deployed): the client work
-(specs 223–226: immersive board, map build popups, floating trade trays, artwork selector) and
-M10 up to spec 019 (switches, seafaring core, scenarios 1–6). Next is M10 spec 020 on a new
-`m10` branch cut from `main`. Client specs are numbered from 223 so expansion specs keep 0xx.
-Keep the untracked `assets/audio/` out of commits.
+Everything through spec 019 is merged into local `main` (not pushed or deployed): client specs
+223–226 and M10 up to scenario 6. On `lobby-modes` (cut from `main`): spec 023 game types
+(pick Base / Seafaring 3p / Seafaring 4p, then a scenario or free-play map; a two-column lobby)
+is built and awaiting review and merge. After that, M10 continues with spec 020 (scenario 7).
+Client specs are numbered from 223 so expansion specs keep 0xx. Keep the untracked
+`assets/audio/` out of commits.
 
 Work milestone by milestone (DESIGN.md §13). Don't start the next milestone until the current one's "Done when" criteria pass.
 
@@ -25,7 +26,7 @@ Work milestone by milestone (DESIGN.md §13). Don't start the next milestone unt
 - [x] M7 UI overhaul: cards instead of counts, original art, a resizable/zoomable board, sounds (specs 006–009)
 - [x] M9 Deploy: Cloudflare Pages + Oracle ARM VM (docs/features/012-deploy.md; runbook docs/DEPLOY.md)
 - [x] M8a Map selector: JSON maps in the repo, chosen in the lobby (docs/features/011-map-catalog.md; drafts in packages/maps/maps/drafts/)
-- [ ] M10 Base-game feature switches, then seafaring ← now (specs 014 switches, 015 seafaring + scenarios, 016 fog, 017 variable setup; 018–022 written before each later scenario; decision 0001). Rules follow the 2025 seafaring rulebook. Done: M10a switches (014), M10b seams, M10c seafaring core + scenarios 1, 2, 4 (fixed maps). M10d variable setup (017), M10e fog + scenario 3 (016), M10f scenario 5 Lost Settlers (018), M10g scenario 6 Weavers' Isles (019). Merged into `main` through spec 019. Next: specs 020–022 (scenarios 7–8, new world) and 023 (game modes: pick mode, then map), approved; build them in order (020 next)
+- [ ] M10 Base-game feature switches, then seafaring ← now (specs 014 switches, 015 seafaring + scenarios, 016 fog, 017 variable setup; 018–022 written before each later scenario; decision 0001). Rules follow the 2025 seafaring rulebook. Done: M10a switches (014), M10b seams, M10c seafaring core + scenarios 1, 2, 4 (fixed maps). M10d variable setup (017), M10e fog + scenario 3 (016), M10f scenario 5 Lost Settlers (018), M10g scenario 6 Weavers' Isles (019). Merged into `main` through spec 019; spec 023 (game types in the lobby) built on `lobby-modes`. Next: specs 020–022 (scenarios 7–8, new world)
 - [ ] M11 Knights-and-cities
 - [ ] M12 Traders scenarios
 - [ ] M13 Explorers

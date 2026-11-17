@@ -55,4 +55,10 @@ Free-play maps are seafaring island maps with no scenario rules (players pick th
 
 ## Status
 
-In progress (on `lobby-modes`).
+Shipped (on `lobby-modes`). As built:
+
+- Maps aren't tagged with types in their JSON: membership follows from what a map is (base-only, scenario at a size, or seafaring free play), in `mapsForType` / `scenariosForType` / `mapForType`.
+- Changing type is its own event, `lobby:type`; `lobby:map` keeps its shape and is checked against the lobby's type.
+- Seafaring lobbies start on their first scenario (New Horizons); the free-play maps at first are Home Waters and Rising Chain, promoted from the drafts after fuzzing clean.
+- The lobby's seat count never grows when the type allows more; it only shrinks to the type's limit.
+- Fixed / Variable is labelled "Rulebook layout" / "Random layout" in the UI.

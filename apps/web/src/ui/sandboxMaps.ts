@@ -1,6 +1,6 @@
 import { MODULE_IDS } from "@settlers/engine";
 import { MAP_CATALOG, MapDefSchema, validateMapDef, type MapDef } from "@settlers/maps";
-import { scenarioOptions, type MapOption } from "./MapPicker";
+import type { ExtraMap } from "./GamePicker";
 
 function whyNot(def: MapDef, seats: number): string | undefined {
   const missing = def.modules.filter((m) => !MODULE_IDS.includes(m));
@@ -13,14 +13,13 @@ function whyNot(def: MapDef, seats: number): string | undefined {
 }
 
 /**
- * The dev sandbox's maps: the catalog, then every draft file (keyed by path). Maps that can't be
+ * The dev sandbox's draft maps (keyed by file path), for its Drafts tab. Drafts that can't be
  * played with `seats` players, or at all yet, are listed with the reason.
  */
-export function sandboxMapOptions(drafts: Record<string, unknown>, seats: number): MapOption[] {
-  const catalog = MAP_CATALOG.map((m) => ({ ...m, disabledReason: whyNot(m.def, seats) }));
-  const extra = Object.entries(drafts)
+export function sandboxDrafts(drafts: Record<string, unknown>, seats: number): ExtraMap[] {
+  return Object.entries(drafts)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([path, raw]): MapOption | null => {
+    .map(([path, raw]): ExtraMap => {
       const file = path.split("/").at(-1) ?? path;
       const parsed = MapDefSchema.safeParse(raw);
       if (!parsed.success) {
@@ -29,7 +28,6 @@ export function sandboxMapOptions(drafts: Record<string, unknown>, seats: number
           name: file,
           description: "",
           def: { ...MAP_CATALOG[0]!.def, hexes: [] },
-          tag: "draft",
           disabledReason: `Invalid map file: ${parsed.error.issues[0]?.message ?? "unknown error"}`,
         };
       }
@@ -39,12 +37,7 @@ export function sandboxMapOptions(drafts: Record<string, unknown>, seats: number
         name: def.name ?? def.id,
         description: def.description ?? "",
         def,
-        tag: "draft",
         disabledReason: whyNot(def, seats),
       };
-    })
-    .filter((o): o is MapOption => o !== null);
-  // Seafaring scenarios (fixed maps), for this seat count.
-  const scenarios = scenarioOptions(seats, "fixed").map((o) => ({ ...o, id: o.def.id }));
-  return [...catalog, ...scenarios, ...extra];
+    });
 }

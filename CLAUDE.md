@@ -8,7 +8,9 @@ A free, self-hosted, browser-based hex-tile trading and building game that a pri
 
 Client feedback work: `fix/immersive-map`, cut from `main`, completes spec 023
 (`docs/features/023-immersive-board.md`, feedback #21), followed by spec 024
-(`docs/features/024-map-build-popovers.md`, feedback #22: map build popups). Expansion work continues separately
+(`docs/features/024-map-build-popovers.md`, feedback #22: map build popups). These are committed
+in checkpoint `0519580`. Spec 025 (`docs/features/025-floating-trade-tray.md`) adds the floating
+trade tray, approved by the user after review and committed separately. Expansion work continues separately
 on `m10`; do not mix its rules changes into this branch.
 
 Work milestone by milestone (DESIGN.md §13). Don't start the next milestone until the current one's "Done when" criteria pass.

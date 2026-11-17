@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BASE_RESOURCES, DEV_CARD_NAMES, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import { CardBack, DevCardFace, ResourceCard, devName, resourceName } from "./CardFace";
@@ -221,7 +222,9 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
       }}
     >
       <h3>Your hand</h3>
-      {pick && <Tray snap={snap} pick={pick} setPick={setPick} send={send} unpick={unpick} />}
+      {pick && (
+        <Tray snap={snap} pick={pick} setPick={setPick} send={send} unpick={unpick} anchor={dock} />
+      )}
       <div className="hand-rows">
         <div className="fan res-fan" ref={resRef}>
           {resourceGroups}
@@ -298,9 +301,51 @@ function Tray({
   setPick,
   send,
   unpick,
-}: Props & { pick: Pick; unpick(side: Side, r: string): void }) {
+  anchor,
+}: Props & {
+  pick: Pick;
+  unpick(side: Side, r: string): void;
+  anchor: React.RefObject<HTMLElement>;
+}) {
   const hand = snap.view.zones[`hand-${snap.seat}`]?.contents ?? {};
   const { purpose, give, want } = pick;
+  const floating = purpose === "bank" || purpose === "offer";
+  const [floatingStyle, setFloatingStyle] = useState<React.CSSProperties | null>(null);
+  useLayoutEffect(() => {
+    if (!floating || !anchor.current) return;
+    const dock = anchor.current;
+    const header = dock.closest(".app")?.querySelector(".topbar");
+    const viewport = window.visualViewport;
+    const measure = () => {
+      const rect = dock.getBoundingClientRect();
+      const top =
+        Math.max(viewport?.offsetTop ?? 0, header?.getBoundingClientRect().bottom ?? 0) + 8;
+      const bottom = Math.min(
+        rect.top - 8,
+        (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 8,
+      );
+      const width = Math.max(1, Math.min(560, rect.width, window.innerWidth - 16));
+      setFloatingStyle({
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+        bottom: window.innerHeight - bottom,
+        width,
+        maxHeight: Math.max(1, bottom - top),
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(dock);
+    if (header) observer.observe(header);
+    window.addEventListener("resize", measure);
+    viewport?.addEventListener("resize", measure);
+    viewport?.addEventListener("scroll", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+      viewport?.removeEventListener("resize", measure);
+      viewport?.removeEventListener("scroll", measure);
+    };
+  }, [floating, anchor]);
   const giveKey = Object.keys(give)[0];
   const wantKey = Object.keys(want)[0];
 
@@ -365,33 +410,40 @@ function Tray({
   );
 
   const usesBank = purpose !== "discard";
-  return (
-    <div className="tray" role="group" aria-label={TITLES[purpose]}>
+  const tray = (
+    <div
+      className={floating ? "tray trade-tray" : "tray"}
+      style={floating ? (floatingStyle ?? undefined) : undefined}
+      role="group"
+      aria-label={TITLES[purpose]}
+    >
       <div className="tray-head">
         <strong>{TITLES[purpose]}</strong>
         <span className="muted small">{HINTS[purpose]}</span>
       </div>
-      <div className="tray-piles">
-        {purpose !== "bounty" &&
-          purpose !== "monopoly" &&
-          pile("give", give, purpose === "discard" ? "Discarding" : "You give")}
-        {usesBank && pile("want", want, purpose === "monopoly" ? "Resource" : "You get")}
-      </div>
-      {usesBank && (
-        <div className="bank-strip" role="group" aria-label="Bank">
-          {BASE_RESOURCES.map((r) => (
-            <button
-              key={r}
-              className={want[r] ? "bank-card chosen" : "bank-card"}
-              aria-label={`Want one ${resourceName(r).toLowerCase()}`}
-              onClick={() => setPick(addPick(pick, "want", r, hand))}
-            >
-              <ResourceCard resource={r} />
-            </button>
-          ))}
+      <div className="tray-body">
+        <div className="tray-piles">
+          {purpose !== "bounty" &&
+            purpose !== "monopoly" &&
+            pile("give", give, purpose === "discard" ? "Discarding" : "You give")}
+          {usesBank && pile("want", want, purpose === "monopoly" ? "Resource" : "You get")}
         </div>
-      )}
-      <div className="row">
+        {usesBank && (
+          <div className="bank-strip" role="group" aria-label="Bank">
+            {BASE_RESOURCES.map((r) => (
+              <button
+                key={r}
+                className={want[r] ? "bank-card chosen" : "bank-card"}
+                aria-label={`Want one ${resourceName(r).toLowerCase()}`}
+                onClick={() => setPick(addPick(pick, "want", r, hand))}
+              >
+                <ResourceCard resource={r} />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="row tray-actions">
         <button
           className="primary"
           disabled={!ready || !action}
@@ -407,4 +459,5 @@ function Tray({
       </div>
     </div>
   );
+  return floating ? (floatingStyle ? createPortal(tray, document.body) : null) : tray;
 }

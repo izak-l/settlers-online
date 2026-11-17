@@ -185,7 +185,7 @@ interface Decision {
 - A normal turn is `ROLL` then `MAIN`. Rolling a 7 pushes `DISCARD` (all affected players at once), then `MOVE_ROBBER`, then `STEAL`.
 - When the top decision is fully resolved it pops, and play continues with the one below.
 - Every action is validated against the top decision first, then by the owning module's validator.
-- Setup is just a scripted sequence of `PLACE_SETTLEMENT` / `PLACE_ROAD` decisions in snake order.
+- Setup is just a scripted sequence of `PLACE_SETTLEMENT` / `PLACE_ROAD` decisions in snake order. When the map says `firstPlayer: "roll"` (the server sets it on every game since spec 231), a `ROLL_FOR_ORDER` decision sits on top of it, pushed by base's `afterSetup` hook so it lands above any module's own setup steps. The server plays it at once as `system`: everyone rolls two dice, tied leaders re-roll, and every queued step's player is rotated by the winner's seat offset, so setup and turns run in seat order from the winner. The log shows each roll and "… goes first".
 
 **As built (M2)**
 
@@ -279,7 +279,7 @@ Bank: 19 of each resource. Dev deck: 14 Knight, 5 Victory Point, 2 Road Building
 
 - [x] Roll two dice; every hex with that token (and no robber) pays 1 per settlement, 2 per city.
 - [x] Bank shortage: if the bank can't pay everyone owed a resource, nobody gets it, unless only one player is owed it (they get what remains).
-- [x] Roll of 7: every player with 8+ cards discards half, rounded down, simultaneously.
+- [x] Roll of 7: every player over the discard limit (7 unless the map or lobby sets another) discards half, rounded down, simultaneously. The log names the cards (they go back face up).
 - [x] Robber must move to a different hex; active player steals one random card from a player with a building on it (if any have cards).
 
 **Building**
@@ -366,7 +366,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **Lobbies:** private, joined by invite link or a friend invite. In the lobby the host picks the game type and map, then the player count, points to win, discard limit, turn timer and whether spectators are allowed (spec 229).
 - **Reconnect:** signing in again reclaims your seat; seats stay reserved while disconnected.
 - **Spectators:** get `viewFor("spectator")`, which shows public information only (hand counts, no contents). Spectator chat is a separate channel. Full reveal is available in the replay after the game ends.
-- **Turn timer:** configurable per lobby (off, 30, 60, 90 or 120 seconds per turn, plus a 30-second clock for discards). On timeout the server plays `defaultAction` for whoever is being waited on until that clock no longer applies: roll if needed, cancel an open offer, place pending free roads at random, end the turn; a timed-out discard is random.
+- **Clocks (spec 231):** every game auto-rolls 5 seconds into a turn and withdraws an offer 3 seconds after everyone else declined it. With a lobby turn timer (off, 30, 60, 90 or 120 s) there are also: the turn clock (it starts after the roll), 90 s per setup placement round (whatever the turn timer), 30 s for discards and 30 s for the robber (moving it and stealing). Making an offer or completing a trade adds 10 s to the turn clock (at most 60 s a turn); playing a development card adds 15 s to the roll or turn clock. On timeout the server plays `defaultAction` for whoever is being waited on until that clock no longer applies: roll, withdraw the offer, place setup pieces or move the robber at random, end the turn; a timed-out discard is random.
 - Timeout defaults are logged as normal actions from a `system` actor and use the game RNG, so replays stay deterministic.
 
 **As built (M6)**
@@ -374,7 +374,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **Friends:** a request by username becomes a friendship when accepted; requesting someone who already asked you accepts theirs. One `friendships` row per pair, either direction. `FriendService` holds the rules and serializes changes per pair.
 - **Presence** (`PresenceTracker`): the server tells a user's friends whenever their status changes, sending the status as of sending (several updates can be in flight and finish out of order). The UI sends `lobby:leave` / `game:leave` when it navigates away.
 - **Invites** go only to online friends, from someone in the open lobby. They live in server memory per lobby and are withdrawn (`invite:closed`) when it starts.
-- **Turn timers** (`timers.ts`): the clock key is the turn number plus the waited-on player, or the depth of a `timer: "short"` decision. The turn clock covers the whole turn and pauses while a short clock runs. Clocks live in server memory: they run only while a seated player has the game open, and start from full when someone returns or the server restarts. A timeout runs in the game's queue and does nothing if any action landed since it was armed.
+- **Clocks** (`timers.ts`, `GameClock`; spec 231): the engine marks each decision with its clock (`Decision.timer`: `roll`, `setup`, `short`, `robber`, `expire`; none means the turn clock) and the server never looks at decision kinds. Keys: the turn and roll clocks per turn number and waited-on player, setup per round and player (so the snake double gets fresh time, #31), the others per stack depth. The main clocks (turn, roll) pause while a side clock (short, robber, setup, expire) runs and resume with the time left; bonuses are added to the main clock even while it's paused. Clocks live in server memory: they run only while a seated player has the game open, and start from full when someone returns or the server restarts. A timeout runs in the game's queue and does nothing if any action landed since it was armed.
 - **Chat:** stored in `chat_messages`. Players post to `players` (everyone reads it), spectators to `spectators` (only spectators read it). 5 messages per 10 seconds per user.
 
 **House rules (spec 014)**
@@ -477,7 +477,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 
 **Artwork selection (spec 226, approved on `graphics-upgrades`)**
 
-- Appearance in the top bar offers Original / Realism. One choice changes the six land
+- Appearance (in the in-game settings menu since spec 231) offers Original / Realism. One choice changes the six land
   terrain faces and five resource-card faces together, immediately and per viewer. Guarded
   local storage (`settlers.artwork`) remembers the preference; Original is the default.
   This setting is separate from panel themes and the system light/dark preference.
@@ -505,7 +505,8 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - `audio/turnWarning.ts` follows the existing server-derived turn deadline and starts the personal clock recording with five seconds remaining. It is independent of snapshot cue priority, works in hidden tabs, and excludes spectators and discard clocks. Playback loops only as needed for the remaining window and stops at the deadline or early turn end/pause/game change. Late joins/resumes use an offset; ordinary snapshots (deadline jitter under 100 ms) do not restart it. No engine/server timer changes.
 - `audio/player.ts` owns the shared Web Audio context, decoded recording cache and volume routing. The first pointer/key gesture unlocks audio and loads recordings once. Cues before readiness are dropped; failed recordings log a developer warning and stay silent until reload. Two cues start 180 ms apart, allowing dice and resource-gain sounds to overlap. Mute/volume also update sounds already playing. Source permissions are recorded in `public/sounds/CREDITS.md`; `docs/AUDIO.md` explains replacement and registration.
 - Chat ticks for messages from others less than 15 seconds old, so history arriving after a join stays quiet.
-- The top bar has a speaker button (mute) and a volume slider, stored in `localStorage` under `settlers.sound` with guarded access (`audio/settings.ts`).
+- The in-game settings menu (spec 231) has a mute button and a volume slider, stored in `localStorage` under `settlers.sound` with guarded access (`audio/settings.ts`).
+- **In-game settings menu (spec 231):** in a game the top bar is hidden; a gear in the map's top-left (`ui/SettingsMenu.tsx`) opens Appearance, Volume and Exit game (home, keeping your seat; "Back to the picker" in the sandbox). Home and lobby keep the top bar (brand, user, sign out) without those controls. With a side-panel build mode on, a click on a map spot builds at once (`directBuild`); the popup is for clicks without a mode. Trade answers follow `legal`, so an answer already given greys out. Card picks reset only for a new decision (`pickResetKey`: seat, turn, stack depth, kind), not when others answer the same one (#1).
 
 **As built (M8a: choosing a map; spec 023: game types)**
 
@@ -613,7 +614,7 @@ Seafaring follows the published rulebook (2025 edition): eight scenarios plus a 
 - Realtime transport: Socket.IO.
 - Hosting: free tiers (section 12).
 - Spectators: supported in v1.
-- Turn timer: configurable per lobby; on timeout the turn ends (defaults in section 8).
+- Turn timer: configurable per lobby; on timeout the server plays the default move (clocks in section 8).
 - Sign-in: Supabase Auth with email + password and Discord (Google not set up).
 - Expansion order: seafaring, knights-and-cities, traders scenarios, explorers.
 

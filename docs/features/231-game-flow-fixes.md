@@ -69,4 +69,11 @@ Feedback: #1, #5, #7, #8, #9, #10, #12, #13, #20, #31.
 
 ## Status
 
-In progress (on `game-flow`).
+Shipped (on `game-flow`). As built:
+
+- Robber clock: timed games only. In untimed games a Knight before rolling pauses the roll clock until the robber is resolved (no separate limit, like the rest of an untimed turn).
+- The roll-off rotates every queued decision's players by the winner's seat offset, so scenario setups (Weavers' Isles' three rounds) start from the winner too. It's opened by a new `afterSetup` module hook.
+- A player who declined and can't afford the offer is dropped from `pendingFrom` (found by the fuzzer: otherwise they were "pending" with no legal action).
+- Old stored games: no `firstPlayer`, so they replay unchanged. Decisions created before this change carry no clock marks and use the turn clock until they resolve.
+- Server tests: a shared `actOnce` helper tolerates the server moving first (auto-roll).
+- The countdown labels each clock ("Rolling in", "Your placement", "Robber", "Discard", "Withdrawing"); only the turn, setup, robber and discard clocks go red near the end.

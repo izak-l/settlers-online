@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BuildOption } from "@settlers/engine";
-import { buildLocations } from "./buildLocations";
+import { buildLocations, directBuild } from "./buildLocations";
 
 describe("buildLocations", () => {
   it("groups choices by edge or corner, preserving server costs and availability", () => {
@@ -28,5 +28,19 @@ describe("buildLocations", () => {
       { kind: "vertex", id: "same", options: [settlement, city] },
     ]);
     expect(buildLocations([])).toEqual([]);
+  });
+});
+
+describe("directBuild (spec 231)", () => {
+  const roads = [
+    { type: "BUILD_ROAD" as const, edge: "0,0|1,0" },
+    { type: "BUILD_ROAD" as const, edge: "1,0|1,-1" },
+  ];
+  it("finds the chosen mode's build at the clicked location", () => {
+    expect(directBuild(roads, "1,0|1,-1")).toEqual(roads[1]);
+  });
+  it("finds nothing elsewhere, or with no mode (no targets)", () => {
+    expect(directBuild(roads, "0,0|0,1")).toBeUndefined();
+    expect(directBuild([], "0,0|1,0")).toBeUndefined();
   });
 });

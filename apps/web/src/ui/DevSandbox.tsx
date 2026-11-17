@@ -59,7 +59,10 @@ export function DevSandbox() {
     [started],
   );
 
-  if (client) return <GameView client={client} />;
+  if (client)
+    return (
+      <GameView client={client} onExit={() => setStarted(null)} exitLabel="Back to the picker" />
+    );
 
   return (
     <form

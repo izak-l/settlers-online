@@ -342,3 +342,21 @@ The rulebook lets players choose which 12 the robber starts on. We take the firs
 The lobby (or a map) may change the discard limit from 7 (spec 229). Only the threshold moves: on a 7, a player holding more than the limit discards half their hand, rounded down, as in the base game. Games saved before the option existed use 7.
 
 **Test:** `robber.test.ts` — "discard limit (spec 229)".
+
+### A54: The first player is decided by a two-dice roll-off; ties re-roll among the tied
+
+Every player rolls two dice; the highest total goes first. Players tied for the highest roll again (only they), until one is highest. Turn and setup order then follow seat order from that player (p2, p3, p0, p1); seats and colours don't change. Games saved before spec 231 start with p0.
+
+**Test:** `game-flow.test.ts` — "roll-off for the first player (spec 231)".
+
+### A55: Discarded cards are public
+
+On a 7, discarded cards go back to the bank face up, so the log names them for everyone (spectators too).
+
+**Test:** `game-flow.test.ts` — "names the discarded cards, for everyone".
+
+### A56: A trade response can change but not repeat
+
+A player may switch between accept and decline on an open offer, but sending the same answer twice is refused (`INVALID_TRADE`). A player who has declined and can't afford the offer is no longer waited on. When every other player has declined, the offer is withdrawn after a few seconds by the server's timeout.
+
+**Test:** `game-flow.test.ts` — "trade responses (spec 231)", "stops waiting on a player who declined and can't afford to accept".

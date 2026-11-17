@@ -19,6 +19,10 @@ Everything below is merged into local `main` (not pushed or deployed):
   the lobby; house-rule checkboxes gone; every draft map promoted into the catalog). Deploying
   it needs the server first (migration 010).
 
+On branch `game-flow` (not merged yet): client spec 231, game flow fixes (in-game settings gear,
+logged roll-off for the first player, auto-roll and other clocks, one answer per offer, named
+discards, direct builds in build mode). Shipped; waiting for the user's go-ahead to merge.
+
 Next: M10 continues with spec 020 (scenario 7) on a branch cut from `main`. Client specs are
 numbered from 223 so expansion specs keep 0xx.
 

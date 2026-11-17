@@ -1,5 +1,12 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { mergeFeatures, MODULE_IDS, seedFromString, type Features } from "@settlers/engine";
+import {
+  apply,
+  createGame,
+  mergeFeatures,
+  MODULE_IDS,
+  seedFromString,
+  type Features,
+} from "@settlers/engine";
 import {
   defaultMapForType,
   findGameType,
@@ -237,6 +244,8 @@ export class LobbyService {
         features: effectiveFeatures(lobby),
         vpToWin: lobby.vpToWin,
         discardLimit: lobby.discardLimit,
+        // Every game opens with a roll-off for the first player (spec 231).
+        firstPlayer: "roll" as const,
       };
       const players: GamePlayer[] = lobby.seats.map((s, i) => ({
         seat: `p${i}`,
@@ -255,6 +264,17 @@ export class LobbyService {
       lobby.status = "started";
       lobby.gameId = game.id;
       await this.store.startGame(lobby, game, players);
+      // Play the roll-off at once as the system: it's the game's first logged action.
+      const opening = apply(createGame(map, { modules: def.modules }, game.seats, seed), "system", {
+        type: "ROLL_FOR_ORDER",
+      });
+      if (!opening.ok) return fail("SERVER_ERROR", opening.message);
+      await this.store.appendAction(game.id, {
+        seq: 1,
+        actor: "system",
+        action: { type: "ROLL_FOR_ORDER" },
+        events: opening.events,
+      });
       return { ok: true, gameId: game.id };
     });
   }

@@ -22,6 +22,7 @@ import {
   buildingAt,
   cardList,
   decision,
+  describe,
   featureOn,
   handOf,
   handSize,
@@ -39,8 +40,11 @@ export function discardLimit(state: GameState): number {
   return (state.options as Partial<GameOptions>).discardLimit ?? DEFAULT_DISCARD_LIMIT;
 }
 
-export const moveRobberDecision = (p: PlayerId): Decision =>
-  decision("MOVE_ROBBER", p, ["MOVE_ROBBER"]);
+/** Moving the robber (and stealing) run on their own "robber" clock (spec 231). */
+export const moveRobberDecision = (p: PlayerId): Decision => ({
+  ...decision("MOVE_ROBBER", p, ["MOVE_ROBBER"]),
+  timer: "robber",
+});
 
 /**
  * After a 7: everyone over the hand limit discards half (rounded down) at the same time,
@@ -117,9 +121,10 @@ export function rob(
   const onlyCards = victims.every((p) => choices[p]!.length === 1 && choices[p]![0] === "card");
   if (victims.length === 1 && onlyCards) return steal(draft, thief, victims[0]!, ctx.events);
   if (victims.length === 0) return;
-  draft.decisions.push(
-    decision("STEAL", thief, ["STEAL"], onlyCards ? { victims } : { victims, choices }),
-  );
+  draft.decisions.push({
+    ...decision("STEAL", thief, ["STEAL"], onlyCards ? { victims } : { victims, choices }),
+    timer: "robber",
+  });
 }
 
 /** Take one random card. Only the thief and the victim learn which resource it was. */
@@ -170,10 +175,11 @@ export const robberActions: ActionHandlers = {
       for (const [r, n] of Object.entries(resources))
         if (n > 0) transfer(handOf(draft, player), bank, r, n);
       const total = Object.values(resources).reduce((a, b) => a + b, 0);
+      // Discards go back to the bank face up: everyone may see them (spec 231).
       events.push({
         type: "DISCARDED",
-        text: `${player} discarded ${total} cards`,
-        data: { count: total },
+        text: `${player} discarded ${describe(resources)}`,
+        data: { count: total, resources: { ...resources } },
       });
       const top = draft.decisions.at(-1)!;
       top.pendingFrom = top.pendingFrom.filter((p) => p !== player);

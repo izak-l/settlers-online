@@ -77,6 +77,8 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("PLACE_SETTLEMENT"), vertex: VertexOrEdge }),
   z.object({ type: z.literal("PLACE_ROAD"), edge: VertexOrEdge }),
   z.object({ type: z.literal("ROLL") }),
+  // Played by the server at game start (spec 231); the engine refuses it at any other time.
+  z.object({ type: z.literal("ROLL_FOR_ORDER") }),
   z.object({ type: z.literal("BUILD_ROAD"), edge: VertexOrEdge }),
   z.object({ type: z.literal("BUILD_SETTLEMENT"), vertex: VertexOrEdge }),
   z.object({ type: z.literal("BUILD_CITY"), vertex: VertexOrEdge }),
@@ -314,7 +316,12 @@ export interface GameStateMessage {
    * The running turn timer, if the game has one and it's running. Relative times, so the
    * client's own clock never needs to agree with the server's.
    */
-  clock?: { kind: "turn" | "short"; remainingMs: number; totalMs: number };
+  clock?: {
+    /** Spec 231: the turn, the auto-roll, discards, the robber, a setup round, a declined offer. */
+    kind: "turn" | "roll" | "short" | "robber" | "setup" | "expire";
+    remainingMs: number;
+    totalMs: number;
+  };
 }
 
 /** Where a friend is. `lobbyId` / `gameId` let you join or watch them. */

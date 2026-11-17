@@ -57,3 +57,15 @@ export function bankGive(
   if ((hand[resource] ?? 0) < rate) return p;
   return { ...p, give: { [resource]: rate } };
 }
+
+/**
+ * When picks start over: a new decision for this seat (seat, turn, stack depth and kind). Others
+ * answering the same decision (finishing their discard) doesn't change it (bug #1, spec 231).
+ */
+export function pickResetKey(snap: {
+  seat: string;
+  view: { turn: { number: number }; decisions: { kind: string }[] };
+}): string {
+  const { decisions, turn } = snap.view;
+  return `${snap.seat}|${turn.number}|${decisions.length}|${decisions.at(-1)?.kind ?? ""}`;
+}

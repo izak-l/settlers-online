@@ -30,5 +30,5 @@ export function OnlineGame({ id }: { id: string }) {
       </div>
     );
   }
-  return client ? <GameView client={client} /> : null;
+  return client ? <GameView client={client} onExit={() => go("/")} /> : null;
 }

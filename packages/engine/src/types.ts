@@ -32,6 +32,11 @@ export interface MapInput {
   /** On a 7, players holding more cards than this discard half (spec 229). Default 7. */
   discardLimit?: number;
   /**
+   * "roll": the game opens with a roll-off for the first player (spec 231). Left out (every game
+   * saved before it): seat order from p0.
+   */
+  firstPlayer?: "roll";
+  /**
    * Things lying on the board at the start (decision record 0001), e.g. VP tokens on sea edges.
    * The core only carries them; the modules that know a marker's `kind` give it meaning, and
    * take it off the map when it's collected.
@@ -112,6 +117,8 @@ export interface Zone {
   contents: Resources;
 }
 
+export type DecisionTimer = "short" | "roll" | "setup" | "robber" | "expire";
+
 export interface Decision {
   kind: string;
   /** Who must act (can be several at once). */
@@ -123,10 +130,12 @@ export interface Decision {
   module: ModuleId;
   data?: Record<string, unknown>;
   /**
-   * Which clock the server's turn timer uses while this is on top: omitted means the turn clock;
-   * "short" is a quick clock for decisions others must answer (e.g. discards).
+   * Which clock the server uses while this is on top (spec 231). Omitted: the turn clock.
+   * "short": a quick clock for decisions others must answer (discards). "roll": the auto-roll
+   * countdown. "setup": a setup placement round. "robber": moving the robber and stealing.
+   * "expire": an offer everyone else declined, withdrawn after a few seconds.
    */
-  timer?: "short";
+  timer?: DecisionTimer;
 }
 
 export interface GameState {

@@ -90,6 +90,7 @@ export function createGame(
     moduleState: {},
   };
   for (const m of modules) m.setup?.(state);
+  for (const m of modules) m.afterSetup?.(state);
   return state;
 }
 

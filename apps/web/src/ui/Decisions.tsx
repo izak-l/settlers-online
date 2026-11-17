@@ -51,7 +51,10 @@ export function TradeOfferView({
   const offer = snap.view.decisions.at(-1)!.data as unknown as Offer;
   const mine = offer.from === snap.seat;
   const others = seats.filter((s) => s.id !== offer.from);
+  // From `legal`: an answer you've already given is greyed out (spec 231).
   const canAccept = snap.legal.some((a) => a.type === "RESPOND_TRADE" && a.accept);
+  const canDecline = snap.legal.some((a) => a.type === "RESPOND_TRADE" && !a.accept);
+  const myAnswer = snap.seat === "spectator" ? undefined : offer.responses[snap.seat];
 
   return (
     <div className="stack offer">
@@ -104,8 +107,15 @@ export function TradeOfferView({
           >
             Accept
           </button>
-          <button onClick={() => send({ type: "RESPOND_TRADE", accept: false })}>Decline</button>
-          {!canAccept && <span className="muted small">You don't have what they want.</span>}
+          <button
+            disabled={!canDecline}
+            onClick={() => send({ type: "RESPOND_TRADE", accept: false })}
+          >
+            {myAnswer === "decline" ? "Declined" : "Decline"}
+          </button>
+          {!canAccept && myAnswer !== "accept" && (
+            <span className="muted small">You don't have what they want.</span>
+          )}
         </div>
       ) : null}
     </div>

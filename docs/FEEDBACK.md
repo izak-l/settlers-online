@@ -13,34 +13,34 @@ and the expansions (M10–M13).
 
 ## Bugs
 
-- **#1** Your own discard selection resets when another player finishes discarding.
+- **#1** Your own discard selection resets when another player finishes discarding. Done (spec 231).
 - **#2** One player saw a visual glitch. It wasn't reproduced; get details or a screenshot next time.
 - **#3** Merged into #13 (not a bug: the request is that nobody has to withdraw a declined offer).
 - **#31** When the setup timer ran out for the player who places twice in a row at the turn of the
   snake, both of their placements were made automatically. The second placement should get
-  its own time.
+  its own time. Done (spec 231).
 
 ## Game flow and rules
 
 - **#4** A proper end of game: a results screen with each player's VP broken down by source
   (settlements, cities, awards, VP cards).
-- **#5** Random setup placement order, with a chat log line saying who goes first (e.g. a roll-off).
+- **#5** Random setup placement order, with a chat log line saying who goes first (e.g. a roll-off). Done (spec 231).
 - **#6** Change the player count from inside a lobby.
 
 ## Timers
 
-- **#7** Decouple the roll timer from the turn timer, and auto-roll when it runs out.
+- **#7** Decouple the roll timer from the turn timer, and auto-roll when it runs out. Done (spec 231).
 - **#8** Decouple the setup placement timer from the turn timer, and give the player who places twice
-  in a row at the turn of the snake a fresh timer for the second placement (see bug #31).
-- **#9** Add time back when you finish an action (e.g. a trade), like an increment clock.
-- **#10** Extra time to move the robber after a 7.
+  in a row at the turn of the snake a fresh timer for the second placement (see bug #31). Done (spec 231).
+- **#9** Add time back when you finish an action (e.g. a trade), like an increment clock. Done (spec 231).
+- **#10** Extra time to move the robber after a 7. Done (spec 231).
 - **#11** A warning sound when your time is running out.
 
 ## Trading
 
-- **#12** Stop decline spam: a player can decline an offer once, and can't flood the log.
+- **#12** Stop decline spam: a player can decline an offer once, and can't flood the log. Done (spec 231).
 - **#13** When every other player has declined, remove the offer automatically after a few seconds,
-  so the offering player never has to withdraw it by hand.
+  so the offering player never has to withdraw it by hand. Done (spec 231).
 - **#14** Counter-offers. The trade interface in general needs more design thought before building.
 
 ## Dice
@@ -55,7 +55,7 @@ and the expansions (M10–M13).
 - **#18** Warn when you hold more than 7 cards and would lose half on a 7.
 - **#19** Show who holds the longest road, and its length.
 - **#20** Show what a player discarded in the chat log. (Check this doesn't break the hidden-info
-  rules in `viewFor` first.)
+  rules in `viewFor` first.) Done (spec 231).
 
 ## Board and map
 

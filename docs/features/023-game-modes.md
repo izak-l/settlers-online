@@ -43,8 +43,7 @@ Protocol payloads; server: a map outside its mode is refused, a seat count outsi
 
 ## Open questions
 
-- **Seat count:** today the seat count is set when the lobby is created. Should choosing a mode set the seat count (e.g. Seafaring (4 players) makes the lobby 4 seats), which means changing seats inside a lobby (feedback #6)? Or does the host choose the mode on the home screen, before the lobby exists?
-- **Seafaring with 1–2 players:** keep allowing 1–3 seats in the 3-player mode (as now), or exactly 3?
+- None. (Decided: the mode is chosen on the home screen before the lobby exists; player counts are upper bounds, fewer may start.)
 
 ## Status
 

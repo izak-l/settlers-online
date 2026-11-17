@@ -1,8 +1,12 @@
 import type { Action, ActionType } from "./actions";
 import type {
+  Decision,
   GameEvent,
   GameState,
   ModuleId,
+  Piece,
+  PieceLocation,
+  PieceTypeId,
   PlayerId,
   Rejection,
   ResourceId,
@@ -66,12 +70,46 @@ export interface Hooks {
    */
   vpSources(state: GameState, player: PlayerId, includeHidden: boolean): number;
   /**
-   * After every action: return the winner, or null. The first module (in ruleset order) to
-   * name one decides; the core then ends the game.
+   * After every action: return the winner, or null. Like `rollDice`, the last module in the
+   * ruleset that defines it decides (a scenario may replace the base rule, e.g. with an
+   * end-of-turn ending); the core then ends the game.
    */
   checkWin(state: GameState, modules: RulesModule[]): PlayerId | null;
+  /** When a turn ends (after the next player's turn is set up). Every module, in ruleset order. */
+  onTurnEnd(draft: GameState, player: PlayerId, ctx: ActionContext): void;
+  /**
+   * May `player` move `piece` (e.g. a ship) to `to`? Every module must agree. Called by the module
+   * that moves the piece, after its own checks.
+   */
+  canMove(state: GameState, player: PlayerId, piece: Piece, to: PieceLocation): Rejection | null;
+  /**
+   * What else (besides a random resource card) `thief` may take from `victim` when robbing with
+   * `source` ("robber" or "pirate"), e.g. "cloth". Combined across modules.
+   */
+  stealOptions(state: GameState, thief: PlayerId, victim: PlayerId, source: PieceTypeId): string[];
+  /** Take one `item` (one of `stealOptions`) from `victim`. Returns true if this module handled it. */
+  stealItem(
+    draft: GameState,
+    thief: PlayerId,
+    victim: PlayerId,
+    item: string,
+    events: GameEvent[],
+  ): boolean;
   /** Cards of `resource` needed for one card from the bank. Lowest across modules wins. */
   tradeRatio(state: GameState, player: PlayerId, resource: string): number;
+  /**
+   * May `player` put a `pieceType` at `at` while `decisionKind` is on top? Every module must
+   * agree: the first rejection wins. Called by the module placing the piece, after its own checks.
+   */
+  canPlace(
+    state: GameState,
+    player: PlayerId,
+    pieceType: PieceTypeId,
+    at: PieceLocation,
+    decisionKind: string,
+  ): Rejection | null;
+  /** After any piece is placed or moved (builds, setup, free roads, the robber, module pieces). */
+  onPlace(draft: GameState, piece: Piece, ctx: ActionContext): void;
 }
 
 export interface RulesModule {
@@ -79,10 +117,29 @@ export interface RulesModule {
   version: number;
   dependsOn?: ModuleId[];
   resources?: ResourceId[];
+  /** Build the board graph over sea hexes too (ships). Otherwise it covers land only. */
+  needsSeaGraph?: boolean;
+  /** Piece types that make up a player's route for the longest-route award (base: roads). */
+  routePieceTypes?: PieceTypeId[];
+  /** Most pieces of each type a player may have on the board (base: roads, settlements, cities). */
+  pieceLimits?: Record<PieceTypeId, number>;
+  /** Display name of the longest-route award when this module is on (last module wins). */
+  routeAwardName?: string;
+  /**
+   * Extra action types this module allows during another module's decisions, by decision kind
+   * (e.g. ships during the base game's MAIN step). The core adds them to the decision's own list.
+   */
+  extraActions?: Partial<Record<string, ActionType[]>>;
   actions?: ActionHandlers;
   hooks?: Partial<Hooks>;
   /** Runs once in createGame, in ruleset order: build zones, place starting pieces, push decisions. */
   setup?(draft: GameState): void;
+  /**
+   * Checks that must hold after every action when this module is on (tests and the fuzzer).
+   * Returns violations; also reports the VP this module adds, recounted independently, so the
+   * shared VP check can add it.
+   */
+  invariants?(state: GameState): { violations: string[]; vp: Record<PlayerId, number> };
   /**
    * What a timeout does for `player` when this module owns the top decision.
    * Null falls back to a random legal action.
@@ -132,6 +189,142 @@ export function runTradeRatio(
     if (r !== undefined) best = Math.min(best, r);
   }
   return best;
+}
+
+export function runCanPlace(
+  modules: RulesModule[],
+  state: GameState,
+  player: PlayerId,
+  pieceType: PieceTypeId,
+  at: PieceLocation,
+  decisionKind: string,
+): Rejection | null {
+  for (const m of modules) {
+    const fail = m.hooks?.canPlace?.(state, player, pieceType, at, decisionKind);
+    if (fail) return fail;
+  }
+  return null;
+}
+
+export function runOnPlace(
+  modules: RulesModule[],
+  draft: GameState,
+  piece: Piece,
+  ctx: ActionContext,
+): void {
+  for (const m of modules) m.hooks?.onPlace?.(draft, piece, ctx);
+}
+
+/** The winner, if any: the last module that defines `checkWin` decides. */
+export function runCheckWin(modules: RulesModule[], state: GameState): PlayerId | null {
+  for (let i = modules.length - 1; i >= 0; i--) {
+    const check = modules[i]!.hooks?.checkWin;
+    if (check) return check(state, modules);
+  }
+  return null;
+}
+
+export function runOnTurnEnd(
+  modules: RulesModule[],
+  draft: GameState,
+  player: PlayerId,
+  ctx: ActionContext,
+): void {
+  for (const m of modules) m.hooks?.onTurnEnd?.(draft, player, ctx);
+}
+
+export function runCanMove(
+  modules: RulesModule[],
+  state: GameState,
+  player: PlayerId,
+  piece: Piece,
+  to: PieceLocation,
+): Rejection | null {
+  for (const m of modules) {
+    const fail = m.hooks?.canMove?.(state, player, piece, to);
+    if (fail) return fail;
+  }
+  return null;
+}
+
+export function runStealOptions(
+  modules: RulesModule[],
+  state: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  source: PieceTypeId,
+): string[] {
+  return modules.flatMap((m) => m.hooks?.stealOptions?.(state, thief, victim, source) ?? []);
+}
+
+export function runStealItem(
+  modules: RulesModule[],
+  draft: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  item: string,
+  events: GameEvent[],
+): void {
+  for (const m of modules) if (m.hooks?.stealItem?.(draft, thief, victim, item, events)) return;
+}
+
+/** Every module's route piece types, in ruleset order, without repeats. */
+export function routePieceTypes(modules: RulesModule[]): PieceTypeId[] {
+  return [...new Set(modules.flatMap((m) => m.routePieceTypes ?? []))];
+}
+
+/** Piece limits from every module (a later module may change an earlier one's). */
+export function pieceLimits(modules: RulesModule[]): Record<PieceTypeId, number> {
+  return Object.assign({}, ...modules.map((m) => m.pieceLimits ?? {})) as Record<
+    PieceTypeId,
+    number
+  >;
+}
+
+/** The longest-route award's display name: the last module that names it, else Longest Road. */
+export function routeAwardName(modules: RulesModule[]): string {
+  return modules.reduce<string>((name, m) => m.routeAwardName ?? name, "Longest Road");
+}
+
+/** The action types allowed while `decision` is on top: its own, plus modules' extras for its kind. */
+export function allowedFor(modules: RulesModule[], decision: Decision): string[] {
+  const extra = modules.flatMap((m) => m.extraActions?.[decision.kind] ?? []);
+  return [...new Set([...decision.allowed, ...extra])];
+}
+
+/**
+ * The handler for an action: the decision's own module first, then the first module (in ruleset
+ * order) that has one.
+ */
+export function handlerFor(
+  modules: RulesModule[],
+  decision: Decision,
+  type: ActionType,
+): ActionHandler | undefined {
+  // The casts are safe: handlers are keyed by the action type they accept.
+  const own = modules.find((m) => m.id === decision.module)?.actions?.[type] as
+    ActionHandler | undefined;
+  if (own) return own;
+  for (const m of modules) {
+    const h = m.actions?.[type] as ActionHandler | undefined;
+    if (h) return h;
+  }
+  return undefined;
+}
+
+/** Every concrete action `player` may send right now (the engine's `legalActions`). */
+export function legalFor(state: GameState, player: PlayerId, modules: RulesModule[]): Action[] {
+  const top = state.decisions.at(-1);
+  if (state.winner !== undefined || !top || !top.pendingFrom.includes(player)) return [];
+  const result: Action[] = [];
+  for (const type of allowedFor(modules, top)) {
+    const handler = handlerFor(modules, top, type as ActionType);
+    if (!handler) continue;
+    for (const a of handler.candidates(state, player)) {
+      if (handler.validate(state, player, a, { modules }) === null) result.push(a);
+    }
+  }
+  return result;
 }
 
 export function reject(code: Rejection["code"], message: string): Rejection {

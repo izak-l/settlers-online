@@ -4,6 +4,7 @@ import {
   CreateLobbySchema,
   GameActionSchema,
   PROTOCOL_ERROR_MESSAGES,
+  SetLobbyFeaturesSchema,
   SetLobbyMapSchema,
   UsernameSchema,
 } from "./index";
@@ -54,10 +55,45 @@ describe("protocol schemas", () => {
     );
   });
 
+  it("accepts a scenario choice with a setup mode", () => {
+    const ok = (map: unknown) => SetLobbyMapSchema.safeParse({ lobbyId: "abc", map }).success;
+    expect(ok({ scenario: "new-horizons", setup: "fixed" })).toBe(true);
+    expect(ok({ scenario: "new-horizons", setup: "variable" })).toBe(true);
+    expect(ok({ scenario: "new-horizons" })).toBe(false);
+    expect(ok({ scenario: "new-horizons", setup: "random" })).toBe(false);
+    expect(ok({ builtin: "base-4p", setup: "fixed" })).toBe(false);
+  });
+
+  it("accepts the new seafaring actions", () => {
+    for (const a of [
+      { type: "BUILD_SHIP", edge: "0,0|1,0" },
+      { type: "PLACE_SHIP", edge: "0,0|1,0" },
+      { type: "PLACE_FREE_SHIP", edge: "0,0|1,0" },
+      { type: "MOVE_SHIP", from: "0,0|1,0", to: "1,0|2,0" },
+      { type: "MOVE_PIRATE", hex: "3,0" },
+      { type: "MOVE_PIRATE", hex: null },
+      { type: "CHOOSE_GOLD", resources: { ore: 1 } },
+      { type: "PLACE_HARBOR", edge: "2,-1|2,0" },
+    ]) {
+      expect(ActionSchema.safeParse(a).success, a.type).toBe(true);
+    }
+    expect(ActionSchema.safeParse({ type: "MOVE_SHIP", from: "0,0|1,0" }).success).toBe(false);
+  });
+
   it("rejects malformed map choices", () => {
     for (const map of [{}, { builtin: "" }, { builtin: "x".repeat(65) }, "base-4p", null]) {
       expect(SetLobbyMapSchema.safeParse({ lobbyId: "abc", map }).success).toBe(false);
     }
+  });
+
+  it("accepts house rules and rejects unknown switches", () => {
+    const ok = (features: unknown) =>
+      SetLobbyFeaturesSchema.safeParse({ lobbyId: "abc", features }).success;
+    expect(ok({})).toBe(true);
+    expect(ok({ devCards: false, robber: true, ports: false })).toBe(true);
+    expect(ok({ flying: true })).toBe(false);
+    expect(ok({ devCards: "no" })).toBe(false);
+    expect(ok(null)).toBe(false);
   });
 
   it("has a UI message for UNKNOWN_MAP", () => {

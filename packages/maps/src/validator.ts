@@ -27,52 +27,177 @@ export function validateMapDef(def: MapDef): ValidationResult {
     return { ok: false, errors };
   }
 
-  // Pool size checks
-  const poolLandCount = def.hexes.filter((h) => String(h.terrain) === "pool:land").length;
-  if (poolLandCount > 0 && def.pools?.land) {
-    const poolSize = Object.values(def.pools.land).reduce((a: number, b) => a + (b ?? 0), 0);
-    if (poolSize !== poolLandCount) {
-      errors.push(
-        err(
-          "POOL_SIZE",
-          `pools.land has ${poolSize} tiles but map has ${poolLandCount} pool:land hexes`,
-        ),
-      );
-    }
-  }
-
-  // A desert never gets a token, whether it is fixed on the map or drawn from the land pool.
-  const tokenSlots = def.hexes.filter((h) => h.token === "pool:tokens");
-  const fixedDeserts = tokenSlots.filter((h) => h.terrain === "desert").length;
-  const poolDeserts = tokenSlots.some((h) => h.terrain === "pool:land")
-    ? (def.pools?.land?.desert ?? 0)
-    : 0;
-  const poolTokenCount = tokenSlots.length - fixedDeserts - poolDeserts;
-  if (poolTokenCount > 0 && def.pools?.tokens) {
-    if (def.pools.tokens.length !== poolTokenCount) {
-      errors.push(
-        err(
-          "POOL_SIZE",
-          `pools.tokens has ${def.pools.tokens.length} tokens but map needs ${poolTokenCount}`,
-        ),
-      );
-    }
-  }
-
-  const poolPortCount = (def.ports ?? []).filter((p) => p.type === "pool:ports").length;
-  if (poolPortCount > 0 && def.pools?.ports) {
-    const portPoolSize = Object.values(def.pools.ports).reduce((a: number, b) => a + (b ?? 0), 0);
-    if (portPoolSize !== poolPortCount) {
-      errors.push(
-        err(
-          "POOL_SIZE",
-          `pools.ports has ${portPoolSize} ports but map has ${poolPortCount} pool:ports port entries`,
-        ),
-      );
-    }
-  }
+  errors.push(...checkPools(def));
+  errors.push(...checkScenario(def));
+  errors.push(...checkMarkers(def));
 
   return { ok: errors.length === 0, errors };
+}
+
+const poolOf = (v: unknown): string | undefined =>
+  typeof v === "string" && v.startsWith("pool:") ? v.slice("pool:".length) : undefined;
+const total = (counts: Record<string, number | undefined>) =>
+  Object.values(counts).reduce((a: number, b) => a + (b ?? 0), 0);
+
+/**
+ * Every named pool holds exactly as many items as the hexes (or ports) that draw from it, and
+ * every pool a hex names exists (spec 017). A desert never takes a token, whether fixed on the map
+ * or drawn from a terrain pool; so a terrain pool's deserts are taken off the token pool its hexes
+ * draw from, which must then be a single token pool.
+ */
+function checkPools(def: MapDef): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const pools = def.pools ?? {};
+
+  for (const name of new Set(def.hexes.flatMap((h) => poolOf(h.terrain) ?? []))) {
+    const slots = def.hexes.filter((h) => poolOf(h.terrain) === name).length;
+    const pool = pools.terrain?.[name];
+    if (!pool) errors.push(err("POOL_MISSING", `No terrain pool "${name}"`));
+    else if (total(pool) !== slots)
+      errors.push(
+        err("POOL_SIZE", `Terrain pool ${name} has ${total(pool)} tiles but ${slots} hexes use it`),
+      );
+  }
+
+  const needed = new Map<string, number>();
+  for (const h of def.hexes) {
+    const name = poolOf(h.token);
+    if (!name || h.terrain === "desert") continue;
+    needed.set(name, (needed.get(name) ?? 0) + 1);
+  }
+  for (const [terrainPool, counts] of Object.entries(pools.terrain ?? {})) {
+    const deserts = counts.desert ?? 0;
+    if (deserts === 0) continue;
+    const tokenPools = new Set(
+      def.hexes.filter((h) => poolOf(h.terrain) === terrainPool).map((h) => poolOf(h.token)),
+    );
+    if (tokenPools.size > 1) {
+      errors.push(
+        err("POOL_MIXED", `Hexes of terrain pool ${terrainPool} draw from several token pools`),
+      );
+      continue;
+    }
+    const [tokenPool] = [...tokenPools];
+    if (tokenPool) needed.set(tokenPool, (needed.get(tokenPool) ?? 0) - deserts);
+  }
+  for (const [name, need] of needed) {
+    const pool = pools.tokens?.[name];
+    if (!pool) errors.push(err("POOL_MISSING", `No token pool "${name}"`));
+    else if (pool.length !== need)
+      errors.push(
+        err("POOL_SIZE", `Token pool ${name} has ${pool.length} tokens but the map needs ${need}`),
+      );
+  }
+
+  // Ports on the coast and harbors lying on the water (spec 018) draw from the same port pools.
+  const portSlots = [
+    ...(def.ports ?? []).map((p) => p.type),
+    ...(def.markers ?? []).flatMap((m) => (m.data?.port ? [m.data.port] : [])),
+  ];
+  for (const name of new Set(portSlots.flatMap((t) => poolOf(t) ?? []))) {
+    const slots = portSlots.filter((t) => poolOf(t) === name).length;
+    const pool = pools.ports?.[name];
+    if (!pool) errors.push(err("POOL_MISSING", `No port pool "${name}"`));
+    else if (total(pool) !== slots)
+      errors.push(
+        err("POOL_SIZE", `Port pool ${name} has ${total(pool)} ports but ${slots} ports use it`),
+      );
+  }
+  return errors;
+}
+
+const isHexKey = (s: string) => /^-?\d+,-?\d+$/.test(s);
+
+/**
+ * Seafaring scenario data: only with the seafaring module; every region it names exists; the
+ * pirate starts on a sea hex; a robber start given as a hex is a listed land hex.
+ */
+function checkScenario(def: MapDef): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const at = new Map(def.hexes.map((h) => [`${h.q},${h.r}`, h]));
+  if (def.robberStart !== undefined && isHexKey(def.robberStart)) {
+    const hex = at.get(def.robberStart);
+    if (!hex || hex.terrain === "sea")
+      errors.push(err("ROBBER_START", `Robber start ${def.robberStart} is not a land hex`));
+  }
+  const usesRegions = def.hexes.some((h) => h.region !== undefined);
+  if ((def.scenario || usesRegions) && !def.modules.includes("seafaring")) {
+    errors.push(err("SCENARIO", "Scenario settings and regions need the seafaring module"));
+  }
+  const fogHexes = def.hexes.filter((h) => h.terrain === "fog").length;
+  if (fogHexes > 0 && !def.modules.includes("seafaring"))
+    errors.push(err("FOG", "Fog hexes need the seafaring module"));
+  const s = def.scenario;
+  if (!s) {
+    if (fogHexes > 0) errors.push(err("FOG", "Fog hexes need a scenario.fog stack"));
+    return errors;
+  }
+  if (fogHexes > 0 || s.fog) {
+    const stack = Object.values(s.fog?.terrain ?? {}).reduce((a, b) => a + b, 0);
+    if (stack !== fogHexes)
+      errors.push(
+        err("FOG", `The fog stack has ${stack} hexes but the map has ${fogHexes} fog hexes`),
+      );
+    const land = Object.entries(s.fog?.terrain ?? {})
+      .filter(([t]) => t !== "sea" && t !== "desert")
+      .reduce((a, [, n]) => a + n, 0);
+    if ((s.fog?.tokens.length ?? 0) !== land)
+      errors.push(
+        err(
+          "FOG",
+          `The fog stack has ${land} producing hexes but ${s.fog?.tokens.length ?? 0} tokens`,
+        ),
+      );
+  }
+  const regions = new Set(def.hexes.flatMap((h) => (h.region ? [h.region] : [])));
+  const named = [...(s.setupRegions ?? []), ...(typeof s.home === "object" ? s.home.regions : [])];
+  for (const r of named) {
+    if (!regions.has(r)) errors.push(err("UNKNOWN_REGION", `No hex is in region "${r}"`));
+  }
+  if (
+    s.pirateStart !== undefined &&
+    s.pirateStart !== "frame" &&
+    at.get(s.pirateStart)?.terrain !== "sea"
+  ) {
+    errors.push(err("PIRATE_START", `Pirate start ${s.pirateStart} is not a sea hex`));
+  }
+  return errors;
+}
+
+/**
+ * Markers (spec 018): ids are unique; each sits on a listed hex, or on an edge or corner of one;
+ * an edge marker is on a sea edge (water on one side, or the frame) where a ship can reach it; a
+ * harbor says its type.
+ */
+function checkMarkers(def: MapDef): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const markers = def.markers ?? [];
+  if (markers.length === 0) return errors;
+  const at = new Map(def.hexes.map((h) => [`${h.q},${h.r}`, h]));
+  const water = (key: string) => {
+    const t = at.get(key)?.terrain;
+    return t === undefined || t === "sea" || t === "fog";
+  };
+  const ids = new Set<string>();
+  for (const m of markers) {
+    if (ids.has(m.id)) errors.push(err("MARKER", `Marker ${m.id} appears twice`));
+    ids.add(m.id);
+    if (m.kind === "harbor" && !m.data?.port)
+      errors.push(err("MARKER", `Harbor marker ${m.id} needs a port type`));
+    if (m.kind === "village" && (!("vertex" in m.at) || m.data?.token === undefined))
+      errors.push(err("MARKER", `Village ${m.id} needs a corner and a number token`));
+    const loc = m.at;
+    const keys = "hex" in loc ? [loc.hex] : ("edge" in loc ? loc.edge : loc.vertex).split("|");
+    if (!keys.every(isHexKey) || !keys.some((k) => at.has(k))) {
+      errors.push(err("MARKER", `Marker ${m.id} is not on the map`));
+      continue;
+    }
+    if ("vertex" in loc && keys.length !== 3)
+      errors.push(err("MARKER", `Marker ${m.id} is not on a corner`));
+    if ("edge" in loc && (keys.length !== 2 || !keys.some(water)))
+      errors.push(err("MARKER", `Marker ${m.id} is not on a sea edge`));
+  }
+  return errors;
 }
 
 /** Validate a fully resolved map. Checks land connectivity and port placement. */
@@ -110,7 +235,8 @@ export function validateResolvedMap(map: ResolvedMap): ValidationResult {
       }
     }
   }
-  if (visited.size !== landHexes.length) {
+  // Seafaring maps may have several islands (ships connect them).
+  if (visited.size !== landHexes.length && !map.modules.includes("seafaring")) {
     errors.push(
       err(
         "DISCONNECTED",

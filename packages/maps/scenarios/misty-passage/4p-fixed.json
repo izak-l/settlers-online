@@ -1,0 +1,324 @@
+{
+  "id": "misty-passage-4p-fixed",
+  "name": "Misty Passage",
+  "description": "Fog hides the waters between two islands. Explore it with roads and ships: every new land hex you find pays you a card.",
+  "version": 1,
+  "players": {
+    "min": 4,
+    "max": 4
+  },
+  "vpToWin": 12,
+  "hexes": [
+    {
+      "q": 1,
+      "r": -3,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "hills",
+      "token": 4,
+      "region": "northeast"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "fields",
+      "token": 10,
+      "region": "northeast"
+    },
+    {
+      "q": 5,
+      "r": -3,
+      "terrain": "mountains",
+      "token": 3,
+      "region": "northeast"
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "terrain": "fog"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "pasture",
+      "token": 9,
+      "region": "northeast"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "forest",
+      "token": 6,
+      "region": "northeast"
+    },
+    {
+      "q": 5,
+      "r": -2,
+      "terrain": "hills",
+      "token": 12,
+      "region": "northeast"
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "pasture",
+      "token": 10,
+      "region": "northeast"
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "terrain": "mountains",
+      "token": 8,
+      "region": "northeast"
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "mountains",
+      "token": 3,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "fog"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "fields",
+      "token": 11,
+      "region": "northeast"
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "terrain": "fields",
+      "token": 6,
+      "region": "southwest"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "forest",
+      "token": 4,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "fog"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "terrain": "forest",
+      "token": 5,
+      "region": "northeast"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "hills",
+      "token": 9,
+      "region": "southwest"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pasture",
+      "token": 8,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "fog"
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "pasture",
+      "token": 2,
+      "region": "southwest"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "forest",
+      "token": 5,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "fog"
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "terrain": "fog"
+    }
+  ],
+  "ports": [
+    {
+      "edge": "3,-3|4,-4",
+      "type": "sheep2to1"
+    },
+    {
+      "edge": "5,-3|5,-4",
+      "type": "wheat2to1"
+    },
+    {
+      "edge": "5,-3|6,-3",
+      "type": "any3to1"
+    },
+    {
+      "edge": "5,-1|6,-2",
+      "type": "brick2to1"
+    },
+    {
+      "edge": "4,1|5,0",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-1,0|-2,0",
+      "type": "wood2to1"
+    },
+    {
+      "edge": "-2,1|-3,2",
+      "type": "ore2to1"
+    },
+    {
+      "edge": "-2,3|-3,3",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-2,3|-2,4",
+      "type": "any3to1"
+    }
+  ],
+  "robberStart": "5,-2",
+  "scenario": {
+    "home": "setup",
+    "discoveryReward": true,
+    "fog": {
+      "terrain": {
+        "sea": 2,
+        "gold": 2,
+        "hills": 2,
+        "forest": 1,
+        "pasture": 1,
+        "fields": 2,
+        "mountains": 2
+      },
+      "tokens": [3, 4, 5, 6, 8, 9, 10, 11, 11, 12]
+    },
+    "pirateStart": "frame"
+  },
+  "modules": ["base", "seafaring"]
+}

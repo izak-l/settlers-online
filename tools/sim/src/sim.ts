@@ -1,4 +1,5 @@
 import {
+  type FeatureOverrides,
   apply,
   baseInvariantViolations,
   BASE_RESOURCES,
@@ -13,7 +14,7 @@ import {
   type PlayerId,
   type RngState,
 } from "@settlers/engine";
-import { DEFAULT_MAP_ID, findMap, generateMap } from "@settlers/maps";
+import { DEFAULT_MAP_ID, findAnyMap, generateMap } from "@settlers/maps";
 
 export interface GameResult {
   seed: string;
@@ -22,6 +23,8 @@ export interface GameResult {
   winner: PlayerId | null;
   turns: number;
   actions: number;
+  /** How many events of each type the game produced (shows which rules the bots reached). */
+  events: Record<string, number>;
 }
 
 export class SimFailure extends Error {
@@ -65,6 +68,21 @@ function randomDiscard(state: GameState, player: PlayerId, rng: BotRng): Action 
   return { type: "DISCARD", resources };
 }
 
+/** A random gold pick of the size the engine asks for (legalActions only offers one example). */
+function randomGold(state: GameState, player: PlayerId, rng: BotRng, legal: Action[]): Action {
+  const example = legal.find((a) => a.type === "CHOOSE_GOLD");
+  if (!example || example.type !== "CHOOSE_GOLD") return legal[0]!;
+  const need = Object.values(example.resources).reduce((a, b) => a + b, 0);
+  const bank = state.zones["bank"]!.contents;
+  const cards = BASE_RESOURCES.flatMap((r) => Array<string>(bank[r] ?? 0).fill(r));
+  const resources: Record<string, number> = {};
+  for (let i = 0; i < need; i++) {
+    const [card] = cards.splice(rng.int(cards.length), 1);
+    resources[card!] = (resources[card!] ?? 0) + 1;
+  }
+  return { type: "CHOOSE_GOLD", resources };
+}
+
 /** A random 1–2 for 1–2 offer from what the player holds. */
 function randomOffer(state: GameState, player: PlayerId, rng: BotRng): Action | null {
   const hand = state.zones[`hand-${player}`]!.contents;
@@ -91,6 +109,7 @@ function chooseAction(state: GameState, rng: BotRng): { player: PlayerId; action
     throw new Error(`${player} is pending during ${top.kind} but has no legal action`);
 
   if (top.kind === "DISCARD") return { player, action: randomDiscard(state, player, rng) };
+  if (top.kind === "GOLD_CHOICE") return { player, action: randomGold(state, player, rng, legal) };
 
   if (top.kind === "TRADE_OFFER") {
     const offerer = (top.data as { from: string }).from;
@@ -110,7 +129,10 @@ function chooseAction(state: GameState, rng: BotRng): { player: PlayerId; action
     ["BUILD_CITY", 0.95],
     ["BUILD_SETTLEMENT", 0.95],
     ["BUY_DEV_CARD", 0.6],
+    ["BUILD_SHIP", 0.6],
     ["BUILD_ROAD", 0.7],
+    ["MOVE_SHIP", 0.15],
+    ["PLACE_HARBOR", 0.9],
   ] as const) {
     const options = legal.filter((a) => a.type === type);
     if (options.length > 0 && rng.chance(p)) return { player, action: rng.pick(options) };
@@ -162,21 +184,27 @@ function sortKeys(value: unknown): unknown {
  */
 export function playGame(
   seed: string,
-  opts: { seats?: number; maxTurns?: number; map?: string } = {},
+  opts: { seats?: number; maxTurns?: number; map?: string; features?: FeatureOverrides } = {},
 ): GameResult {
   const seats = Array.from({ length: opts.seats ?? 4 }, (_, i) => `p${i}`);
   const maxTurns = opts.maxTurns ?? 400;
   const mapId = opts.map ?? DEFAULT_MAP_ID;
-  const def = findMap(mapId)?.def;
+  const def = findAnyMap(mapId);
   if (!def) throw new Error(`Unknown map: ${mapId}`);
   const { map } = generateMap(def, seedFromString(`${seed}:map`));
-  const start = createGame(map, { modules: def.modules }, seats, seed);
+  const start = createGame(
+    map,
+    { modules: def.modules, ...(opts.features ? { options: { features: opts.features } } : {}) },
+    seats,
+    seed,
+  );
   const bots = new BotRng(seedFromString(`${seed}:bots`));
 
   const log: { player: PlayerId; action: Action }[] = [];
   const recent = () => log.slice(-8).map((l) => `${l.player} ${JSON.stringify(l.action)}`);
   let state = start;
   let midSnapshot: { at: number; snap: ReturnType<typeof toSnapshot> } | null = null;
+  const events: Record<string, number> = {};
 
   while (state.winner === undefined && state.turn.number <= maxTurns) {
     const { player, action } = chooseAction(state, bots);
@@ -192,6 +220,7 @@ export function playGame(
     }
     log.push({ player, action });
     state = res.state;
+    for (const e of res.events) events[e.type] = (events[e.type] ?? 0) + 1;
     const problems = baseInvariantViolations(state, {
       views: log.length % 20 === 0 || state.winner !== undefined,
     });
@@ -251,5 +280,6 @@ export function playGame(
     winner: state.winner ?? null,
     turns: state.turn.number,
     actions: log.length,
+    events,
   };
 }

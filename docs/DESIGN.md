@@ -78,7 +78,7 @@ A map is data. The engine derives the vertex and edge graph from whatever set of
 - `hex → vertices[6]`, `hex → edges[6]`
 - `vertex → hexes[≤3]`, `vertex → edges[≤3]`, `vertex → neighborVertices[≤3]`
 - `edge → vertices[2]`, `edge → hexes[≤2]`
-- Vertices and edges are only created for hexes marked as land or coast. Sea-only edges exist only when a module needs them (ships).
+- The graph is built by `graphFor(map, moduleIds)`: over land hexes only, unless a module sets `needsSeaGraph` (seafaring's ships), in which case it covers every listed hex. `hexIndex` maps each hex to its place in the map's hex list, so terrain is always read from the map (a fog reveal changes the map, never the graph). Land checks (`isLandHex` / `isLandVertex` / `isLandEdge` in base) keep buildings and roads off open sea and the robber on land. The listed hexes are enclosed by a frame; edges along the border are ordinary edges and nothing beyond them exists (decision record 0001).
 
 **Map definition**
 
@@ -231,7 +231,7 @@ interface RulesModule {
 | `tradeRatio` | bank trade | 4:1, port 3:1 / 2:1 |
 | `vpSources` | any VP check | buildings, VP cards, road, army |
 | `checkWin` | end of each action | active player ≥ `vpToWin` |
-| `routeGraph` | Longest Road | roads only (ships add edge types) |
+| `routePieceTypes` | Longest Road | roads (ships join only at the player's own building) |
 | `redact` | `viewFor` | hide hands, dev cards |
 
 - Hooks run in ruleset order. A hook returns either a value (for queries like `tradeRatio`, results are combined: min ratio, summed VP) or state changes.
@@ -243,6 +243,8 @@ interface RulesModule {
 - An action handler is `{ validate, apply, candidates }`. `validate` sees the untouched state; `apply` mutates the draft copy and pushes events. `legalActions` is `candidates` filtered by `validate`, so the UI's highlights and the server's checks can't disagree.
 - The handler for an action comes from the top decision's module first, then from the first module in ruleset order that has one.
 - Hooks implemented so far: `rollDice` (the last module that defines it wins), `produce` (every module runs, in order) and `vpSources` (summed). `setup` plays the role of `onGameStart`. The other hooks in the table are added when the milestone that needs them lands, per the seam rule in section 14.
+- **Seams for seafaring (M10b, decision record 0001):** a module may set `needsSeaGraph`, `routePieceTypes` (its pieces count towards the longest route; route pieces of different types join only at the player's own building), `routeAwardName`, `pieceLimits`, and `extraActions` (action types it allows during another module's decision kinds; the core's `allowedFor` merges them for `apply` and `legalActions`). Hooks `canPlace` (every module may veto a settlement, city, road or robber placement) and `onPlace` (after any placement or robber move). An edge holds one piece (`edgePieceAt`); `roadAt` only matches roads. Road Crew places up to two route pieces (fewer if fewer are left) and ends when nothing more is legal. `baseline.test.ts` pins three full base games to the exact final states from before the seams.
+- **Seams added for scenarios (M10f–g):** `checkWin` is decided by the last module that defines it (base's rule is `activePlayerWins`); `onTurnEnd` runs after a turn ends; `canMove` lets modules veto moving a piece (ship moves call it); robbing goes through base's `rob`, and `stealOptions` / `stealItem` let modules offer items besides a random card (`STEAL { from, what }`, the step listing `choices` only when there are any). Placing the pirate off the board is checked with `canPlace` at hex `"frame"`.
 - `validate` and `apply` both receive the active modules, so legality checks can use hooks (bank trades use `tradeRatio`).
 - `tradeRatio` (lowest across modules wins) gives the bank rate: 4, or 3 / 2 with a building on either end of a matching port edge.
 - Modules may provide `defaultAction(state, player)` for decisions they own; the core falls back to a random legal action. The base game rolls, ends the turn, and during a trade offer cancels it (offerer) or declines (everyone else). The core no longer names any base-game action.
@@ -318,6 +320,7 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 | C→S | `lobby:seat` | lobby id, seat index or `null` to stand up |
 | C→S | `lobby:ready` | lobby id, ready flag |
 | C→S | `lobby:map` | lobby id, `{ builtin: mapId }` (host only, while open; the map must allow the seat count; clears ready flags) |
+| C→S | `lobby:features` | lobby id, house rules: feature switches overriding the map's (host only, while open; clears ready flags) |
 | C→S | `lobby:start` | lobby id (host only; every seat filled and ready) |
 | C→S | `game:join` | game id (your seat if you have one, otherwise spectator if allowed) |
 | C→S | `game:action` | game id, `Action` |
@@ -373,6 +376,11 @@ One Socket.IO connection per signed-in client; every message is a typed, zod-val
 - **Turn timers** (`timers.ts`): the clock key is the turn number plus the waited-on player, or the depth of a `timer: "short"` decision. The turn clock covers the whole turn and pauses while a short clock runs. Clocks live in server memory: they run only while a seated player has the game open, and start from full when someone returns or the server restarts. A timeout runs in the game's queue and does nothing if any action landed since it was armed.
 - **Chat:** stored in `chat_messages`. Players post to `players` (everyone reads it), spectators to `spectators` (only spectators read it). 5 messages per 10 seconds per user.
 
+**House rules (spec 014)**
+
+- Five base-game switches, all on by default: `devCards`, `robber`, `longestRoad`, `largestArmy`, `ports`. A map may set them (`features` in its JSON); the lobby host may override them (`lobby:features`, which clears ready flags and survives a map change). `createGame` merges defaults → map → ruleset options into `options.features`.
+- The server folds the effective switches into the resolved map it stores, so replays need nothing else. Base checks them with `featureOn`: dev card actions are rejected when off; no robber piece and no robber step after a 7 or Knight; a switched-off award is never held; harbors off means 4:1 everywhere.
+
 **One- and two-player games (spec 010)**
 
 - Lobbies (and the dev sandbox) take 1–4 seats; `lobbies.max_seats` allows 1–6 (migration 006). The same base rules apply at every count: one player places both setup settlements and roads in a row, and a 7 moves the robber with nobody to rob.
@@ -406,7 +414,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Cards (M7):** resources and development cards are shown as individual cards, not counts: your hand is a fanned row of cards, and discards, trades and Bounty/Monopoly picks are done by picking cards. Opponents show face-down card backs. Card faces are our own original art.
 - **Board size (M7):** the board grows to fill the space it's given at any window size, and players can zoom it (and pan at every zoom). On wide screens the layout uses the extra width instead of a fixed maximum.
 - **Sound (M7):** short original sound effects for key moments (dice, building, your turn, trades, robber, win, chat), with a mute toggle and volume remembered per browser. Off-screen tabs don't play sounds for other players' routine moves.
-- **Maps (M8a):** maps are JSON files in the catalog, chosen by the lobby host on the lobby screen. **Map editor (M8b, after the expansions):** click hexes to set terrain, tokens and ports; validates with the shared map validator; saves to "My maps" and exports map JSON.
+- **Maps (M8a):** maps are JSON files in the catalog, chosen by the lobby host on the lobby screen. **Map editor (M8b, after the expansions):** click hexes to set terrain, tokens and ports; validates with the shared map validator; saves to "My maps" and exports map JSON. For seafaring maps it also draws the frame and lets the author pick the starting area (one or more landmasses, or "players pick home islands in setup"); see spec 015.
 
 **As built (M3: board UI)**
 
@@ -442,7 +450,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 
 - On `fix/immersive-map`, clicking a map edge or vertex during a normal turn opens a popup only at valid build locations, with piece icons, costs and affordability reasons. Invalid locations and exhausted pieces have no inspection targets. Clicking an enabled choice submits that intent; setup, free road and robber clicks remain direct. Sidebar build modes still highlight locations and open the same confirmation. Popups follow their map anchor, fit within the measured clear area, scroll on small screens, and dismiss with Escape, outside press, a submitted build or a changed turn/decision/seat. Keyboard dismissal returns focus to the map location using its piece-shaped marker; pointer dismissal does not refocus it. SVG map targets never show browser outline boxes. A drag cannot open a menu or build.
 - `ActionHandler.build` optionally registers module-owned piece/label/cost metadata. The pure `buildOptions(state, player)` query runs each candidate through its validator, returning valid locations alongside their costs; unaffordable choices remain disabled. Build validators check placement and other restrictions before affordability, and the query omits all failures except `CANNOT_AFFORD`. It does not change legal actions, game state or RNG. A location is offered only if it is spatially legal, even with an empty hand.
-- The server includes `builds` beside `legal` for the current actor only, with empty lists for spectators and players not awaited by the decision. LocalGame uses the same query. `board/buildLocations.ts` only groups this data by location; the client decides no legality. Base road, settlement and city handlers register metadata. After merging `m10`, ship handlers must register metadata from the seafaring cost table; the popup already renders multiple choices on one edge without expansion checks.
+- The server includes `builds` beside `legal` for the current actor only, with empty lists for spectators and players not awaited by the decision. LocalGame uses the same query. `board/buildLocations.ts` only groups this data by location; the client decides no legality. Base road, settlement and city handlers register metadata, and so does seafaring's `BUILD_SHIP` (from its cost table), so a coast edge offers a road and a ship in one popup. `buildOptions` finds handlers through the same `allowedFor` / `handlerFor` as `legalActions`, so module-added actions are included; build validators run placement, then modules' `canPlace`, then piece limit and cost.
 
 **As built (M7b: cards)**
 
@@ -574,22 +582,21 @@ Expansions are added as modules on top of `base`; each row lists what the module
 - **Maps before seafaring.** Seafaring is mostly fixed scenario maps. They are written as JSON in the map catalog (M8a), checked in CI and previewed in the dev sandbox; the in-app editor (M8b, after the expansions) will open and export the same JSON.
 - Module ids stay internal. Display names and all scenario text in the UI are our own wording.
 
+**As built (M10c, seafaring)**
+
+- `modules/seafaring/`: ships (`BUILD_SHIP`, `PLACE_SHIP` in setup, `PLACE_FREE_SHIP` with Road Crew, `MOVE_SHIP` once per turn from an open end, not on the turn built), gold (`GOLD_CHOICE`, everyone owed picks at once like discards; also a second starting settlement next to gold), the pirate (`MOVE_PIRATE` to a sea hex or the frame; steals from ship owners; blocks ships on its hex's edges), regions and home regions, island bonus VP (computed), Longest Trade Route. All through the M10b seams; no seafaring checks in the core or base.
+- Scenarios live in `packages/maps/scenarios/<id>/<3p|4p>-<fixed|variable>.json`, built from text layouts in `scenarios/build.ts` and checked against the rulebook's component tables. `SCENARIO_CATALOG` groups them; the lobby sends `{ scenario, setup }` and the server stores the map for its seat count. Map JSON gains hex `region` labels, a strict `scenario` block and a robber start given as a hex.
+- **Variable setup (spec 017):** map pools are named (`pools.terrain`, `pools.tokens`, `pools.ports`, keyed by name; a hex draws from `pool:<name>`), and each is drawn only into its own hexes. Constraints: `no-adjacent-red-tokens`, `no-red-on-gold`, `no-low-tokens-on-forest-pasture`. `robberStart` may be `"token:12"`. Each scenario has `3p-variable` / `4p-variable` maps next to the fixed ones; the lobby's Variable choice picks them.
+- **Lost Settlers (spec 018), module `sf-lost-settlers`:** map JSON may carry `markers` (`{ id, kind, at: { edge | vertex | hex }, data? }`), which the core passes through and modules read; a marker is removed from `state.map.markers` when collected. Settlements and the robber need a numbered hex (`canPlace`). A ship placed on a marker's edge (`onPlace`) takes it: a VP token goes to the public zone `vp-<p>` (1 VP each via `vpSources`); a face-down dev card, dealt at setup from `devdeck` into the hidden zone `board-devcards`, moves to `devnew-<p>`; a harbor is held in `moduleState` and placed with `PLACE_HARBOR` (its own step when a spot exists, otherwise in the main step later). Placed harbors are appended to `state.map.ports`, which already lives in the state, so `tradeRatio` sees them at once ("ports as state" from decision record 0001 needed no new field). Harbor markers draw their type from a port pool; the constraint `{ rule: "no-tokens-on-hexes", tokens, hexes }` keeps tokens off listed hexes. The base invariant counts dev cards in every zone, and checks every hidden zone stays hidden in views.
+- **Weavers' Isles (spec 019), module `sf-weavers`:** villages are map markers on corners (`kind: "village"`, `data.token`); cloth lives in public zones `cloth-<village>`, `cloth-supply` and `cloth-<p>` (5 per village, 10 in the supply). The module's `setup` rewrites the setup steps (two snake rounds that pay nothing, then a third round in seat order that pays); a step's `resources` flag says whether it pays (base default: round 2). A route from your buildings to a village (`reach`, joined as for the longest route) opens trade and takes 1 cloth; `produce` pays traders, topping up from the supply. Cloth pairs are VP. `canMove` keeps ships on a closed route still; `canPlace` keeps settlements and the robber off the islets and the pirate still until you trade. `onTurnEnd` marks the five-empty-villages ending and the module's `checkWin` names the most-VP player (else the base rule). Longest route is off through the map's `features`.
+- **Fog (spec 016):** fog hexes stay `"fog"` in the map; the face-down stacks live in hidden zones `fog-terrain` / `fog-tokens` (so views show only counts) and are drawn when a road or ship reaches a fog corner. Fog counts as water until revealed. Scenario 3 (Misty Passage) uses it, with a discovery card for each new land hex.
+- The web board draws the frame and island outlines, ships and the pirate; a Road / Ship switch picks between them on coast edges in setup and with Road Crew; moving a ship is two taps. `pnpm sim --scenario <id>` fuzzes a scenario and reports how often ships, gold, the pirate and island bonuses came up.
+
 **Rule for adding a seam:** only generalize the core when a module actually needs it, and add a test in the base module proving nothing changed.
 
-**First seafaring scenario (assumptions to check against the rulebook)**
+**Seafaring scenarios**
 
-v1.1 ships the introductory scenario: the familiar main island plus four small islands, so players learn ships without extra scenario rules.
-
-- **Map:** main island laid out like the base board; four small islands, each one sea hex away. 3–4 players. Fixed layout entered as map JSON; no fog hexes yet.
-- **Win:** 13 VP.
-- **Setup:** starting settlements only on the main island.
-- **Island bonus:** a player's first settlement on each small island earns special VP. The amount is a map setting, defaulting to 2 (sources differ between 1 and 2 by edition).
-- **Gold hexes** (on small islands): each payout is any resource the player picks, resolved as a pending decision.
-- **Pirate and robber** are both in play. On a 7 or a Knight the player picks which to move. The pirate sits on a sea hex, steals from a player with a ship next to it, and blocks building or moving ships next to it.
-- **Ships:** cost 1 wood + 1 sheep, 15 per player, placed on edges that touch sea. A ship line starts at your coastal settlement or city or extends your ships. Roads and ships connect only through your own settlement or city.
-- **Moving ships:** one per turn, only the open end of a route, not a ship built this turn, and never a ship in a closed route between two of your buildings.
-- **Longest Road becomes Longest Trade Route**, counting roads and ships together.
-- **Road Building** lets you place two roads, two ships, or one of each.
+Seafaring follows the published rulebook (2025 edition): eight scenarios plus a simplified random "new world", each with 3- and 4-player maps and fixed or variable setup, picked in the lobby. Scenarios 1–4 are data on the `seafaring` module; 5–8 are small modules on top of it. The plan, rules and readings are in specs 015–019 (020–022 to come) and decision record 0001. Built so far: scenarios 1–6.
 
 **Decisions**
 
@@ -603,7 +610,7 @@ v1.1 ships the introductory scenario: the familiar main island plus four small i
 
 **Open questions**
 
-- [ ] Exact hex, token and port layout for the first seafaring scenario (enter it from the rulebook as a catalog map JSON).
+- [ ] Seafaring scenario layouts: scenarios 1–6 transcribed; 7–8 to come with specs 020–021.
 
 ## 15. Notes for Claude Code
 

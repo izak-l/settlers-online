@@ -1,4 +1,5 @@
 import { computeVP, viewFor } from "../../engine";
+import { MODULES } from "../index";
 import type { GameState } from "../../types";
 import { awardVP } from "./awards";
 import { BANK_START, BASE_RESOURCES, DEV_DECK, PIECE_LIMITS } from "./data";
@@ -16,6 +17,14 @@ export function baseInvariantViolations(
   opts: { views?: boolean } = {},
 ): string[] {
   const out: string[] = [];
+  // Other modules' own checks, and the VP they add (each recounted by that module).
+  const extraVP: Record<string, number> = {};
+  for (const id of state.modules) {
+    const checked = MODULES[id]?.invariants?.(state);
+    if (!checked) continue;
+    out.push(...checked.violations);
+    for (const [p, vp] of Object.entries(checked.vp)) extraVP[p] = (extraVP[p] ?? 0) + vp;
+  }
 
   for (const r of BASE_RESOURCES) {
     let total = state.zones["bank"]!.contents[r] ?? 0;
@@ -29,11 +38,11 @@ export function baseInvariantViolations(
     }
   }
 
+  // Every development card, wherever it is: the deck, hands, played, or a module's zone (e.g.
+  // cards dealt face down onto the board).
   let dev = 0;
   for (const zone of Object.values(state.zones)) {
-    if (zone.id === "devdeck" || /^(dev|devnew|played)-/.test(zone.id)) {
-      dev += Object.values(zone.contents).reduce((a, b) => a + b, 0);
-    }
+    for (const card of Object.keys(DEV_DECK)) dev += zone.contents[card] ?? 0;
   }
   if (dev !== DEV_TOTAL) out.push(`dev cards: ${dev}, expected ${DEV_TOTAL}`);
 
@@ -46,10 +55,11 @@ export function baseInvariantViolations(
       countOwned(state, p, "settlement") +
       2 * countOwned(state, p, "city") +
       vpCards(state, p) +
-      awardVP(state, p);
+      awardVP(state, p) +
+      (extraVP[p] ?? 0);
     const vp = computeVP(state, p);
     if (vp !== expected)
-      out.push(`${p} VP ${vp}, expected ${expected} from pieces, cards and awards`);
+      out.push(`${p} VP ${vp}, expected ${expected} from pieces, cards, awards and modules`);
   }
 
   if (state.winner === undefined && state.decisions.length === 0)
@@ -61,7 +71,10 @@ export function baseInvariantViolations(
   for (const viewer of [...state.players, "spectator" as const]) {
     const view = viewFor(state, viewer);
     if ("rng" in view) out.push(`view for ${viewer} contains rng`);
-    if (view.zones["devdeck"]?.contents) out.push(`view for ${viewer} shows the dev deck`);
+    for (const zone of Object.values(view.zones)) {
+      if (zone.visibility === "hidden" && zone.contents)
+        out.push(`view for ${viewer} shows hidden zone ${zone.id}`);
+    }
     for (const p of state.players) {
       if (p === viewer) continue;
       for (const z of [`hand-${p}`, `dev-${p}`, `devnew-${p}`]) {

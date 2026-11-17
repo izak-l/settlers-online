@@ -516,9 +516,9 @@ function build(shape: Shape) {
     ${hexLines.join(",\n    ")}
   ],
   "pools": {
-    "land": ${JSON.stringify(pool).replace(/,/g, ", ").replace(/:/g, ": ")},
-    "tokens": ${JSON.stringify(tokens).replace(/,/g, ", ")},
-    "ports": ${JSON.stringify(ports).replace(/,/g, ", ").replace(/:/g, ": ")}
+    "terrain": { "land": ${JSON.stringify(pool).replace(/,/g, ", ").replace(/:/g, ": ")} },
+    "tokens": { "tokens": ${JSON.stringify(tokens).replace(/,/g, ", ")} },
+    "ports": { "ports": ${JSON.stringify(ports).replace(/,/g, ", ").replace(/:/g, ": ")} }
   },
   "ports": [
     ${Array.from({ length: portCount }, () => `{ "edge": "auto", "type": "pool:ports" }`).join(",\n    ")}

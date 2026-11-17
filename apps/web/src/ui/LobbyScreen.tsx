@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { mapsForSeats } from "@settlers/maps";
-import type { LobbyState } from "@settlers/protocol";
+import { mergeFeatures } from "@settlers/engine";
+import { mapsForSeats, type SetupMode } from "@settlers/maps";
+import type { LobbyState, MapChoice } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { MapPreview } from "../board/MapPreview";
 import { SEAT_COLORS, errorText } from "../game/seats";
-import { MapPicker, mapSummary } from "./MapPicker";
+import { HouseRules } from "./HouseRules";
+import { toggleRule } from "./features";
+import { MapPicker, mapSummary, scenarioOptions } from "./MapPicker";
 
 /**
  * The lobby's map: everyone sees it; the host can change it while the lobby is open.
@@ -18,12 +21,14 @@ function LobbyMap({
 }: {
   lobby: LobbyState;
   isHost: boolean;
-  onChoose: (id: string) => Promise<void>;
+  onChoose: (choice: MapChoice) => Promise<void>;
 }) {
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const { map } = lobby;
-  const options = mapsForSeats(lobby.maxSeats);
+  const [setup, setSetup] = useState<SetupMode>(map.scenario?.setup ?? "fixed");
+  const options = [...mapsForSeats(lobby.maxSeats), ...scenarioOptions(lobby.maxSeats, setup)];
+  const value = map.scenario ? `scenario:${map.scenario.id}` : map.id;
   const canPick = isHost && lobby.status === "open" && options.length > 1;
 
   return (
@@ -45,13 +50,30 @@ function LobbyMap({
       {canPick && picking && (
         <>
           <p className="muted small">Changing the map asks everyone to ready up again.</p>
+          <fieldset className="count">
+            <legend>Seafaring setup</legend>
+            {(["fixed", "variable"] as const).map((m) => (
+              <label key={m}>
+                <input
+                  type="radio"
+                  name="setup"
+                  checked={setup === m}
+                  onChange={() => setSetup(m)}
+                />
+                {m === "fixed" ? "Fixed (the rulebook map)" : "Variable (random within its areas)"}
+              </label>
+            ))}
+          </fieldset>
           <MapPicker
             options={options}
-            value={map.id}
+            value={value}
             disabled={busy}
             onChange={(id) => {
               setBusy(true);
-              void onChoose(id).finally(() => {
+              const choice: MapChoice = id.startsWith("scenario:")
+                ? { scenario: id.slice("scenario:".length), setup }
+                : { builtin: id };
+              void onChoose(choice).finally(() => {
                 setBusy(false);
                 setPicking(false);
               });
@@ -181,10 +203,29 @@ export function LobbyScreen({ id }: { id: string }) {
       <LobbyMap
         lobby={lobby}
         isHost={isHost}
-        onChoose={(mapId) =>
-          call(socket.emitWithAck("lobby:map", { lobbyId: id, map: { builtin: mapId } }))
+        onChoose={(choice) => call(socket.emitWithAck("lobby:map", { lobbyId: id, map: choice }))}
+      />
+
+      <HouseRules
+        features={lobby.features}
+        editable={isHost && lobby.status === "open"}
+        onToggle={(feature, on) =>
+          void call(
+            socket.emitWithAck("lobby:features", {
+              lobbyId: id,
+              features: toggleRule(
+                mergeFeatures(lobby.map.def.features),
+                lobby.houseRules,
+                feature,
+                on,
+              ),
+            }),
+          )
         }
       />
+      {isHost && lobby.status === "open" && (
+        <p className="muted small">Changing house rules asks everyone to ready up again.</p>
+      )}
 
       <ol className="seats">
         {lobby.seats.map((s, i) => (

@@ -1,19 +1,23 @@
-import { buildGraph } from "./board/graph";
+import { buildMapGraph, type BoardGraph } from "./board/graph";
 import { nextInt, seedFromString } from "./rng";
 import type { Action, ActionSpec } from "./actions";
 import {
+  allowedFor,
+  handlerFor,
+  legalFor,
   reject,
+  routeAwardName,
+  runCheckWin,
   runTradeRatio,
   runVpSources,
-  type ActionHandler,
   type BuildOption,
   type RulesModule,
 } from "./module";
 import { MODULES } from "./modules";
+import { mergeFeatures } from "./types";
 import type {
   Actor,
   ApplyResult,
-  Decision,
   GameEvent,
   GameState,
   MapInput,
@@ -38,21 +42,15 @@ function cloneState(state: GameState): GameState {
   return { ...(JSON.parse(JSON.stringify(rest)) as Omit<GameState, "graph">), graph };
 }
 
-/** The decision's own module handles the action; otherwise the first module (in ruleset order) that can. */
-function findHandler(
-  state: GameState,
-  top: Decision,
-  type: Action["type"],
-): ActionHandler | undefined {
-  const owner = MODULES[top.module];
-  // The cast is safe: handlers are keyed by the action type they accept.
-  const own = owner?.actions?.[type] as ActionHandler | undefined;
-  if (own) return own;
-  for (const m of modulesOf(state)) {
-    const h = m.actions?.[type] as ActionHandler | undefined;
-    if (h) return h;
-  }
-  return undefined;
+/**
+ * The board graph for a map and ruleset: over sea hexes too when any module needs it (ships),
+ * otherwise land only. Clients rebuild it from a view with `graphFor(view.map, view.modules)`.
+ */
+export function graphFor(map: MapInput, moduleIds: readonly string[]): BoardGraph {
+  return buildMapGraph(
+    map.hexes,
+    moduleIds.some((id) => MODULES[id]?.needsSeaGraph),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -75,10 +73,14 @@ export function createGame(
   const state: GameState = {
     rulesetId: modules.map((m) => `${m.id}@${m.version}`).join("+"),
     modules: modules.map((m) => m.id),
-    options: { vpToWin: map.vpToWin, ...ruleset.options },
+    options: {
+      vpToWin: ruleset.options?.vpToWin ?? map.vpToWin,
+      // Defaults, then the map, then the ruleset (the lobby's house rules) win.
+      features: mergeFeatures(map.features, ruleset.options?.features),
+    },
     rng: seedFromString(seed),
     map,
-    graph: buildGraph(map.hexes.filter((h) => h.terrain !== "sea")),
+    graph: graphFor(map, ruleset.modules),
     players: [...seats],
     pieces: {},
     zones: {},
@@ -99,7 +101,8 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
 
   const top = state.decisions.at(-1);
   if (!top) return reject("GAME_OVER", "Nothing is waiting to be decided.");
-  if (!top.allowed.includes(action.type)) {
+  const modules = modulesOf(state);
+  if (!allowedFor(modules, top).includes(action.type)) {
     return reject("WRONG_DECISION", `${action.type} isn't allowed during ${top.kind}.`);
   }
 
@@ -109,10 +112,9 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
     return reject("NOT_YOUR_TURN", `Waiting on ${top.pendingFrom.join(", ")}.`);
   }
 
-  const handler = findHandler(state, top, action.type);
+  const handler = handlerFor(modules, top, action.type);
   if (!handler) return reject("UNKNOWN_ACTION", `No module handles ${action.type}.`);
 
-  const modules = modulesOf(state);
   const failure = handler.validate(state, player, action, { modules });
   if (failure) return failure;
 
@@ -120,33 +122,23 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
   const events: GameEvent[] = [];
   handler.apply(draft, player, action, { events, modules });
 
-  for (const m of modules) {
-    const winner = m.hooks?.checkWin?.(draft, modules);
-    if (winner) {
-      draft.winner = winner;
-      draft.decisions = [];
-      events.push({ type: "GAME_WON", text: `${winner} won the game`, data: { winner } });
-      break;
-    }
+  const winner = runCheckWin(modules, draft);
+  if (winner) {
+    draft.winner = winner;
+    draft.decisions = [];
+    events.push({ type: "GAME_WON", text: `${winner} won the game`, data: { winner } });
   }
   return { ok: true, state: draft, events };
 }
 
 /** Every concrete action `player` may send right now. */
 export function legalActions(state: GameState, player: PlayerId): ActionSpec[] {
-  const top = state.decisions.at(-1);
-  if (state.winner !== undefined || !top || !top.pendingFrom.includes(player)) return [];
+  return legalFor(state, player, modulesOf(state));
+}
 
-  const result: ActionSpec[] = [];
-  const modules = modulesOf(state);
-  for (const type of top.allowed) {
-    const handler = findHandler(state, top, type as Action["type"]);
-    if (!handler) continue;
-    for (const a of handler.candidates(state, player)) {
-      if (handler.validate(state, player, a, { modules }) === null) result.push(a);
-    }
-  }
-  return result;
+/** The longest-route award's display name for a ruleset ("Longest Trade Route" with ships). */
+export function routeAwardNameFor(moduleIds: readonly string[]): string {
+  return routeAwardName(moduleIds.flatMap((id) => (MODULES[id] ? [MODULES[id]] : [])));
 }
 
 /** Spatially valid builds, retaining unaffordable choices for cost previews. */
@@ -155,8 +147,8 @@ export function buildOptions(state: GameState, player: PlayerId): BuildOption[] 
   if (state.winner !== undefined || !top || !top.pendingFrom.includes(player)) return [];
   const modules = modulesOf(state);
   const result: BuildOption[] = [];
-  for (const type of top.allowed) {
-    const handler = findHandler(state, top, type as Action["type"]);
+  for (const type of allowedFor(modules, top)) {
+    const handler = handlerFor(modules, top, type as Action["type"]);
     if (!handler?.build) continue;
     for (const action of handler.candidates(state, player)) {
       const rejection = handler.validate(state, player, action, { modules });
@@ -273,5 +265,5 @@ export function toSnapshot(state: GameState): StateSnapshot {
 /** Rebuild a full GameState (including the graph) from a stored snapshot. */
 export function fromSnapshot(snapshot: StateSnapshot): GameState {
   const rest = JSON.parse(JSON.stringify(snapshot)) as StateSnapshot;
-  return { ...rest, graph: buildGraph(rest.map.hexes.filter((h) => h.terrain !== "sea")) };
+  return { ...rest, graph: graphFor(rest.map, rest.modules) };
 }

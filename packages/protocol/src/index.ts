@@ -4,11 +4,13 @@ import type {
   ActionSpec,
   BuildOption,
   ErrorCode,
+  FeatureOverrides,
+  Features,
   GameEvent,
   PlayerId,
   PlayerView,
 } from "@settlers/engine";
-import type { MapDef } from "@settlers/maps";
+import { FeaturesSchema, type MapDef } from "@settlers/maps";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -85,7 +87,11 @@ export const ActionSchema = z.discriminatedUnion("type", [
     resources: ResourceCounts,
   }),
   z.object({ type: z.literal("MOVE_ROBBER"), hex: VertexOrEdge }),
-  z.object({ type: z.literal("STEAL"), from: z.string().min(1).max(8) }),
+  z.object({
+    type: z.literal("STEAL"),
+    from: z.string().min(1).max(8),
+    what: z.string().min(1).max(20).optional(),
+  }),
   z.object({ type: z.literal("BUY_DEV_CARD") }),
   z.object({ type: z.literal("PLAY_KNIGHT") }),
   z.object({ type: z.literal("PLAY_ROAD_BUILDING") }),
@@ -101,6 +107,13 @@ export const ActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("RESPOND_TRADE"), accept: z.boolean() }),
   z.object({ type: z.literal("CONFIRM_TRADE"), with: z.string().min(1).max(8) }),
   z.object({ type: z.literal("CANCEL_TRADE") }),
+  z.object({ type: z.literal("BUILD_SHIP"), edge: VertexOrEdge }),
+  z.object({ type: z.literal("PLACE_SHIP"), edge: VertexOrEdge }),
+  z.object({ type: z.literal("PLACE_FREE_SHIP"), edge: VertexOrEdge }),
+  z.object({ type: z.literal("MOVE_SHIP"), from: VertexOrEdge, to: VertexOrEdge }),
+  z.object({ type: z.literal("MOVE_PIRATE"), hex: VertexOrEdge.nullable() }),
+  z.object({ type: z.literal("CHOOSE_GOLD"), resources: ResourceCounts }),
+  z.object({ type: z.literal("PLACE_HARBOR"), edge: VertexOrEdge }),
 ]);
 // Compile-time check that the schema and the engine agree.
 type _SchemaMatchesEngine = [z.infer<typeof ActionSchema>] extends [Action]
@@ -125,10 +138,21 @@ export const CreateLobbySchema = z.object({
     .default(0),
 });
 export const LobbyRefSchema = z.object({ lobbyId: Id });
-/** Where a lobby's map comes from. M8b adds `{ mine: id }` for maps saved in the editor. */
-export const MapChoiceSchema = z.object({ builtin: Id }).strict();
+/**
+ * Where a lobby's map comes from: a built-in map, or a seafaring scenario (the server picks its
+ * 3- or 4-player map from the seat count). M8b adds `{ mine: id }` for maps saved in the editor.
+ */
+export const MapChoiceSchema = z.union([
+  z.object({ builtin: Id }).strict(),
+  z.object({ scenario: Id, setup: z.enum(["fixed", "variable"]) }).strict(),
+]);
 /** Host only, while the lobby is open. Clears every ready flag. */
 export const SetLobbyMapSchema = z.object({ lobbyId: Id, map: MapChoiceSchema });
+/**
+ * Host only, while open: the lobby's house rules (spec 014), each overriding the map's value.
+ * Sent whole: a switch left out goes back to the map's value. Clears every ready flag.
+ */
+export const SetLobbyFeaturesSchema = z.object({ lobbyId: Id, features: FeaturesSchema });
 export const TakeSeatSchema = z.object({
   lobbyId: Id,
   /** Seat index, or null to stand up. */
@@ -155,6 +179,7 @@ export type CreateLobbyParsed = z.infer<typeof CreateLobbySchema>;
 export type LobbyRef = z.infer<typeof LobbyRefSchema>;
 export type MapChoice = z.infer<typeof MapChoiceSchema>;
 export type SetLobbyMap = z.infer<typeof SetLobbyMapSchema>;
+export type SetLobbyFeatures = z.infer<typeof SetLobbyFeaturesSchema>;
 export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
 export type JoinGame = z.infer<typeof JoinGameSchema>;
@@ -193,6 +218,8 @@ export interface LobbyMap {
   vpToWin: number;
   /** The unresolved definition, for the preview. */
   def: MapDef;
+  /** Set when the map is a seafaring scenario's: which one, and the setup mode. */
+  scenario?: { id: string; setup: "fixed" | "variable" };
 }
 
 export interface LobbyState {
@@ -204,6 +231,10 @@ export interface LobbyState {
   turnSeconds: number;
   seats: (LobbySeat | null)[];
   map: LobbyMap;
+  /** The switches the game will start with: the map's, then the host's house rules. */
+  features: Features;
+  /** Just the host's overrides, for the house-rules toggles. */
+  houseRules: FeatureOverrides;
   status: "open" | "started";
   /** Set once the host starts the game. */
   gameId: string | null;
@@ -316,6 +347,7 @@ export interface ClientToServerEvents {
   "lobby:seat": (payload: TakeSeat, reply: Reply) => void;
   "lobby:ready": (payload: SetReady, reply: Reply) => void;
   "lobby:map": (payload: SetLobbyMap, reply: Reply) => void;
+  "lobby:features": (payload: SetLobbyFeatures, reply: Reply) => void;
   "lobby:start": (payload: LobbyRef, reply: Reply<{ gameId: string }>) => void;
   "game:join": (payload: JoinGame, reply: Reply<{ you: PlayerId | "spectator" }>) => void;
   "game:action": (payload: GameAction, reply: Reply<{ seq: number }>) => void;

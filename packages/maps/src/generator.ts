@@ -8,8 +8,10 @@ import {
   type Hex,
 } from "@settlers/engine";
 import {
+  type Constraint,
   type MapDef,
   type ResolvedHex,
+  type ResolvedMarker,
   type ResolvedMap,
   type TerrainType,
   type ResolvedPort,
@@ -89,77 +91,134 @@ function coastalEdgeIds(landHexes: ResolvedHex[]): string[] {
   return result;
 }
 
+/** "pool:<name>" → name; anything else → undefined. */
+const poolName = (v: unknown): string | undefined =>
+  typeof v === "string" && v.startsWith("pool:") ? v.slice("pool:".length) : undefined;
+
+const LOW_TOKENS = new Set([2, 3, 11, 12]);
+
+/** Does the board break one of the map's token rules? */
+function breaksConstraint(
+  constraint: Constraint,
+  hexes: ResolvedHex[],
+  graph: ReturnType<typeof buildGraph>,
+): boolean {
+  if (typeof constraint === "object") {
+    // "no-tokens-on-hexes": none of the listed tokens on the listed hexes.
+    const listed = new Set(constraint.hexes);
+    return hexes.some(
+      (h) => listed.has(hexKey(h)) && h.token !== undefined && constraint.tokens.includes(h.token),
+    );
+  }
+  switch (constraint) {
+    case "no-adjacent-red-tokens":
+      return hasRedTokenViolation(hexes, graph);
+    case "no-red-on-gold":
+      return hexes.some(
+        (h) => h.terrain === "gold" && h.token !== undefined && RED_TOKENS.has(h.token),
+      );
+    case "no-low-tokens-on-forest-pasture":
+      return hexes.some(
+        (h) =>
+          (h.terrain === "forest" || h.terrain === "pasture") &&
+          h.token !== undefined &&
+          LOW_TOKENS.has(h.token),
+      );
+    default:
+      return false;
+  }
+}
+
+/**
+ * Resolve a map definition into a concrete board with the game RNG: draw each terrain pool into
+ * its own hexes, then each token pool (reshuffling every token pool until the map's constraints
+ * hold), then ports. Pools are drawn in name order, so a map with one pool of each kind uses the
+ * RNG exactly as before named pools existed (spec 017).
+ */
 export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng: RngState } {
-  const fixedLandDefs = def.hexes.filter(
-    (h) => h.terrain !== "sea" && !String(h.terrain).startsWith("pool:"),
-  );
-  const poolLandDefs = def.hexes.filter((h) => String(h.terrain) === "pool:land");
-  const seaDefs = def.hexes.filter((h) => h.terrain === "sea");
+  let r = rng;
 
   // --- Terrain ---
-  let r = rng;
-  let shuffledTerrain: TerrainType[] = [];
-  if (poolLandDefs.length > 0) {
-    if (!def.pools?.land) throw new Error("Map uses pool:land but defines no pools.land");
-    const landPool = expandPool<TerrainType>(
-      def.pools.land as Partial<Record<TerrainType, number>>,
+  const terrainOf = new Map<string, TerrainType>();
+  for (const h of def.hexes) {
+    if (!poolName(h.terrain)) terrainOf.set(hexKey(h), h.terrain as TerrainType);
+  }
+  for (const name of Object.keys(def.pools?.terrain ?? {}).sort()) {
+    const slots = def.hexes.filter((h) => poolName(h.terrain) === name);
+    if (slots.length === 0) continue;
+    const pool = expandPool<TerrainType>(
+      def.pools!.terrain![name] as Partial<Record<TerrainType, number>>,
     );
-    if (landPool.length !== poolLandDefs.length) {
+    if (pool.length !== slots.length) {
       throw new Error(
-        `pools.land has ${landPool.length} tiles but map has ${poolLandDefs.length} pool:land hexes`,
+        `terrain pool ${name} has ${pool.length} tiles but ${slots.length} hexes use it`,
       );
     }
-    ({ result: shuffledTerrain, rng: r } = shuffle(landPool, r));
+    let shuffled: TerrainType[];
+    ({ result: shuffled, rng: r } = shuffle(pool, r));
+    slots.forEach((h, i) => terrainOf.set(hexKey(h), shuffled[i]!));
+  }
+  for (const h of def.hexes) {
+    if (!terrainOf.has(hexKey(h))) throw new Error(`No terrain pool for hex ${hexKey(h)}`);
   }
 
-  const landHexes: ResolvedHex[] = [
-    ...fixedLandDefs.map((h) => ({ q: h.q, r: h.r, terrain: h.terrain as TerrainType })),
-    ...poolLandDefs.map((h, i) => ({ q: h.q, r: h.r, terrain: shuffledTerrain[i]! })),
+  const resolved = (h: { q: number; r: number }) => terrainOf.get(hexKey(h))!;
+  // Land in a fixed order: fixed hexes first, then each terrain pool's hexes (pools by name), each
+  // in the order the map lists them. Tokens are dealt in this order too.
+  const fixedFirst = [
+    ...def.hexes.filter((h) => !poolName(h.terrain)),
+    ...Object.keys(def.pools?.terrain ?? {})
+      .sort()
+      .flatMap((name) => def.hexes.filter((h) => poolName(h.terrain) === name)),
   ];
-  const seaHexes: ResolvedHex[] = seaDefs.map((h) => ({
-    q: h.q,
-    r: h.r,
-    terrain: "sea" as TerrainType,
-  }));
-
+  const landDefs = fixedFirst.filter((h) => resolved(h) !== "sea");
+  const landHexes: ResolvedHex[] = landDefs.map((h) => ({ q: h.q, r: h.r, terrain: resolved(h) }));
+  const seaHexes: ResolvedHex[] = def.hexes
+    .filter((h) => resolved(h) === "sea")
+    .map((h) => ({ q: h.q, r: h.r, terrain: "sea" as TerrainType }));
   const graph = buildGraph(landHexes);
 
-  // --- Tokens (with red-token constraint retry) ---
-  const tokenPool: number[] = def.pools?.tokens?.slice() ?? [];
-  const needsToken = landHexes.filter((h) => {
-    if (h.terrain === "desert") return false;
-    const orig = def.hexes.find((d) => d.q === h.q && d.r === h.r);
-    return orig?.token === "pool:tokens";
-  });
-
-  if (needsToken.length > 0) {
-    if (tokenPool.length !== needsToken.length) {
-      throw new Error(
-        `pools.tokens has ${tokenPool.length} tokens but map needs ${needsToken.length}`,
-      );
+  // --- Tokens (reshuffled until the constraints hold) ---
+  // A desert never takes a token, even on a hex that asks for one from a pool.
+  const tokenSlots = new Map<string, ResolvedHex[]>();
+  for (const [i, h] of landDefs.entries()) {
+    const name = poolName(h.token);
+    if (!name || landHexes[i]!.terrain === "desert") continue;
+    tokenSlots.set(name, [...(tokenSlots.get(name) ?? []), landHexes[i]!]);
+  }
+  const tokenPools = [...tokenSlots.keys()].sort();
+  for (const name of tokenPools) {
+    const pool = def.pools?.tokens?.[name] ?? [];
+    const need = tokenSlots.get(name)!.length;
+    if (pool.length !== need) {
+      throw new Error(`token pool ${name} has ${pool.length} tokens but the map needs ${need}`);
     }
-    const checkConstraint = def.constraints?.includes("no-adjacent-red-tokens") ?? false;
+  }
+  // Fixed tokens first, so constraints see the whole board.
+  for (const [i, h] of landDefs.entries()) {
+    if (typeof h.token === "number") landHexes[i]!.token = h.token;
+  }
+  if (tokenPools.length > 0) {
+    const constraints = def.constraints ?? [];
     let attempts = 0;
-    let shuffledTokens: number[];
     do {
       if (attempts > MAX_RETRIES) {
         throw new Error(
-          `Could not satisfy no-adjacent-red-tokens constraint after ${MAX_RETRIES} attempts`,
+          `Could not satisfy ${constraints.map((c) => (typeof c === "string" ? c : c.rule)).join(", ")} after ${MAX_RETRIES} attempts`,
         );
       }
-      ({ result: shuffledTokens, rng: r } = shuffle(tokenPool, r));
-      let idx = 0;
-      for (const h of needsToken) {
-        h.token = shuffledTokens[idx++]!;
+      for (const name of tokenPools) {
+        let shuffled: number[];
+        ({ result: shuffled, rng: r } = shuffle(def.pools!.tokens![name]!, r));
+        tokenSlots.get(name)!.forEach((h, i) => (h.token = shuffled[i]!));
       }
       attempts++;
-    } while (checkConstraint && hasRedTokenViolation(landHexes, graph));
+    } while (constraints.some((c) => breaksConstraint(c, landHexes, graph)));
   }
 
-  // Apply fixed tokens (non-pool)
-  for (const h of landHexes) {
-    const orig = def.hexes.find((d) => d.q === h.q && d.r === h.r);
-    if (typeof orig?.token === "number") h.token = orig.token;
+  // Region labels
+  for (const [i, h] of landDefs.entries()) {
+    if (h.region !== undefined) landHexes[i]!.region = h.region;
   }
 
   // --- Ports ---
@@ -175,14 +234,25 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
     offset = pick;
   }
 
-  const portPoolEntries = expandPool<PortType>(
-    (def.pools?.ports ?? {}) as Partial<Record<PortType, number>>,
-  );
-  let shuffledPortTypes: PortType[];
-  ({ result: shuffledPortTypes, rng: r } = shuffle(portPoolEntries, r));
+  const shuffledPorts = new Map<string, PortType[]>();
+  for (const name of Object.keys(def.pools?.ports ?? {}).sort()) {
+    let shuffled: PortType[];
+    ({ result: shuffled, rng: r } = shuffle(
+      expandPool<PortType>(def.pools!.ports![name] as Partial<Record<PortType, number>>),
+      r,
+    ));
+    shuffledPorts.set(name, shuffled);
+  }
 
   let autoIndex = 0;
-  let poolIndex = 0;
+  const used = new Map<string, number>();
+  /** The next port from a pool, in its shuffled order. */
+  const drawPort = (name: string): PortType => {
+    const pool = shuffledPorts.get(name) ?? [];
+    const i = used.get(name) ?? 0;
+    used.set(name, i + 1);
+    return pool.length > 0 ? pool[i % pool.length]! : "any3to1";
+  };
   const ports: ResolvedPort[] = portDefs.map((p) => {
     let edge = p.edge;
     if (edge === "auto") {
@@ -190,12 +260,27 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       edge = coastal[slot % coastal.length]!;
       autoIndex++;
     }
-    const type =
-      p.type === "pool:ports"
-        ? (shuffledPortTypes[poolIndex++ % shuffledPortTypes.length] ?? "any3to1")
-        : (p.type as PortType);
-    return { edgeId: edge, type };
+    const name = poolName(p.type);
+    return { edgeId: edge, type: name ? drawPort(name) : (p.type as PortType) };
   });
+
+  // Markers (spec 018): a harbor lying on the water takes its type from a port pool too.
+  const markers: ResolvedMarker[] | undefined = def.markers?.map((m) => {
+    const { data, ...rest } = m;
+    if (!data) return rest;
+    const { port, ...other } = data;
+    if (port === undefined) return { ...rest, data: other };
+    const name = poolName(port);
+    return { ...rest, data: { ...other, port: name ? drawPort(name) : (port as PortType) } };
+  });
+
+  // The robber starts on a terrain ("desert"), a hex ("q,r"), or the hex with a token ("token:12").
+  let robberStart = def.robberStart;
+  const tokenStart = /^token:(\d+)$/.exec(robberStart ?? "");
+  if (tokenStart) {
+    const hex = landHexes.find((h) => h.token === Number(tokenStart[1]));
+    robberStart = hex ? hexKey(hex) : undefined;
+  }
 
   return {
     map: {
@@ -205,7 +290,10 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       vpToWin: def.vpToWin,
       hexes: [...landHexes, ...seaHexes],
       ports,
-      ...(def.robberStart !== undefined ? { robberStart: def.robberStart } : {}),
+      ...(robberStart !== undefined ? { robberStart } : {}),
+      ...(def.features !== undefined ? { features: def.features } : {}),
+      ...(def.scenario !== undefined ? { scenario: def.scenario } : {}),
+      ...(markers !== undefined ? { markers } : {}),
       modules: def.modules,
     },
     rng: r,

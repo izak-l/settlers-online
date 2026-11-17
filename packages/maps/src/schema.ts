@@ -30,30 +30,123 @@ export const HexDefSchema = z.object({
   terrain: TerrainField,
   token: TokenField.optional(),
   hidden: z.boolean().optional(),
+  /** A labelled area of the map (seafaring: islands and regions, spec 015). */
+  region: z.string().min(1).max(24).optional(),
 });
+
+const PortType = z.enum(["any3to1", "wood2to1", "brick2to1", "sheep2to1", "wheat2to1", "ore2to1"]);
 
 export const PortDefSchema = z.object({
   edge: z.union([z.string(), z.literal("auto")]),
-  type: z.union([
-    z.enum(["any3to1", "wood2to1", "brick2to1", "sheep2to1", "wheat2to1", "ore2to1"]),
-    z.string().startsWith("pool:"),
-  ]),
+  type: z.union([PortType, z.string().startsWith("pool:")]),
 });
+
+/** "q,r": a hex on this map. */
+const HexKeyString = z.string().regex(/^-?\d+,-?\d+$/, "a hex as q,r");
+
+/**
+ * Something on the board at the start, read by a scenario module: a VP token, a face-down
+ * development card, or a harbor (with its type, fixed or drawn from a port pool) lying on a sea
+ * edge (spec 018); or a village on a corner, with its number token (spec 019).
+ */
+export const MarkerDefSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9-]{1,32}$/, "a marker id: lowercase, digits, -"),
+    kind: z.enum(["vp-token", "dev-card", "harbor", "village"]),
+    at: z.union([
+      z.object({ edge: z.string().min(1).max(64) }).strict(),
+      z.object({ vertex: z.string().min(1).max(64) }).strict(),
+      z.object({ hex: HexKeyString }).strict(),
+    ]),
+    data: z
+      .object({
+        port: z.union([PortType, z.string().startsWith("pool:")]),
+        token: z.number().int().min(2).max(12),
+      })
+      .partial()
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 export const LandPoolSchema = z.record(TerrainValue, z.number().int().nonnegative());
 
-export const PortPoolSchema = z.record(
-  z.enum(["any3to1", "wood2to1", "brick2to1", "sheep2to1", "wheat2to1", "ore2to1"]),
-  z.number().int().nonnegative(),
-);
+export const PortPoolSchema = z.record(PortType, z.number().int().nonnegative());
 
+const PoolName = z.string().regex(/^[a-z][a-z0-9-]{0,23}$/, "a pool name: lowercase, digits, -");
+
+/**
+ * Named pools (spec 017). A hex's `"pool:<name>"` terrain draws from `terrain[name]`, its
+ * `"pool:<name>"` token from `tokens[name]`, and a port's `"pool:<name>"` type from `ports[name]`.
+ * Each pool is drawn only into its own hexes, so a map can have a main-island pool and an
+ * islands pool. Most maps use one of each: `land`, `tokens` and `ports`.
+ */
 export const PoolsSchema = z.object({
-  land: LandPoolSchema.optional(),
-  tokens: z.array(z.number().int().min(2).max(12)).optional(),
-  ports: PortPoolSchema.optional(),
+  terrain: z.record(PoolName, LandPoolSchema).optional(),
+  tokens: z.record(PoolName, z.array(z.number().int().min(2).max(12))).optional(),
+  ports: z.record(PoolName, PortPoolSchema).optional(),
 });
 
-const ConstraintName = z.enum(["no-adjacent-red-tokens"]);
+/**
+ * Rules the generator keeps when it draws tokens (it reshuffles until they hold):
+ * no 6/8 next to each other; no 6/8 on gold; no 2, 3, 11 or 12 on forest or pasture.
+ */
+const ConstraintName = z.enum([
+  "no-adjacent-red-tokens",
+  "no-red-on-gold",
+  "no-low-tokens-on-forest-pasture",
+]);
+
+/** None of these tokens on the listed hexes (scenario 5: no 5, 6, 8 or 9 on three marked hexes). */
+const TokensOffHexes = z
+  .object({
+    rule: z.literal("no-tokens-on-hexes"),
+    tokens: z.array(z.number().int().min(2).max(12)).min(1),
+    hexes: z.array(HexKeyString).min(1),
+  })
+  .strict();
+
+export const ConstraintSchema = z.union([ConstraintName, TokensOffHexes]);
+const RegionName = z.string().min(1).max(24);
+
+/**
+ * Scenario settings read by the seafaring module (spec 015). Strict, so a typo fails validation
+ * instead of silently using a default.
+ */
+export const ScenarioSchema = z
+  .object({
+    /** VP for a player's first settlement in each region that isn't one of their home regions. */
+    islandBonus: z.number().int().min(0).max(2),
+    /** Home regions for everyone, or "setup": where each player places starting settlements. */
+    home: z.union([z.literal("setup"), z.object({ regions: z.array(RegionName).min(1) }).strict()]),
+    /** Starting settlements must touch one of these regions. */
+    setupRegions: z.array(RegionName).min(1),
+    /** Where the pirate starts (a sea hex). Omitted: no pirate. */
+    pirateStart: z.union([HexKeyString, z.literal("frame")]),
+    /** Fog (spec 016): the face-down stacks drawn as fog hexes are revealed. */
+    fog: z
+      .object({
+        terrain: z.record(TerrainValue, z.number().int().nonnegative()),
+        tokens: z.array(z.number().int().min(2).max(12)),
+      })
+      .strict(),
+    /** A newly revealed land hex gives one card of what it produces. */
+    discoveryReward: z.boolean(),
+  })
+  .partial()
+  .strict();
+
+/** Base-game feature switches (spec 014); omitted ones stay on. */
+export const FeaturesSchema = z
+  .object({
+    devCards: z.boolean(),
+    robber: z.boolean(),
+    longestRoad: z.boolean(),
+    largestArmy: z.boolean(),
+    ports: z.boolean(),
+  })
+  .partial()
+  .strict();
 
 export const MapDefSchema = z.object({
   id: z.string().min(1).max(64),
@@ -77,7 +170,10 @@ export const MapDefSchema = z.object({
   pools: PoolsSchema.optional(),
   ports: z.array(PortDefSchema).max(MAP_LIMITS.hexes).optional(),
   robberStart: z.string().optional(),
-  constraints: z.array(ConstraintName).optional(),
+  constraints: z.array(ConstraintSchema).optional(),
+  features: FeaturesSchema.optional(),
+  scenario: ScenarioSchema.optional(),
+  markers: z.array(MarkerDefSchema).max(MAP_LIMITS.hexes).optional(),
   modules: z.array(z.string()),
 });
 
@@ -85,6 +181,8 @@ export type TerrainType = z.infer<typeof TerrainValue>;
 export type HexDef = z.infer<typeof HexDefSchema>;
 export type PortDef = z.infer<typeof PortDefSchema>;
 export type MapDef = z.infer<typeof MapDefSchema>;
+export type MarkerDef = z.infer<typeof MarkerDefSchema>;
+export type Constraint = z.infer<typeof ConstraintSchema>;
 
 /** A hex with all pool references resolved to concrete values. */
 export interface ResolvedHex {
@@ -93,6 +191,7 @@ export interface ResolvedHex {
   terrain: TerrainType;
   token?: number;
   hidden?: boolean;
+  region?: string;
 }
 
 /** A port with its edge resolved to a concrete hex-pair key. */
@@ -109,5 +208,13 @@ export interface ResolvedMap {
   hexes: ResolvedHex[];
   ports: ResolvedPort[];
   robberStart?: string;
+  features?: z.infer<typeof FeaturesSchema>;
+  scenario?: z.infer<typeof ScenarioSchema>;
+  /** Markers with every pool resolved (a harbor's `data.port` is a concrete port type). */
+  markers?: ResolvedMarker[];
   modules: string[];
+}
+
+export interface ResolvedMarker extends Omit<MarkerDef, "data"> {
+  data?: { port?: ResolvedPort["type"] | undefined; token?: number | undefined };
 }

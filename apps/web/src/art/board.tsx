@@ -5,7 +5,17 @@
  */
 import type { Point } from "../board/geometry";
 
-const TERRAINS = ["forest", "pasture", "fields", "hills", "mountains", "desert", "sea"];
+const TERRAINS = [
+  "forest",
+  "pasture",
+  "fields",
+  "hills",
+  "mountains",
+  "desert",
+  "sea",
+  "gold",
+  "fog",
+];
 
 /** One radial gradient per terrain (lighter in the middle), referenced as url(#tg-<terrain>). */
 export function TerrainDefs() {
@@ -126,6 +136,31 @@ function Wave({ at: [x, y] }: { at: Point }) {
   );
 }
 
+/** A gold nugget: a faceted lump with a glint. */
+function Nugget({ at: [x, y], s = 1 }: { at: Point; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`}>
+      <path d="M-8 4 L-6 -4 L1 -7 L8 -2 L7 5 L-1 7 Z" fill="#d9a81e" />
+      <path d="M1 -7 L8 -2 L7 5 L1 1 Z" fill="#000" opacity="0.15" />
+      <path d="M-5 -2 L-2 -4" stroke="#fff6d0" strokeWidth={1.4} strokeLinecap="round" />
+    </g>
+  );
+}
+
+/** A small stream winding across a gold field. */
+function Stream({ cx, cy }: { cx: number; cy: number }) {
+  return (
+    <path
+      d={`M${cx - 44} ${cy + 22} q14 -10 26 -2 t26 0 t24 -6`}
+      stroke="#7cc0e8"
+      strokeWidth={3}
+      fill="none"
+      strokeLinecap="round"
+      opacity={0.85}
+    />
+  );
+}
+
 /** The illustration for one hex, centred on (cx, cy). */
 export function TerrainArt({ terrain, at: [cx, cy] }: { terrain: string; at: Point }) {
   const p = (i: number): Point => [cx + RING[i]![0], cy + RING[i]![1]];
@@ -181,6 +216,38 @@ export function TerrainArt({ terrain, at: [cx, cy] }: { terrain: string; at: Poi
       break;
     case "sea":
       body = [0, 4, 5].map((i) => <Wave key={i} at={p(i)} />);
+      break;
+    case "fog":
+      // A face-down hex (spec 016): drifting mist and a question mark.
+      body = (
+        <>
+          {[0, 2, 5].map((i) => (
+            <path
+              key={i}
+              d={`M${p(i)[0] - 16} ${p(i)[1]} q8 -6 16 0 t16 0`}
+              stroke="#ffffff"
+              strokeOpacity={0.7}
+              strokeWidth={3}
+              fill="none"
+              strokeLinecap="round"
+            />
+          ))}
+          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" className="fog-mark">
+            ?
+          </text>
+        </>
+      );
+      break;
+    case "gold":
+      body = (
+        <>
+          <Stream cx={cx} cy={cy} />
+          <Nugget at={p(0)} />
+          <Nugget at={p(1)} s={1.2} />
+          <Nugget at={p(2)} s={0.9} />
+          <Nugget at={p(6)} s={0.8} />
+        </>
+      );
       break;
   }
   return <g className="art">{body}</g>;
@@ -259,6 +326,39 @@ export function Building({ at: [x, y], color, city }: { at: Point; color: string
   );
 }
 
+/**
+ * A ship on a sea edge: a hull in the seat colour with a white sail, turned to lie along the
+ * edge. `angle` is the edge's direction in degrees.
+ */
+export function Ship({ at: [x, y], angle, color }: { at: Point; angle: number; color: string }) {
+  // Keep the sail upright: flip the hull when the edge points left.
+  const a = ((angle % 180) + 180) % 180;
+  const tilt = a > 90 ? a - 180 : a;
+  return (
+    <g className="ship-piece" transform={`translate(${x} ${y}) rotate(${tilt}) scale(1.35)`}>
+      <path d="M-15 2 H15 L10 9 H-10 Z" fill={color} className="outline" />
+      <path d="M0 2 H15 L10 9 H0 Z" fill="#000" opacity="0.18" />
+      <path d="M-1 1 V-14" stroke="#4a3520" strokeWidth={1.6} />
+      <path d="M0 -14 L10 -1 H0 Z" fill="#f7f4ea" className="sail" />
+      <path d="M-1.5 -12 L-9 -1 H-1.5 Z" fill="#e8e3d3" className="sail" />
+    </g>
+  );
+}
+
+/** The pirate: a dark ship with a black sail. Positioned by the caller. */
+export function PirateShip() {
+  return (
+    <g className="pirate-figure">
+      <ellipse cx={0} cy={13} rx={16} ry={3.5} fill="#000" opacity="0.3" />
+      <path d="M-18 4 H18 L12 12 H-12 Z" className="pirate-hull" />
+      <path d="M-1 3 V-18" stroke="#2b2118" strokeWidth={2} />
+      <path d="M0 -18 L13 -2 H0 Z" className="pirate-sail" />
+      <path d="M-2 -16 L-12 -2 H-2 Z" className="pirate-sail" />
+      <circle cx={5} cy={-8} r={2} fill="#f2f2f2" />
+    </g>
+  );
+}
+
 /** The robber: a hooded figure with a ground shadow. Positioned by the caller. */
 export function RobberFigure() {
   return (
@@ -267,6 +367,31 @@ export function RobberFigure() {
       <path d="M-10 15 C-10 2 -7 -4 -5 -6 L5 -6 C7 -4 10 2 10 15 Z" className="robber-body" />
       <circle cx={0} cy={-11} r={7} className="robber-body" />
       <path d="M-4.5 -10 Q0 -6 4.5 -10" stroke="#fff6" strokeWidth={1.2} fill="none" />
+    </g>
+  );
+}
+
+/** A VP token lying on the water (spec 018): a red medallion with a gold star. */
+export function VpTokenArt({ at: [x, y] }: { at: Point }) {
+  const star = Array.from({ length: 10 }, (_, i) => {
+    const r = i % 2 === 0 ? 6.5 : 2.8;
+    const a = (Math.PI / 5) * i - Math.PI / 2;
+    return `${(x + r * Math.cos(a)).toFixed(2)},${(y + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+  return (
+    <g className="marker vp-marker">
+      <circle cx={x} cy={y} r={11} className="vp-medal" />
+      <polygon points={star} className="vp-star" />
+    </g>
+  );
+}
+
+/** A face-down development card lying on the water (spec 018). */
+export function BoardCardArt({ at: [x, y] }: { at: Point }) {
+  return (
+    <g className="marker card-marker" transform={`translate(${x} ${y}) rotate(-12)`}>
+      <rect x={-8} y={-11} width={16} height={22} rx={2.5} className="card-back" />
+      <rect x={-5} y={-8} width={10} height={16} rx={1.5} className="card-back-inner" />
     </g>
   );
 }

@@ -285,6 +285,7 @@ const TITLES: Record<Pick["purpose"], string> = {
   offer: "Offer a trade",
   bounty: "Take two from the bank",
   monopoly: "Name a resource",
+  gold: "Gold: pick from the bank",
 };
 
 const HINTS: Record<Pick["purpose"], string> = {
@@ -293,6 +294,7 @@ const HINTS: Record<Pick["purpose"], string> = {
   offer: "Tap cards in your hand to give, and bank cards for what you want.",
   bounty: "Tap two bank cards (the same one twice is fine).",
   monopoly: "Tap the resource you want everyone's cards of.",
+  gold: "Tap the bank cards you want (the same one more than once is fine).",
 };
 
 function Tray({
@@ -379,6 +381,11 @@ function Tray({
         (a) => a.type === "PLAY_YEAR_OF_PLENTY" && sameCards(a.resources, want),
       );
       break;
+    case "gold":
+      label = `Take ${total(want)} / ${pick.wantLimit ?? 0}`;
+      ready = total(want) === pick.wantLimit;
+      action = { type: "CHOOSE_GOLD", resources: want };
+      break;
     case "monopoly":
       label = "Play Monopoly";
       if (wantKey) {
@@ -425,6 +432,7 @@ function Tray({
         <div className="tray-piles">
           {purpose !== "bounty" &&
             purpose !== "monopoly" &&
+            purpose !== "gold" &&
             pile("give", give, purpose === "discard" ? "Discarding" : "You give")}
           {usesBank && pile("want", want, purpose === "monopoly" ? "Resource" : "You get")}
         </div>
@@ -451,7 +459,7 @@ function Tray({
         >
           {label}
         </button>
-        {purpose !== "discard" && (
+        {purpose !== "discard" && purpose !== "gold" && (
           <button className="link" onClick={() => setPick(null)}>
             Cancel
           </button>

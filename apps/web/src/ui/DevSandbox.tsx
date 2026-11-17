@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { BASE_FEATURES, type Features } from "@settlers/engine";
 import { DEFAULT_MAP_ID, type MapDef } from "@settlers/maps";
 import { LocalGame } from "../game/LocalGame";
 import { GameView } from "./GameView";
+import { HouseRules } from "./HouseRules";
 import { MapPicker } from "./MapPicker";
 import { sandboxMapOptions } from "./sandboxMaps";
 
@@ -26,7 +28,13 @@ export function DevSandbox() {
   const [count, setCount] = useState(4);
   const [seed, setSeed] = useState("");
   const [mapId, setMapId] = useState(DEFAULT_MAP_ID);
-  const [started, setStarted] = useState<{ count: number; seed: string; def: MapDef } | null>(null);
+  const [features, setFeatures] = useState<Features>(BASE_FEATURES);
+  const [started, setStarted] = useState<{
+    count: number;
+    seed: string;
+    def: MapDef;
+    features: Features;
+  } | null>(null);
   const options = useMemo(() => sandboxMapOptions(DRAFTS, count), [count]);
   const chosen = options.find((o) => o.id === mapId && o.disabledReason === undefined);
   const client = useMemo(
@@ -36,6 +44,7 @@ export function DevSandbox() {
             Array.from({ length: started.count }, (_, i) => `Seat ${i + 1}`),
             started.seed,
             started.def,
+            started.features,
           )
         : null,
     [started],
@@ -53,6 +62,7 @@ export function DevSandbox() {
           count,
           seed: seed.trim() || Math.random().toString(36).slice(2, 10),
           def: chosen.def,
+          features,
         });
       }}
     >
@@ -78,6 +88,11 @@ export function DevSandbox() {
         <span className="muted small">Map (drafts come from packages/maps/maps/drafts/)</span>
         <MapPicker options={options} value={mapId} onChange={setMapId} />
       </div>
+      <HouseRules
+        features={features}
+        editable
+        onToggle={(id, on) => setFeatures((f) => ({ ...f, [id]: on }))}
+      />
       <button type="submit" className="primary" disabled={!chosen}>
         {chosen ? `Start on ${chosen.name}` : "Pick a map that fits the seat count"}
       </button>

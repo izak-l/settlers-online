@@ -1,8 +1,8 @@
 /**
- * Picking cards for an action, before it's sent: discards, trades, Bounty and Monopoly.
+ * Picking cards for an action, before it's sent: discards, trades, Bounty, Monopoly and gold.
  * These limits only shape the controls; the server validates the action that's sent.
  */
-export type PickPurpose = "discard" | "bank" | "offer" | "bounty" | "monopoly";
+export type PickPurpose = "discard" | "bank" | "offer" | "bounty" | "monopoly" | "gold";
 
 export interface Pick {
   purpose: PickPurpose;

@@ -1,4 +1,13 @@
-import { reject, type ActionHandlers } from "../../module";
+import {
+  legalFor,
+  pieceLimits,
+  reject,
+  routePieceTypes,
+  runCanPlace,
+  runOnPlace,
+  type ActionHandlers,
+  type RulesModule,
+} from "../../module";
 import { nextInt } from "../../rng";
 import type { GameEvent, GameState, PlayerId, Rejection, Resources } from "../../types";
 import { BASE_RESOURCES, COSTS, DEV_CARD_NAMES, DEV_DECK, PIECE_LIMITS } from "./data";
@@ -11,11 +20,11 @@ import {
   countOwned,
   decision,
   describe,
+  featureOn,
   handOf,
   pay,
   popDecision,
-  roadAt,
-  roadConnects,
+  roadSpotOk,
   transfer,
 } from "./helpers";
 import { moveRobberDecision } from "./robber";
@@ -58,7 +67,11 @@ export function vpCards(state: GameState, player: PlayerId): number {
   );
 }
 
+const DEV_CARDS_OFF = () =>
+  reject("WRONG_DECISION", "Development cards are switched off in this game.");
+
 function checkPlayable(state: GameState, player: PlayerId, card: string): Rejection | null {
+  if (!featureOn(state, "devCards")) return DEV_CARDS_OFF();
   if (baseState(state).playedDevThisTurn) {
     return reject("INVALID_CHOICE", "You've already played a development card this turn.");
   }
@@ -77,13 +90,26 @@ function playCard(draft: GameState, player: PlayerId, card: string, events: Game
   events.push({ type: "PLAYED_DEV_CARD", text: `${player} played ${name(card)}`, data: { card } });
 }
 
-function freeRoadOk(state: GameState, player: PlayerId, edge: string): boolean {
-  return state.graph.edges.has(edge) && !roadAt(state, edge) && roadConnects(state, player, edge);
+/**
+ * After pushing or advancing a free-placement step: pop it when nothing is left to place, or when
+ * no placement is legal any more (out of pieces or room). Modules may add their own pieces to the
+ * step (ships), so this asks every module through `legalFor`.
+ */
+/** One free piece placed: count it down, then pop the step if it's done. Used by modules too. */
+export function takeFreePlacement(
+  draft: GameState,
+  player: PlayerId,
+  modules: RulesModule[],
+): void {
+  const top = draft.decisions.at(-1)!;
+  top.data = { ...top.data, remaining: (top.data!["remaining"] as number) - 1 };
+  settleFreePlacement(draft, player, modules);
 }
 
-function canPlaceFreeRoad(state: GameState, player: PlayerId): boolean {
-  if (countOwned(state, player, "road") >= PIECE_LIMITS["road"]!) return false;
-  return allEdges(state).some((edge) => freeRoadOk(state, player, edge));
+function settleFreePlacement(draft: GameState, player: PlayerId, modules: RulesModule[]): void {
+  const top = draft.decisions.at(-1)!;
+  const remaining = top.data!["remaining"] as number;
+  if (remaining === 0 || legalFor(draft, player, modules).length === 0) popDecision(draft);
 }
 
 /** Every way to pick two resources (with repeats): 15 for five resources. */
@@ -98,6 +124,7 @@ function pairs(): Resources[] {
 export const devCardActions: ActionHandlers = {
   BUY_DEV_CARD: {
     validate(state, player) {
+      if (!featureOn(state, "devCards")) return DEV_CARDS_OFF();
       if (!canAfford(state, player, COSTS["devCard"]!)) {
         return reject("CANNOT_AFFORD", `A development card costs ${describe(COSTS["devCard"]!)}.`);
       }
@@ -127,44 +154,49 @@ export const devCardActions: ActionHandlers = {
 
   PLAY_KNIGHT: {
     validate: (state, player) => checkPlayable(state, player, "knight"),
-    apply(draft, player, _action, { events }) {
+    apply(draft, player, _action, { events, modules }) {
       playCard(draft, player, "knight", events);
-      updateAwards(draft, events);
-      // Same as a 7 but with no discards.
-      draft.decisions.push(moveRobberDecision(player));
+      updateAwards(draft, events, modules);
+      // Same as a 7 but with no discards. With the robber off, a knight only counts for the army.
+      if (featureOn(draft, "robber")) draft.decisions.push(moveRobberDecision(player));
     },
     candidates: () => [{ type: "PLAY_KNIGHT" }],
   },
 
   PLAY_ROAD_BUILDING: {
     validate: (state, player) => checkPlayable(state, player, "roadBuilding"),
-    apply(draft, player, _action, { events }) {
+    apply(draft, player, _action, { events, modules }) {
       playCard(draft, player, "roadBuilding", events);
-      const left = PIECE_LIMITS["road"]! - countOwned(draft, player, "road");
+      // Two free pieces, or fewer if the player has fewer route pieces (roads, ships…) left.
+      const limits = pieceLimits(modules);
+      const left = routePieceTypes(modules).reduce(
+        (sum, type) => sum + Math.max(0, (limits[type] ?? 0) - countOwned(draft, player, type)),
+        0,
+      );
       const remaining = Math.min(2, left);
-      if (remaining > 0 && canPlaceFreeRoad(draft, player)) {
-        draft.decisions.push(
-          decision("PLACE_FREE_ROAD", player, ["PLACE_FREE_ROAD"], { remaining }),
-        );
-      }
+      draft.decisions.push(decision("PLACE_FREE_ROAD", player, ["PLACE_FREE_ROAD"], { remaining }));
+      settleFreePlacement(draft, player, modules);
     },
     candidates: () => [{ type: "PLAY_ROAD_BUILDING" }],
   },
 
   PLACE_FREE_ROAD: {
-    validate(state, player, { edge }) {
-      return freeRoadOk(state, player, edge)
-        ? null
-        : reject("ILLEGAL_PLACEMENT", "Roads must connect to your own road or building.");
+    validate(state, player, { edge }, { modules }) {
+      if (countOwned(state, player, "road") >= PIECE_LIMITS["road"]!) {
+        return reject("PIECE_LIMIT", "You have no roads left.");
+      }
+      if (!roadSpotOk(state, player, edge)) {
+        return reject("ILLEGAL_PLACEMENT", "Roads must connect to your own road or building.");
+      }
+      return runCanPlace(modules, state, player, "road", { edge }, "PLACE_FREE_ROAD");
     },
-    apply(draft, player, { edge }, { events }) {
-      addPiece(draft, "road", player, { edge });
-      events.push({ type: "BUILT_ROAD", text: `${player} built a free road` });
-      updateAwards(draft, events);
-      const top = draft.decisions.at(-1)!;
-      const remaining = (top.data!["remaining"] as number) - 1;
-      top.data = { ...top.data, remaining };
-      if (remaining === 0 || !canPlaceFreeRoad(draft, player)) popDecision(draft);
+    apply(draft, player, { edge }, ctx) {
+      const piece = addPiece(draft, "road", player, { edge });
+      ctx.events.push({ type: "BUILT_ROAD", text: `${player} built a free road` });
+      updateAwards(draft, ctx.events, ctx.modules);
+      takeFreePlacement(draft, player, ctx.modules);
+      // Last, so a step a module pushes (e.g. a gold pick) sits above the free-placement step.
+      runOnPlace(ctx.modules, draft, piece, ctx);
     },
     candidates: (s) => allEdges(s).map((edge) => ({ type: "PLACE_FREE_ROAD", edge })),
   },

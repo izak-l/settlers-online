@@ -188,3 +188,151 @@ Lobbies created before migration 007 have no stored map; they read as the defaul
 The token pool must hold exactly one token per `pool:tokens` hex, minus fixed deserts on those hexes, minus the deserts in `pools.land`. This assumes every random land hex asks for a random token, which is true of every map so far; the 1,000-seed catalog test catches a map where it isn't.
 
 **Test:** `validator.test.ts` — "accepts the base map…", "rejects a token pool one short/long", "does not count a literal desert hex…".
+
+## Spec 014 — Feature switches (M10a)
+
+### A30: With the robber off, a 7 still makes big hands discard
+
+A 7 produces nothing and everyone over 7 cards discards half, as usual; then play goes straight to the main step (no robber move, no steal). A Knight still counts towards Largest Army but moves nothing.
+
+**Test:** `features.test.ts` — "a 7 still makes big hands discard, then goes straight to the main step", "a knight counts towards the army but moves nothing".
+
+### A31: With dev cards off, Largest Army can't be earned either
+
+Nobody can play a knight, so the army award is never held, whatever its own switch says. The dev deck stays in the state (untouched), so the card-conservation invariant still holds.
+
+**Test:** `features.test.ts` — "can't buy or play development cards".
+
+### A32: Switching harbors off keeps the ports in the map
+
+Bank trades are all 4:1 and the board doesn't draw the harbors, but the map's ports stay in the state, so a switch never changes the board itself.
+
+**Test:** `features.test.ts` — "every bank rate is 4 even on a port".
+
+### A33: House rules travel inside the stored map
+
+The server folds the lobby's switches into the resolved map's `features` when the game starts, so `games` needs no new column and replays read them from the stored map. Games saved before switches existed have no `features` and play with everything on.
+
+**Test:** `features.test.ts` — "treat a missing features option … as all on"; the online suite's "house rules" test.
+
+## Spec 015 — Seafaring (M10c)
+
+### A34: A second starting settlement next to gold gets a pick
+
+The rulebook's maps keep gold off the starting islands, but custom maps may not: the player picks one card per gold hex the settlement touches (a `GOLD_CHOICE` step above the setup road).
+
+**Test:** `seafaring.test.ts` — "a second starting settlement next to gold earns a pick (custom maps)".
+
+### A35: The map's border edges are ordinary edges; nothing lies beyond
+
+Every water space inside the frame is a sea hex in the map JSON (the frame encloses two more than the rulebook's sea tiles; those two are printed on its frame pieces). Edges along the border take roads (land side) and ships like any other; the pirate may be parked on the frame, where it blocks nothing.
+
+**Test:** `seafaring.test.ts` — "may sail along the map's outer border", "can be parked on the frame"; `scenarios.test.ts` component counts.
+
+### A36: Gold picks come from what the bank still has
+
+Gold is picked after normal production, from the bank as it stands. With several players picking at once, each pick is checked against the bank when it's made, and anyone the bank can no longer pay is dropped. The bank shortage rule for ordinary resources doesn't apply to gold.
+
+**Test:** `seafaring.test.ts` — "the robber blocks a gold hex; a short bank limits the pick".
+
+### A37: Island bonus: one per region, never for a building touching a home region
+
+The bonus is computed from the pieces: the scenario's VP for each non-home region where the player has a settlement or city. A building that touches one of the player's home regions counts for none, so a corner where the main island meets the strip beyond the desert (scenario 4) is still home. Deserts in scenario 4 belong to the main region. There's no cap from the number of VP tokens in the box.
+
+**Test:** `seafaring.test.ts` — "earns the bonus once per island", "a building touching a home region earns no bonus".
+
+### A38: 1–3 seats play a scenario's 3-player map; 4 seats the 4-player map
+
+**Test:** `scenarios.test.ts` — "picks the 3-player map for 1–3 seats"; online suite "scenarios".
+
+### A39: The open-end rule covers the closed-line rule
+
+A ship can move only from an open end (a corner with none of the player's buildings or other ships). A ship in a line joining two of the player's buildings never has one, even when an opponent has built on the line (that corner still has the player's other ship), so no separate check is needed.
+
+**Test:** `seafaring.test.ts` — "a line joining two of your buildings never moves, even if an opponent builds on it".
+
+## Spec 017 — Variable setup (M10d)
+
+### A40: A variable map shuffles the fixed map's own pieces within each area
+
+The rulebook's variable setups say which areas are shuffled but not which tiles go where, so each area's pool is exactly the terrain and number tokens that area has on the fixed map, and port types are shuffled over the fixed port spots. Scenario 4's deserts stay put. The robber starts on the 12 (scenario 1 with 3 players, scenario 2), the desert (scenario 1 with 4 players) or its fixed spot (scenario 4).
+
+**Test:** `scenarios.test.ts` — "matches the rulebook's components" and "generates boards that keep the regions and the token rules" for every variable map.
+
+## Spec 016 — Fog (M10e)
+
+### A41: One placement can reveal two hexes; they're drawn in hex-key order
+
+A road or ship whose corners touch two face-down hexes reveals both, the lower hex key first, each drawn from the hidden stacks with the game RNG.
+
+**Test:** `fog.test.ts` — "a ship reaching a fog corner reveals it, with a token and a discovery card".
+
+### A42: A revealed hex joins the region of the land next to it
+
+Revealed land takes the region of an adjacent land hex, or becomes a region of its own. Two regions that a reveal happens to connect stay separate (no scenario with fog has an island bonus).
+
+**Test:** `fog.test.ts` — "… The new land joins the main island's region".
+
+### A43: Discovery rewards come from the bank, and gold gives a pick
+
+A revealed producing hex gives one card of its resource if the bank has one; a revealed gold hex gives a `GOLD_CHOICE` pick of one. Reveals during setup (a starting road or ship) pay the reward too.
+
+**Test:** `fog.test.ts` — "a revealed gold hex lets the player pick the reward".
+
+## Spec 018 — Lost Settlers (M10f)
+
+### A44: Things on the water go to the first ship placed on their edge, however it got there
+
+Building a ship, moving one, a Road Crew ship and a setup ship all collect what lies on that edge. Each thing is taken once and leaves the map.
+
+**Test:** `lost-settlers.test.ts` — "building a ship onto the token takes it: 1 VP", "moving a ship onto the token takes it".
+
+### A45: A harbor goes on a coast edge at your own settlement or city, one edge clear of other harbors
+
+The edge has land on one side and water (or the frame) on the other, and touches a corner with your settlement or city. "One edge between ports" means no harbor on it or on any edge sharing a corner with it.
+
+**Test:** `lost-settlers.test.ts` — "a ship reaching a harbor takes it; it must be placed next to your building", "harbors keep at least one edge between them".
+
+### A46: A harbor you can place is placed at once; one you can't is kept and placed later in your main step
+
+Taking a harbor pushes a `PLACE_HARBOR` step if there is a legal edge. Otherwise you hold it (everyone can see it), and placing it is offered in your main step once a spot exists. With several held, the oldest goes first.
+
+**Test:** `lost-settlers.test.ts` — "with nowhere to place it, you keep it and place it later in your main step".
+
+### A47: Harbor types are shuffled at setup in both fixed and variable maps; dev cards off removes the card markers
+
+The rulebook places the harbors face up at random even in the fixed setup, so harbor markers draw their type from a port pool when the map is generated. With development cards switched off there is nothing to deal, so the card markers are left off the board.
+
+**Test:** `validator.test.ts` — "accepts tokens, cards and harbors on sea edges, with a port pool for the harbors"; `lost-settlers.test.ts` — "with development cards switched off, no cards are dealt and the markers go".
+
+## Spec 019 — Weavers' Isles (M10g)
+
+### A48: A closed route is one whose ships join your building to a village
+
+A ship is closed (can't move) when, without it, one of its ends still reaches one of your buildings and the other reaches a village along your own roads and ships, joined as for the longest route. Ships branching off the route stay movable.
+
+**Test:** `weavers.test.ts` — "ships on a route to a village can't move; a branch off it can".
+
+### A49: Trade with a village, once opened, lasts the whole game
+
+A route opens trade the moment it is complete (building, ship move, road or new settlement). Trade isn't lost if an opponent later cuts the route. Opening trade with a village that has no cloth left takes nothing. The pirate may be moved, or parked off the board, by any player who has opened trade with at least one village.
+
+**Test:** `weavers.test.ts` — "a route from your building to a village opens trade and takes 1 cloth at once", "can't be moved before you trade with a village".
+
+### A50: The pirate may take a cloth instead of a card; the robber only takes cards
+
+When the pirate robs, the thief picks a player and either a random resource card or one cloth. A player with only cloth can still be robbed. The robber works as in the base game.
+
+**Test:** `weavers.test.ts` — "robs a resource card or a cloth from a ship owner next to it".
+
+### A51: The five-villages ending: most VP, then most cloth, then seat order
+
+At the end of a turn with five or more villages out of cloth, the player with the most VP wins. A tie goes to the most cloth, and a tie on both to the earliest seat. The usual 14 VP win during your own turn still applies.
+
+**Test:** `weavers.test.ts` — "with five villages empty at the end of a turn, the most VP wins", "a tie goes to the most cloth".
+
+### A52: Variable setup starts the robber on the first 12 on the map
+
+The rulebook lets players choose which 12 the robber starts on. We take the first hex with a 12 in the generated map.
+
+**Test:** `scenarios.test.ts` — "generates boards that keep the regions and the token rules" (robber start defined).

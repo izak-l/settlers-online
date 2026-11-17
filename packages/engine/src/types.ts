@@ -18,19 +18,70 @@ export type Resources = Record<ResourceId, number>;
 export interface MapInput {
   id: string;
   vpToWin: number;
-  hexes: { q: number; r: number; terrain: string; token?: number }[];
+  /** `region` labels an area of the map (e.g. "main"); modules give it meaning (spec 015). */
+  hexes: { q: number; r: number; terrain: string; token?: number; region?: string }[];
   ports: { edgeId: EdgeId; type: string }[];
   robberStart?: string;
+  /**
+   * Scenario settings, read and checked by the modules that use them (e.g. seafaring's island
+   * bonus and pirate start). The core only carries it.
+   */
+  scenario?: Record<string, unknown>;
+  /** Base-game parts this map turns on or off (spec 014). */
+  features?: FeatureOverrides;
+  /**
+   * Things lying on the board at the start (decision record 0001), e.g. VP tokens on sea edges.
+   * The core only carries them; the modules that know a marker's `kind` give it meaning, and
+   * take it off the map when it's collected.
+   */
+  markers?: MapMarker[];
+}
+
+export interface MapMarker {
+  id: string;
+  kind: string;
+  at: PieceLocation;
+  data?: Record<string, unknown>;
 }
 
 export interface RulesetDef {
   /** Module ids in the order their hooks run. */
   modules: ModuleId[];
-  options?: Partial<GameOptions>;
+  options?: { vpToWin?: number; features?: FeatureOverrides };
+}
+
+/** Parts of the base game that a map, the lobby or a module can switch off (spec 014). */
+export const FEATURE_IDS = ["devCards", "robber", "longestRoad", "largestArmy", "ports"] as const;
+export type FeatureId = (typeof FEATURE_IDS)[number];
+export type Features = Record<FeatureId, boolean>;
+/** Some switches set, others left to an earlier source (map JSON, lobby house rules). */
+export type FeatureOverrides = { [K in FeatureId]?: boolean | undefined };
+
+/** Every feature on: the plain base game. */
+export const BASE_FEATURES: Features = {
+  devCards: true,
+  robber: true,
+  longestRoad: true,
+  largestArmy: true,
+  ports: true,
+};
+
+/** Later sources win; a switch a source leaves out (or sets to undefined) keeps the earlier value. */
+export function mergeFeatures(...sources: (FeatureOverrides | undefined)[]): Features {
+  const out: Features = { ...BASE_FEATURES };
+  for (const src of sources) {
+    for (const id of FEATURE_IDS) {
+      const value = src?.[id];
+      if (value !== undefined) out[id] = value;
+    }
+  }
+  return out;
 }
 
 export interface GameOptions {
   vpToWin: number;
+  /** Which base-game features are on. Games saved before switches existed have none: all on. */
+  features: Features;
 }
 
 export type PieceLocation = { vertex: VertexId } | { edge: EdgeId } | { hex: HexKey };

@@ -1,0 +1,289 @@
+{
+  "id": "four-isles-4p-fixed",
+  "name": "Four Isles",
+  "description": "Four islands and no mainland. Start on one or two of them; every other island you settle is worth 2 extra VP.",
+  "version": 1,
+  "players": {
+    "min": 4,
+    "max": 4
+  },
+  "vpToWin": 13,
+  "hexes": [
+    {
+      "q": 1,
+      "r": -3,
+      "terrain": "pasture",
+      "token": 8,
+      "region": "northwest"
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "forest",
+      "token": 9,
+      "region": "northeast"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "forest",
+      "token": 11,
+      "region": "northeast"
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "terrain": "hills",
+      "token": 10,
+      "region": "northwest"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "mountains",
+      "token": 3,
+      "region": "northeast"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "fields",
+      "token": 12,
+      "region": "northeast"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "pasture",
+      "token": 5,
+      "region": "northeast"
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "terrain": "fields",
+      "token": 5,
+      "region": "northwest"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "forest",
+      "token": 3,
+      "region": "northwest"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "hills",
+      "token": 5,
+      "region": "northeast"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "mountains",
+      "token": 10,
+      "region": "northeast"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "forest",
+      "token": 6,
+      "region": "northeast"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "terrain": "hills",
+      "token": 4,
+      "region": "southwest"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "pasture",
+      "token": 9,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "forest",
+      "token": 9,
+      "region": "southeast"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "pasture",
+      "token": 11,
+      "region": "southeast"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "fields",
+      "token": 6,
+      "region": "southwest"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "mountains",
+      "token": 4,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "hills",
+      "token": 2,
+      "region": "southwest"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "mountains",
+      "token": 8,
+      "region": "southeast"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "pasture",
+      "token": 10,
+      "region": "southwest"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "fields",
+      "token": 11,
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "fields",
+      "token": 4,
+      "region": "southeast"
+    }
+  ],
+  "ports": [
+    {
+      "edge": "-1,-2|0,-2",
+      "type": "wheat2to1"
+    },
+    {
+      "edge": "-1,-1|-1,0",
+      "type": "any3to1"
+    },
+    {
+      "edge": "1,-1|1,0",
+      "type": "any3to1"
+    },
+    {
+      "edge": "4,-1|4,-2",
+      "type": "wood2to1"
+    },
+    {
+      "edge": "3,0|3,1",
+      "type": "ore2to1"
+    },
+    {
+      "edge": "3,1|3,2",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-2,1|-3,2",
+      "type": "brick2to1"
+    },
+    {
+      "edge": "-1,2|0,1",
+      "type": "any3to1"
+    },
+    {
+      "edge": "-2,3|-3,3",
+      "type": "sheep2to1"
+    }
+  ],
+  "robberStart": "3,-2",
+  "scenario": {
+    "islandBonus": 2,
+    "home": "setup",
+    "pirateStart": "frame"
+  },
+  "modules": ["base", "seafaring"]
+}

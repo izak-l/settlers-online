@@ -12,7 +12,8 @@ export type Action =
   | { type: "END_TURN" }
   | { type: "DISCARD"; resources: Resources }
   | { type: "MOVE_ROBBER"; hex: HexKey }
-  | { type: "STEAL"; from: PlayerId }
+  /** `what`: a module's item (e.g. "cloth") instead of a random resource card (omitted). */
+  | { type: "STEAL"; from: PlayerId; what?: string | undefined }
   | { type: "BUY_DEV_CARD" }
   | { type: "PLAY_KNIGHT" }
   | { type: "PLAY_ROAD_BUILDING" }
@@ -23,7 +24,17 @@ export type Action =
   | { type: "OFFER_TRADE"; give: Resources; want: Resources }
   | { type: "RESPOND_TRADE"; accept: boolean }
   | { type: "CONFIRM_TRADE"; with: PlayerId }
-  | { type: "CANCEL_TRADE" };
+  | { type: "CANCEL_TRADE" }
+  // Seafaring (spec 015)
+  | { type: "BUILD_SHIP"; edge: EdgeId }
+  | { type: "PLACE_SHIP"; edge: EdgeId }
+  | { type: "PLACE_FREE_SHIP"; edge: EdgeId }
+  | { type: "MOVE_SHIP"; from: EdgeId; to: EdgeId }
+  /** A sea hex, or null to park the pirate on the frame (off the board). */
+  | { type: "MOVE_PIRATE"; hex: HexKey | null }
+  | { type: "CHOOSE_GOLD"; resources: Resources }
+  // Lost Settlers (spec 018)
+  | { type: "PLACE_HARBOR"; edge: EdgeId };
 
 export type ActionType = Action["type"];
 

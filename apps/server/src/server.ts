@@ -12,6 +12,7 @@ import {
   InviteSchema,
   JoinGameSchema,
   LobbyRefSchema,
+  SetLobbyFeaturesSchema,
   SetLobbyMapSchema,
   SetReadySchema,
   SetUsernameSchema,
@@ -31,7 +32,8 @@ import type { Authenticator } from "./auth";
 import type { Config } from "./config";
 import { fail } from "./errors";
 import { FriendService } from "./friends";
-import { LobbyService } from "./lobbies";
+import { scenarioOfMap } from "@settlers/maps";
+import { effectiveFeatures, LobbyService } from "./lobbies";
 import { PresenceTracker } from "./presence";
 import { KeyedQueue } from "./queue";
 import { RoomManager, type GameRoom, type Role } from "./rooms";
@@ -124,6 +126,12 @@ export async function startServer({
 
   // ---- building and sending state ----
 
+  /** For a scenario's map: which scenario and setup mode, so the lobby can show the choice. */
+  function scenarioChoice(mapId: string): Pick<LobbyState["map"], "scenario"> {
+    const found = scenarioOfMap(mapId);
+    return found ? { scenario: { id: found.scenario.id, setup: found.setup } } : {};
+  }
+
   async function lobbyState(lobby: LobbyRecord): Promise<LobbyState> {
     const ids = lobby.seats.flatMap((s) => (s ? [s.userId] : []));
     const names = new Map((await store.getProfiles(ids)).map((p) => [p.id, p.username ?? "?"]));
@@ -150,7 +158,10 @@ export async function startServer({
         players: lobby.map.players,
         vpToWin: lobby.map.vpToWin,
         def: lobby.map,
+        ...scenarioChoice(lobby.map.id),
       },
+      features: effectiveFeatures(lobby),
+      houseRules: lobby.features,
       status: lobby.status,
       gameId: lobby.gameId,
     };
@@ -342,6 +353,16 @@ export async function startServer({
         const p = SetLobbyMapSchema.safeParse(payload);
         if (!p.success) return fail("BAD_REQUEST");
         const ack = await lobbies.setMap(p.data.lobbyId, userId, p.data.map);
+        if (ack.ok) await broadcastLobby(p.data.lobbyId);
+        return ack;
+      }),
+    );
+
+    socket.on("lobby:features", (payload, reply) =>
+      respond(reply, async () => {
+        const p = SetLobbyFeaturesSchema.safeParse(payload);
+        if (!p.success) return fail("BAD_REQUEST");
+        const ack = await lobbies.setFeatures(p.data.lobbyId, userId, p.data.features);
         if (ack.ok) await broadcastLobby(p.data.lobbyId);
         return ack;
       }),

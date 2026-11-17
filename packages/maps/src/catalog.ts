@@ -1,4 +1,5 @@
 import { MapDefSchema, type MapDef } from "./schema";
+import { findScenarioMap, scenarioOfMap } from "./scenarios";
 import baseRaw from "../maps/base-4p.json" with { type: "json" };
 import grandDiamondRaw from "../maps/grand-diamond.json" with { type: "json" };
 
@@ -29,14 +30,22 @@ export function findMap(id: string): CatalogMap | undefined {
   return MAP_CATALOG.find((m) => m.id === id);
 }
 
+/** Any built-in map by id: a catalog map or a seafaring scenario's map. */
+export function findAnyMap(id: string): MapDef | undefined {
+  return findMap(id)?.def ?? findScenarioMap(id);
+}
+
 /** Built-in maps whose player range includes `seats`. */
 export function mapsForSeats(seats: number): CatalogMap[] {
   return MAP_CATALOG.filter((m) => seats >= m.def.players.min && seats <= m.def.players.max);
 }
 
-/** A built-in map's display name, or the id itself for a map no longer in the catalog. */
+/**
+ * A built-in map's display name (a scenario map shows its scenario's name), or the id itself for
+ * a map no longer in the catalog.
+ */
 export function mapName(id: string): string {
-  return findMap(id)?.name ?? id;
+  return findMap(id)?.name ?? scenarioOfMap(id)?.scenario.name ?? id;
 }
 
 /** The default map's definition (the random base board). */

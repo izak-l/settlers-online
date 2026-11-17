@@ -1,4 +1,13 @@
-import { reject, type ActionHandlers } from "../../module";
+import {
+  reject,
+  runCanPlace,
+  runOnPlace,
+  runStealItem,
+  runStealOptions,
+  type ActionContext,
+  type ActionHandlers,
+  type RulesModule,
+} from "../../module";
 import { nextInt, shuffle } from "../../rng";
 import type { Decision, GameEvent, GameState, PlayerId } from "../../types";
 import { BASE_RESOURCES } from "./data";
@@ -6,8 +15,10 @@ import {
   buildingAt,
   cardList,
   decision,
+  featureOn,
   handOf,
   handSize,
+  isLandHex,
   popDecision,
   robberHex,
   transfer,
@@ -24,7 +35,7 @@ export const moveRobberDecision = (p: PlayerId): Decision =>
  * then the roller moves the robber. Pushed on top of whatever comes next (the main step).
  */
 export function startSevenFlow(draft: GameState, roller: PlayerId): void {
-  draft.decisions.push(moveRobberDecision(roller));
+  if (featureOn(draft, "robber")) draft.decisions.push(moveRobberDecision(roller));
   const amounts: Record<PlayerId, number> = {};
   for (const p of draft.players) {
     const size = handSize(draft, p);
@@ -44,18 +55,67 @@ export function startSevenFlow(draft: GameState, roller: PlayerId): void {
   }
 }
 
-/** Players `thief` can rob on `hex`: a building there, not their own, and at least one card. */
-function victimsOn(state: GameState, hex: string, thief: PlayerId): PlayerId[] {
+/** Players with a building on `hex`, other than `thief`, in seat order. */
+function ownersOn(state: GameState, hex: string, thief: PlayerId): PlayerId[] {
   const owners = new Set<PlayerId>();
   for (const vertex of state.graph.hexVertices.get(hex) ?? []) {
     const owner = buildingAt(state, vertex)?.owner;
-    if (owner && owner !== thief && handSize(state, owner) > 0) owners.add(owner);
+    if (owner && owner !== thief) owners.add(owner);
   }
   return state.players.filter((p) => owners.has(p));
 }
 
+/**
+ * What `thief` may take from `victim`: "card" (a random resource card) if they hold any, plus
+ * whatever modules offer for this `source` (e.g. a cloth when the pirate robs).
+ */
+export function theftChoices(
+  state: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  source: string,
+  modules: RulesModule[],
+): string[] {
+  return [
+    ...(handSize(state, victim) > 0 ? ["card"] : []),
+    ...runStealOptions(modules, state, thief, victim, source),
+  ];
+}
+
+/**
+ * After the robber (or the pirate) moves: rob one of `owners` who has something to take. With a
+ * single victim and only cards to take it happens at once; otherwise the thief picks (STEAL).
+ * `choices` is only put on the step when a module offers more than cards, so base games are
+ * unchanged.
+ */
+export function rob(
+  draft: GameState,
+  thief: PlayerId,
+  owners: PlayerId[],
+  source: string,
+  ctx: ActionContext,
+): void {
+  const choices: Record<PlayerId, string[]> = {};
+  for (const p of owners) {
+    const c = theftChoices(draft, thief, p, source, ctx.modules);
+    if (c.length > 0) choices[p] = c;
+  }
+  const victims = Object.keys(choices);
+  const onlyCards = victims.every((p) => choices[p]!.length === 1 && choices[p]![0] === "card");
+  if (victims.length === 1 && onlyCards) return steal(draft, thief, victims[0]!, ctx.events);
+  if (victims.length === 0) return;
+  draft.decisions.push(
+    decision("STEAL", thief, ["STEAL"], onlyCards ? { victims } : { victims, choices }),
+  );
+}
+
 /** Take one random card. Only the thief and the victim learn which resource it was. */
-function steal(draft: GameState, thief: PlayerId, victim: PlayerId, events: GameEvent[]): void {
+export function steal(
+  draft: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  events: GameEvent[],
+): void {
   const cards = cardList(handOf(draft, victim));
   const pick = nextInt(draft.rng, cards.length);
   draft.rng = pick.rng;
@@ -120,39 +180,50 @@ export const robberActions: ActionHandlers = {
   },
 
   MOVE_ROBBER: {
-    validate(state, _player, { hex }) {
-      if (!state.graph.hexKeys.has(hex) || hex === robberHex(state)) {
+    validate(state, player, { hex }, { modules }) {
+      if (!state.graph.hexKeys.has(hex) || !isLandHex(state, hex) || hex === robberHex(state)) {
         return reject("ILLEGAL_PLACEMENT", "Move the robber to a different land hex.");
       }
-      return null;
+      return runCanPlace(modules, state, player, "robber", { hex }, "MOVE_ROBBER");
     },
-    apply(draft, player, { hex }, { events }) {
+    apply(draft, player, { hex }, ctx) {
+      const { events } = ctx;
       draft.pieces["robber"]!.at = { hex };
       events.push({ type: "MOVED_ROBBER", text: `${player} moved the robber`, data: { hex } });
+      runOnPlace(ctx.modules, draft, draft.pieces["robber"]!, ctx);
       popDecision(draft);
-      const victims = victimsOn(draft, hex, player);
-      if (victims.length === 1) steal(draft, player, victims[0]!, events);
-      if (victims.length > 1)
-        draft.decisions.push(decision("STEAL", player, ["STEAL"], { victims }));
+      rob(draft, player, ownersOn(draft, hex, player), "robber", ctx);
     },
     candidates: (s) => [...s.graph.hexKeys].map((hex) => ({ type: "MOVE_ROBBER", hex })),
   },
 
   STEAL: {
-    validate(state, _player, { from }) {
-      const victims = state.decisions.at(-1)!.data?.["victims"] as PlayerId[];
-      return victims.includes(from)
+    validate(state, _player, { from, what }) {
+      const data = state.decisions.at(-1)!.data;
+      const victims = data?.["victims"] as PlayerId[];
+      if (!victims.includes(from)) return reject("INVALID_CHOICE", "Pick a player to rob.");
+      const choices = (data?.["choices"] as Record<PlayerId, string[]> | undefined)?.[from] ?? [
+        "card",
+      ];
+      return choices.includes(what ?? "card")
         ? null
-        : reject("INVALID_CHOICE", "Pick a player next to the robber.");
+        : reject("INVALID_CHOICE", "That player has nothing like that to take.");
     },
-    apply(draft, player, { from }, { events }) {
-      steal(draft, player, from, events);
+    apply(draft, player, { from, what }, { events, modules }) {
+      if (what === undefined || what === "card") steal(draft, player, from, events);
+      else runStealItem(modules, draft, player, from, what, events);
       popDecision(draft);
     },
-    candidates: (s) =>
-      ((s.decisions.at(-1)!.data?.["victims"] as PlayerId[] | undefined) ?? []).map((from) => ({
-        type: "STEAL",
-        from,
-      })),
+    candidates(s) {
+      const data = s.decisions.at(-1)!.data;
+      const choices = data?.["choices"] as Record<PlayerId, string[]> | undefined;
+      return ((data?.["victims"] as PlayerId[] | undefined) ?? []).flatMap((from) =>
+        (choices?.[from] ?? ["card"]).map((what) =>
+          what === "card"
+            ? { type: "STEAL" as const, from }
+            : { type: "STEAL" as const, from, what },
+        ),
+      );
+    },
   },
 };

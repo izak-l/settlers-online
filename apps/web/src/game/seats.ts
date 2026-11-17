@@ -28,4 +28,5 @@ export function errorText(code: string, message: string): string {
     return `${ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES]} ${message}`;
   return PROTOCOL_ERROR_MESSAGES[code as keyof typeof PROTOCOL_ERROR_MESSAGES] ?? message;
 }
-export type BuildMode = "road" | "settlement" | "city" | null;
+/** What a tap on the board does in the main step: build one of these, or move a ship. */
+export type BuildMode = "road" | "settlement" | "city" | "ship" | "move" | "harbor" | null;

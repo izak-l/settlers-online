@@ -1,6 +1,6 @@
 import { MODULE_IDS } from "@settlers/engine";
 import { MAP_CATALOG, MapDefSchema, validateMapDef, type MapDef } from "@settlers/maps";
-import type { MapOption } from "./MapPicker";
+import { scenarioOptions, type MapOption } from "./MapPicker";
 
 function whyNot(def: MapDef, seats: number): string | undefined {
   const missing = def.modules.filter((m) => !MODULE_IDS.includes(m));
@@ -44,5 +44,7 @@ export function sandboxMapOptions(drafts: Record<string, unknown>, seats: number
       };
     })
     .filter((o): o is MapOption => o !== null);
-  return [...catalog, ...extra];
+  // Seafaring scenarios (fixed maps), for this seat count.
+  const scenarios = scenarioOptions(seats, "fixed").map((o) => ({ ...o, id: o.def.id }));
+  return [...catalog, ...scenarios, ...extra];
 }

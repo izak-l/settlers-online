@@ -27,6 +27,7 @@ interface LobbyRow {
   game_id: string | null;
   /** Null for lobbies created before maps could be chosen. */
   map: MapDef | null;
+  features: LobbyRecord["features"];
 }
 
 const toLobby = (r: LobbyRow): LobbyRecord => ({
@@ -39,6 +40,7 @@ const toLobby = (r: LobbyRow): LobbyRecord => ({
   status: r.status,
   gameId: r.game_id,
   map: r.map ?? DEFAULT_MAP_DEF,
+  features: r.features,
 });
 
 interface ChatRow {
@@ -145,8 +147,9 @@ export class PgStore implements Store {
   async createLobby(l: LobbyRecord): Promise<void> {
     await this.pool.query(
       `insert into lobbies
-         (id, host_id, max_seats, allow_spectators, seats, status, game_id, turn_seconds, map)
-       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb)`,
+         (id, host_id, max_seats, allow_spectators, seats, status, game_id, turn_seconds, map,
+          features)
+       values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb, $10::jsonb)`,
       [
         l.id,
         l.hostId,
@@ -157,6 +160,7 @@ export class PgStore implements Store {
         l.gameId,
         l.turnSeconds,
         json(l.map),
+        json(l.features),
       ],
     );
   }
@@ -168,9 +172,10 @@ export class PgStore implements Store {
 
   async saveLobby(l: LobbyRecord): Promise<void> {
     await this.pool.query(
-      `update lobbies set seats = $2::jsonb, status = $3, game_id = $4, map = $5::jsonb
+      `update lobbies set seats = $2::jsonb, status = $3, game_id = $4, map = $5::jsonb,
+              features = $6::jsonb
         where id = $1`,
-      [l.id, json(l.seats), l.status, l.gameId, json(l.map)],
+      [l.id, json(l.seats), l.status, l.gameId, json(l.map), json(l.features)],
     );
   }
 

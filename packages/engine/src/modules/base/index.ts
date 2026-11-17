@@ -1,8 +1,9 @@
 import { runVpSources, type RulesModule } from "../../module";
+import type { GameState, PlayerId } from "../../types";
 import { awardVP } from "./awards";
 import { buildActions } from "./build";
 import { devCardActions, vpCards } from "./devcards";
-import { BASE_RESOURCES } from "./data";
+import { BASE_RESOURCES, PIECE_LIMITS } from "./data";
 import { countOwned } from "./helpers";
 import { produce } from "./production";
 import { robberActions } from "./robber";
@@ -14,11 +15,20 @@ export { BASE_RESOURCES, COSTS, DEV_CARD_NAMES, PIECE_LIMITS } from "./data";
 export { mainDecision, rollDecision } from "./helpers";
 export { produce } from "./production";
 
+/** The base win rule: the player whose turn it is reaches the VP target (never during setup). */
+export function activePlayerWins(state: GameState, modules: RulesModule[]): PlayerId | null {
+  if (state.turn.number < 1) return null;
+  const p = state.turn.activePlayer;
+  return runVpSources(modules, state, p, true) >= state.options.vpToWin ? p : null;
+}
+
 /** The base game, as a module like any other. */
 export const baseModule: RulesModule = {
   id: "base",
   version: 1,
   resources: [...BASE_RESOURCES],
+  pieceLimits: { ...PIECE_LIMITS },
+  routePieceTypes: ["road"],
   actions: {
     ...setupActions,
     ...turnActions,
@@ -32,11 +42,7 @@ export const baseModule: RulesModule = {
     produce,
     tradeRatio,
     /** Only the player whose turn it is can win, counting hidden VP cards. Never during setup. */
-    checkWin(state, modules) {
-      if (state.turn.number < 1) return null;
-      const p = state.turn.activePlayer;
-      return runVpSources(modules, state, p, true) >= state.options.vpToWin ? p : null;
-    },
+    checkWin: activePlayerWins,
     vpSources(state, player, includeHidden) {
       const buildings =
         countOwned(state, player, "settlement") + 2 * countOwned(state, player, "city");

@@ -1,0 +1,504 @@
+{
+  "id": "lost-settlers-4p-variable",
+  "name": "Lost Settlers",
+  "description": "Settle the great island, then sail among the bare islets for victory tokens, hidden cards and harbors you can move.",
+  "version": 1,
+  "players": {
+    "min": 4,
+    "max": 4
+  },
+  "vpToWin": 13,
+  "hexes": [
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "gold",
+      "region": "northwest"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "mountains",
+      "region": "northwest"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -3,
+      "terrain": "desert",
+      "region": "northeast"
+    },
+    {
+      "q": 6,
+      "r": -3,
+      "terrain": "mountains",
+      "region": "northeast"
+    },
+    {
+      "q": 7,
+      "r": -3,
+      "terrain": "fields",
+      "region": "northeast"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 7,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 6,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 7,
+      "r": -1,
+      "terrain": "pasture",
+      "region": "east"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 6,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 7,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 5,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": 1,
+      "terrain": "forest",
+      "region": "southeast"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "desert",
+      "region": "southwest"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "hills",
+      "region": "southwest"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "terrain": "hills",
+      "region": "south"
+    },
+    {
+      "q": 3,
+      "r": 3,
+      "terrain": "desert",
+      "region": "south"
+    },
+    {
+      "q": 4,
+      "r": 3,
+      "terrain": "gold",
+      "region": "south"
+    }
+  ],
+  "pools": {
+    "terrain": {
+      "main": {
+        "fields": 4,
+        "forest": 4,
+        "mountains": 3,
+        "hills": 3,
+        "pasture": 4
+      }
+    },
+    "tokens": {
+      "main": [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
+    },
+    "ports": {
+      "harbors": {
+        "any3to1": 1,
+        "wood2to1": 1,
+        "brick2to1": 1,
+        "sheep2to1": 1,
+        "wheat2to1": 1,
+        "ore2to1": 1
+      }
+    }
+  },
+  "ports": [],
+  "robberStart": "3,3",
+  "scenario": {
+    "islandBonus": 0,
+    "home": {
+      "regions": ["main"]
+    },
+    "setupRegions": ["main"],
+    "pirateStart": "4,-3"
+  },
+  "markers": [
+    {
+      "id": "vp-token-1",
+      "kind": "vp-token",
+      "at": {
+        "edge": "2,-3|3,-4"
+      }
+    },
+    {
+      "id": "vp-token-2",
+      "kind": "vp-token",
+      "at": {
+        "edge": "5,-3|6,-4"
+      }
+    },
+    {
+      "id": "vp-token-3",
+      "kind": "vp-token",
+      "at": {
+        "edge": "7,-3|8,-4"
+      }
+    },
+    {
+      "id": "vp-token-4",
+      "kind": "vp-token",
+      "at": {
+        "edge": "7,-1|8,-1"
+      }
+    },
+    {
+      "id": "vp-token-5",
+      "kind": "vp-token",
+      "at": {
+        "edge": "6,1|7,1"
+      }
+    },
+    {
+      "id": "vp-token-6",
+      "kind": "vp-token",
+      "at": {
+        "edge": "-1,3|-1,4"
+      }
+    },
+    {
+      "id": "vp-token-7",
+      "kind": "vp-token",
+      "at": {
+        "edge": "1,4|2,3"
+      }
+    },
+    {
+      "id": "vp-token-8",
+      "kind": "vp-token",
+      "at": {
+        "edge": "4,3|4,4"
+      }
+    },
+    {
+      "id": "dev-card-1",
+      "kind": "dev-card",
+      "at": {
+        "edge": "1,-3|2,-3"
+      }
+    },
+    {
+      "id": "dev-card-2",
+      "kind": "dev-card",
+      "at": {
+        "edge": "7,-3|8,-3"
+      }
+    },
+    {
+      "id": "dev-card-3",
+      "kind": "dev-card",
+      "at": {
+        "edge": "-1,3|-2,3"
+      }
+    },
+    {
+      "id": "dev-card-4",
+      "kind": "dev-card",
+      "at": {
+        "edge": "4,3|5,3"
+      }
+    },
+    {
+      "id": "harbor-1",
+      "kind": "harbor",
+      "at": {
+        "edge": "2,-3|2,-4"
+      },
+      "data": {
+        "port": "pool:harbors"
+      }
+    },
+    {
+      "id": "harbor-2",
+      "kind": "harbor",
+      "at": {
+        "edge": "5,-3|5,-4"
+      },
+      "data": {
+        "port": "pool:harbors"
+      }
+    },
+    {
+      "id": "harbor-3",
+      "kind": "harbor",
+      "at": {
+        "edge": "7,-1|8,-2"
+      },
+      "data": {
+        "port": "pool:harbors"
+      }
+    },
+    {
+      "id": "harbor-4",
+      "kind": "harbor",
+      "at": {
+        "edge": "6,1|6,2"
+      },
+      "data": {
+        "port": "pool:harbors"
+      }
+    },
+    {
+      "id": "harbor-5",
+      "kind": "harbor",
+      "at": {
+        "edge": "-1,3|-2,4"
+      },
+      "data": {
+        "port": "pool:harbors"
+      }
+    },
+    {
+      "id": "harbor-6",
+      "kind": "harbor",
+      "at": {
+        "edge": "2,3|2,4"
+      },
+      "data": {
+        "port": "pool:harbors"
+      }
+    }
+  ],
+  "modules": ["base", "seafaring", "sf-lost-settlers"],
+  "constraints": [
+    {
+      "rule": "no-tokens-on-hexes",
+      "tokens": [5, 6, 8, 9],
+      "hexes": ["5,-1", "5,0", "4,1"]
+    }
+  ]
+}

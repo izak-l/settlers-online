@@ -97,10 +97,13 @@ export function GameSummary({
   type,
   choice,
   extra,
+  facts,
 }: {
   type: GameType;
   choice: GameChoice;
   extra?: ExtraMap[];
+  /** The lobby's settings in one line (spec 229), instead of the map's own facts. */
+  facts?: string;
 }) {
   const shown = describeChoice(type, choice, extra);
   if (!shown) return null;
@@ -113,7 +116,9 @@ export function GameSummary({
         </span>
         <strong className="summary-name">{shown.name}</strong>
         <span className="small">{shown.description}</span>
-        <span className="muted small">{mapSummary(shown.def)}</span>
+        <span className="muted small">
+          {facts ? `${facts} · ${mapFacts(shown.def).land} land tiles` : mapSummary(shown.def)}
+        </span>
       </div>
     </div>
   );
@@ -151,7 +156,7 @@ function ChoiceCard({
         <span className="map-text">
           <strong>
             {name}
-            {selected && <span className="selected-tag">✓ Selected</span>}
+            {selected && <span className="selected-tag">✓&nbsp;Selected</span>}
           </strong>
           <span className="small">{description}</span>
           <span className="muted small">{disabledReason ?? mapSummary(def)}</span>

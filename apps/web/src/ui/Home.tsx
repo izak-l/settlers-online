@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { GAME_TYPES, type GameType } from "@settlers/maps";
-import { TURN_SECONDS_CHOICES } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { errorText } from "../game/seats";
@@ -17,20 +16,13 @@ function lobbyIdFrom(input: string): string {
 export function Home() {
   const { socket, me } = useSession();
   const [type, setType] = useState<GameType>(GAME_TYPES[0]!);
-  const [seats, setSeats] = useState<1 | 2 | 3 | 4>(4);
-  const [spectators, setSpectators] = useState(true);
-  const [turnSeconds, setTurnSeconds] = useState<(typeof TURN_SECONDS_CHOICES)[number]>(0);
   const [invite, setInvite] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   async function create() {
     if (!socket) return;
-    const ack = await socket.emitWithAck("lobby:create", {
-      gameType: type.id,
-      maxSeats: seats,
-      allowSpectators: spectators,
-      turnSeconds,
-    });
+    // Players, points, timer and spectators are lobby settings (spec 229).
+    const ack = await socket.emitWithAck("lobby:create", { gameType: type.id });
     if (ack.ok) go(`/lobby/${ack.lobby.id}`);
     else setError(errorText(ack.code, ack.message));
   }
@@ -41,53 +33,8 @@ export function Home() {
         <h1>Hi, {me?.username}</h1>
         <section className="stack">
           <h3>New game</h3>
-          <GameTypePicker
-            value={type.id}
-            onChange={(t) => {
-              setType(t);
-              // The seat count can't be more than the game type allows.
-              setSeats((n) => Math.min(n, t.maxPlayers) as 1 | 2 | 3 | 4);
-            }}
-          />
-          <fieldset className="count">
-            <legend>Players</legend>
-            {([1, 2, 3, 4] as const)
-              .filter((n) => n <= type.maxPlayers)
-              .map((n) => (
-                <label key={n}>
-                  <input
-                    type="radio"
-                    name="seats"
-                    checked={seats === n}
-                    onChange={() => setSeats(n)}
-                  />
-                  {n}
-                </label>
-              ))}
-          </fieldset>
-          <label className="field">
-            <span>Turn timer</span>
-            <select
-              value={turnSeconds}
-              onChange={(e) =>
-                setTurnSeconds(Number(e.target.value) as (typeof TURN_SECONDS_CHOICES)[number])
-              }
-            >
-              {TURN_SECONDS_CHOICES.map((n) => (
-                <option key={n} value={n}>
-                  {n === 0 ? "Off" : `${n} seconds per turn`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={spectators}
-              onChange={(e) => setSpectators(e.target.checked)}
-            />
-            Allow spectators
-          </label>
+          <GameTypePicker value={type.id} onChange={setType} />
+          <p className="muted small">Pick the map, players and other settings in the lobby.</p>
           <button className="primary" onClick={() => void create()}>
             Create game and get invite link
           </button>

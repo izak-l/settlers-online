@@ -2084,6 +2084,8 @@ fieldset.type-picker,
   opacity: 0.6;
 }
 .selected-tag {
+  display: inline-block;
+  white-space: nowrap;
   margin-left: 0.5rem;
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
@@ -2131,6 +2133,80 @@ fieldset.type-picker,
   .segmented {
     margin-left: 0.6rem;
   }
+}
+/* Lobby settings (spec 229). */
+.lobby-settings h3 {
+  margin: 0;
+}
+.settings-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 0.9rem 1rem;
+  align-items: start;
+}
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.setting-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.setting-check {
+  align-self: center;
+}
+.lobby-settings .segmented.seats-picker {
+  margin: 0;
+  align-self: flex-start;
+}
+.seats-picker .seg {
+  min-width: 2.4rem;
+  text-align: center;
+}
+.seats-picker .seg:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stepper button {
+  border: none;
+  border-radius: 0;
+  min-width: 2.4rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+}
+.stepper output {
+  min-width: 2.6rem;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.settings-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+.settings-list dt {
+  color: var(--muted);
+}
+.settings-list dd {
+  margin: 0;
 }
 .lobby-page fieldset.house-rules {
   display: flex;

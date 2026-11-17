@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { BASE_RESOURCES, type Action } from "@settlers/engine";
+import type { Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
 import { Icon } from "../art/icons";
-import { resourceName } from "../cards/CardFace";
 import { startPick, type Pick } from "../cards/picking";
 import { buildTiles, type BuildTile } from "./buildTiles";
 import { BoardDice } from "./Dice";
@@ -126,9 +124,6 @@ export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, err
   // and an empty prompt card would open.
   const roadOrShip = (road: string, ship: string) =>
     canDo(road) && canDo(ship) ? <RoadOrShip mode={mode} setMode={setMode} /> : null;
-  const [tradeMenu, setTradeMenu] = useState(false);
-  // A new decision closes the trade menu.
-  useEffect(() => setTradeMenu(false), [top?.kind, myMove]);
 
   const hasShips = snap.view.modules.includes("seafaring");
   const tiles = buildTiles({
@@ -149,8 +144,7 @@ export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, err
 
   // Trading: only on your own main step (the step allowing offers isn't enough: it's someone's turn).
   const canTrade = myMove && !!top?.allowed.includes("OFFER_TRADE");
-  const trading = pick?.purpose === "bank" || pick?.purpose === "offer";
-  const better = BASE_RESOURCES.filter((r) => (snap.ratios[r] ?? 4) < 4);
+  const trading = pick?.purpose === "trade";
 
   // The one-line status, and anything that needs its own buttons (shown in a card above).
   let status = "";
@@ -240,11 +234,6 @@ export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, err
   }
 
   const rolling = myMove && top?.kind === "ROLL";
-  const startTrade = (purpose: "bank" | "offer") => {
-    setTradeMenu(false);
-    setMode(null);
-    setPick(purpose === "bank" ? startPick("bank", { wantLimit: 1 }) : startPick("offer"));
-  };
 
   // The bar has a fixed height (the map re-fits when it changes), so the card floats above.
   return (
@@ -268,33 +257,16 @@ export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, err
         </div>
         {playing && snap.view.winner === undefined && (
           <div className="square-row">
-            <div className="menu-anchor">
-              <SquareButton
-                icon="trade"
-                label="Trade"
-                active={trading || tradeMenu}
-                disabled={!canTrade}
-                onClick={() => (trading ? setPick(null) : setTradeMenu(!tradeMenu))}
-              />
-              {tradeMenu && canTrade && (
-                <div className="panel trade-menu" role="menu">
-                  <button role="menuitem" onClick={() => startTrade("bank")}>
-                    With the bank
-                  </button>
-                  {/* Solo games have nobody to offer to (the server rejects it too). */}
-                  {snap.players.length > 1 && (
-                    <button role="menuitem" onClick={() => startTrade("offer")}>
-                      Offer to players
-                    </button>
-                  )}
-                  <p className="muted small">
-                    Bank rate 4:1
-                    {better.length > 0 &&
-                      ` · ports: ${better.map((r) => `${resourceName(r).toLowerCase()} ${snap.ratios[r]}:1`).join(", ")}`}
-                  </p>
-                </div>
-              )}
-            </div>
+            <SquareButton
+              icon="trade"
+              label="Trade"
+              active={trading}
+              disabled={!canTrade}
+              onClick={() => {
+                setMode(null);
+                setPick(trading ? null : startPick("trade"));
+              }}
+            />
             {tiles.map((t: BuildTile) => (
               <SquareButton
                 key={t.action}

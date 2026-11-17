@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { layoutFan, fanWidth } from "./fan";
 import { handDiff, partnerFromEvents } from "./handDiff";
-import { addPick, removePick, startPick, bankGive, total, type Pick } from "./picking";
+import { addPick, bankTrade, removePick, startPick, total, type Pick } from "./picking";
 
 describe("layoutFan", () => {
   const card = 48;
@@ -120,17 +120,22 @@ describe("picking", () => {
   });
 
   it("removing the last card of a resource drops the key", () => {
-    let p = addPick(startPick("offer"), "want", "sheep", hand);
+    let p = addPick(startPick("trade"), "want", "sheep", hand);
     p = removePick(p, "want", "sheep");
     expect(p.want).toEqual({});
   });
 
-  it("bank trades take your rate's worth, and only if you have it", () => {
-    let p = startPick("bank");
-    p = bankGive(p, "wood", 2, hand);
-    expect(p.give).toEqual({ wood: 2 });
-    p = bankGive(p, "ore", 3, hand);
-    expect(p.give).toEqual({ wood: 2 });
+  it("a trade pick is a bank trade only at your rate, one kind for one card (spec 232)", () => {
+    const ratios = { wood: 2, brick: 4, ore: 4 };
+    expect(bankTrade({ wood: 2 }, { ore: 1 }, ratios)).toEqual({ give: "wood", get: "ore" });
+    expect(bankTrade({ brick: 4 }, { wood: 1 }, ratios)).toEqual({ give: "brick", get: "wood" });
+    // Wrong amount, two kinds, more than one card wanted, or the same resource back: no.
+    expect(bankTrade({ wood: 3 }, { ore: 1 }, ratios)).toBeNull();
+    expect(bankTrade({ wood: 2, brick: 4 }, { ore: 1 }, ratios)).toBeNull();
+    expect(bankTrade({ wood: 2 }, { ore: 2 }, ratios)).toBeNull();
+    expect(bankTrade({ wood: 2 }, { wood: 1 }, ratios)).toBeNull();
+    // Unknown rates are 4:1.
+    expect(bankTrade({ sheep: 4 }, { ore: 1 }, ratios)).toEqual({ give: "sheep", get: "ore" });
   });
 
   it("want limits apply (two Bounty picks, one Monopoly pick replaces)", () => {

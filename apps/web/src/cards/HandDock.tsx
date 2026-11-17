@@ -4,7 +4,7 @@ import { BASE_RESOURCES, DEV_CARD_NAMES, type Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import { CardBack, DevCardFace, ResourceCard, devName, resourceName } from "./CardFace";
 import { layoutFan } from "./fan";
-import { addPick, bankGive, removePick, startPick, total, type Pick, type Side } from "./picking";
+import { addPick, bankTrade, removePick, startPick, total, type Pick, type Side } from "./picking";
 import { useCardMotion } from "./useCardMotion";
 import { currentUiScale } from "../ui/uiScale";
 
@@ -104,13 +104,20 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
     for (const el of root.querySelectorAll<HTMLElement>("[data-from]")) {
       const from = el.dataset["from"]!;
       const src = document.querySelector(from === "bank" ? "[data-bank]" : `[data-seat="${from}"]`);
+      // Measure where the card rests, not where its animation has already moved it (that put
+      // the start 140px too low and made the page scroll for a moment). Setting the animation
+      // back restarts it.
+      el.style.animation = "none";
       const me = el.getBoundingClientRect();
+      el.style.animation = "";
+      // Screen pixels to the scaled layer's pixels (spec 232).
+      const scale = currentUiScale();
       let dx = 0;
       let dy = -140;
       if (src) {
         const s = src.getBoundingClientRect();
-        dx = s.left + s.width / 2 - (me.left + me.width / 2);
-        dy = s.top + s.height / 2 - (me.top + me.height / 2);
+        dx = (s.left + s.width / 2 - (me.left + me.width / 2)) / scale;
+        dy = (s.top + s.height / 2 - (me.top + me.height / 2)) / scale;
       }
       el.style.setProperty("--dx", `${dx}px`);
       el.style.setProperty("--dy", `${dy}px`);
@@ -118,20 +125,23 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
   }, [moves]);
 
   const ratio = (r: string) => snap.ratios[r] ?? 4;
+  // On your own main step a tapped card opens the trade window with it as "give" (spec 232).
+  const top = snap.view.decisions.at(-1);
+  const canTrade =
+    snap.seat !== "spectator" &&
+    !!top?.allowed.includes("OFFER_TRADE") &&
+    top.pendingFrom.includes(snap.seat);
   const tapHand = (r: string) => {
-    if (!pick) return;
-    if (pick.purpose === "discard" || pick.purpose === "offer")
+    if (!pick) {
+      if (canTrade) setPick(addPick(startPick("trade"), "give", r, hand));
+      return;
+    }
+    if (pick.purpose === "discard" || pick.purpose === "trade")
       setPick(addPick(pick, "give", r, hand));
-    else if (pick.purpose === "bank") setPick(bankGive(pick, r, ratio(r), hand));
   };
-  const handPickable = pick && ["discard", "offer", "bank"].includes(pick.purpose);
+  const handPickable = pick ? pick.purpose === "discard" || pick.purpose === "trade" : canTrade;
   const unpick = (side: Side, r: string) => {
-    if (!pick) return;
-    setPick(
-      side === "give" && pick.purpose === "bank"
-        ? { ...pick, give: {} }
-        : removePick(pick, side, r),
-    );
+    if (pick) setPick(removePick(pick, side, r));
   };
 
   const resourceGroups = BASE_RESOURCES.map((r, gi) => {
@@ -171,19 +181,20 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
       <>
         {cards}
         {have > 0 && <span className="count-badge">{have}</span>}
-        {pick?.purpose === "bank" && have > 0 && <span className="rate-badge">{ratio(r)}:1</span>}
+        {pick?.purpose === "trade" && have > 0 && <span className="rate-badge">{ratio(r)}:1</span>}
       </>
     );
     return handPickable && have > 0 ? (
       <button
         key={r}
-        className="card-group pickable"
+        // Bob only while picking; on your main step the cards just lift on hover.
+        className={pick ? "card-group pickable" : "card-group"}
         style={{ width }}
         onClick={() => tapHand(r)}
         aria-label={
-          pick?.purpose === "bank"
-            ? `Give ${ratio(r)} ${resourceName(r).toLowerCase()}, you have ${have}`
-            : `Pick one ${resourceName(r).toLowerCase()}, you have ${have}`
+          pick
+            ? `Pick one ${resourceName(r).toLowerCase()}, you have ${have}`
+            : `Trade one ${resourceName(r).toLowerCase()}, you have ${have}`
         }
       >
         {body}
@@ -219,7 +230,7 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
       style={{ "--card-w": `${cardW}px` } as React.CSSProperties}
       ref={setDock}
     >
-      <h3 className="visually-hidden">Your hand</h3>
+      <h3>Your hand</h3>
       {pick && (
         <Tray snap={snap} pick={pick} setPick={setPick} send={send} unpick={unpick} anchor={dock} />
       )}
@@ -279,8 +290,7 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
 
 const TITLES: Record<Pick["purpose"], string> = {
   discard: "Discard",
-  bank: "Trade with the bank",
-  offer: "Offer a trade",
+  trade: "Trade",
   bounty: "Take two from the bank",
   monopoly: "Name a resource",
   gold: "Gold: pick from the bank",
@@ -288,8 +298,8 @@ const TITLES: Record<Pick["purpose"], string> = {
 
 const HINTS: Record<Pick["purpose"], string> = {
   discard: "Tap cards in your hand to discard them. Tap a picked card to put it back.",
-  bank: "Tap a resource in your hand to give your rate's worth, then the card you want.",
-  offer: "Tap cards in your hand to give, and bank cards for what you want.",
+  trade:
+    "Tap cards in your hand to give and cards below for what you want, then offer it to the other players or trade with the bank.",
   bounty: "Tap two bank cards (the same one twice is fine).",
   monopoly: "Tap the resource you want everyone's cards of.",
   gold: "Tap the bank cards you want (the same one more than once is fine).",
@@ -350,10 +360,10 @@ function Tray({
       viewport?.removeEventListener("scroll", measure);
     };
   }, [anchor]);
-  const giveKey = Object.keys(give)[0];
   const wantKey = Object.keys(want)[0];
 
   let action: Action | null = null;
+  let bankAction: Action | null = null;
   let ready = false;
   let label = "Confirm";
   switch (purpose) {
@@ -362,20 +372,21 @@ function Tray({
       ready = total(give) === pick.giveLimit;
       action = { type: "DISCARD", resources: give };
       break;
-    case "bank":
-      label = "Trade";
-      if (giveKey && wantKey) {
-        action = { type: "BANK_TRADE", give: giveKey, get: wantKey };
-        ready = snap.legal.some(
-          (a) => a.type === "BANK_TRADE" && a.give === giveKey && a.get === wantKey,
-        );
-      }
-      break;
-    case "offer":
-      label = "Offer";
+    case "trade": {
+      // One set of picks, two ways to trade them (spec 232).
+      label = "Offer to players";
       ready = total(give) > 0 && total(want) > 0;
       action = { type: "OFFER_TRADE", give, want };
+      const bank = bankTrade(give, want, snap.ratios);
+      if (
+        bank &&
+        snap.legal.some(
+          (a) => a.type === "BANK_TRADE" && a.give === bank.give && a.get === bank.get,
+        )
+      )
+        bankAction = { type: "BANK_TRADE", ...bank };
       break;
+    }
     case "bounty":
       label = "Take them";
       action = { type: "PLAY_YEAR_OF_PLENTY", resources: want };
@@ -419,6 +430,13 @@ function Tray({
   );
 
   const usesBank = purpose !== "discard";
+  // What the bank takes from you: 4:1, or your port rates.
+  const ports = BASE_RESOURCES.filter((r) => (snap.ratios[r] ?? 4) < 4);
+  const bankRule = `Bank: ${ports.length ? "your rate" : "4"} of one resource for 1 card${
+    ports.length
+      ? ` (${ports.map((r) => `${resourceName(r).toLowerCase()} ${snap.ratios[r]}:1`).join(", ")}, others 4:1)`
+      : ""
+  }.`;
   const tray = (
     <div
       // Every tray floats above the bar, which has a fixed height (spec 232).
@@ -454,14 +472,27 @@ function Tray({
           </div>
         )}
       </div>
+      {purpose === "trade" && !bankAction && <p className="muted small tray-note">{bankRule}</p>}
       <div className="row tray-actions">
-        <button
-          className="primary"
-          disabled={!ready || !action}
-          onClick={() => action && send(action)}
-        >
-          {label}
-        </button>
+        {/* Solo games have nobody to offer to (the server rejects it too). */}
+        {(purpose !== "trade" || snap.players.length > 1) && (
+          <button
+            className="primary"
+            disabled={!ready || !action}
+            onClick={() => action && send(action)}
+          >
+            {label}
+          </button>
+        )}
+        {purpose === "trade" && (
+          <button
+            className="primary"
+            disabled={!bankAction}
+            onClick={() => bankAction && send(bankAction)}
+          >
+            Trade with bank
+          </button>
+        )}
         {purpose !== "discard" && purpose !== "gold" && (
           <button className="link" onClick={() => setPick(null)}>
             Cancel

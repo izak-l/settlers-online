@@ -197,6 +197,9 @@ input {
   position: relative;
   flex: 1 1 0;
   min-height: 0;
+  /* Nothing in the game (flying cards, popups) may make the page scroll: a scrollbar would
+     narrow the window and re-fit everything for a moment. */
+  overflow: clip;
   isolation: isolate;
   pointer-events: none;
 }
@@ -245,8 +248,11 @@ input {
   min-width: 0;
 }
 /* Wide enough for a splayed fan; it gives way first when the bar runs out of room. */
+/* The heading, then the fan, fit the bar's fixed height. */
 .bottom-dock > .hand-panel {
   position: relative;
+  gap: 0.35rem;
+  padding: 0.55rem 0.8rem 0.6rem;
   flex: 0 1 520px;
   min-width: 300px;
   align-content: end;
@@ -341,9 +347,6 @@ input {
   display: flex;
   gap: 8px;
 }
-.menu-anchor {
-  position: relative;
-}
 button.square {
   position: relative;
   width: 64px;
@@ -434,18 +437,6 @@ button.square.out .left-badge {
 .square:hover .tip,
 .square:focus-visible .tip {
   display: block;
-}
-.trade-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  z-index: 6;
-  display: grid;
-  gap: 6px;
-  min-width: 210px;
-}
-.trade-menu p {
-  margin: 0;
 }
 /* The dice sit above the big turn button, rising over the map's corner. */
 .turn-col {
@@ -2122,6 +2113,13 @@ button.card-group:focus-visible {
 .trade-tray > .tray-head,
 .trade-tray > .tray-actions {
   flex: none;
+}
+.trade-tray > .tray-note {
+  flex: none;
+  margin: 0;
+}
+.tray-actions button {
+  white-space: nowrap;
 }
 .trade-tray > .tray-body {
   min-height: 0;

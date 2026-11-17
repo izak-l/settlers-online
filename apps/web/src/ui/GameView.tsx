@@ -153,9 +153,9 @@ export function GameView({
             </section>
           )}
           {!playing && <p className="panel muted">You're watching. Hands are hidden.</p>}
+          <PlayersPanel snap={snap} seats={seats} />
           <GameLog snap={snap} seats={seats} client={client} />
           <BankPanel snap={snap} />
-          <PlayersPanel snap={snap} seats={seats} />
         </aside>
       </div>
     </main>

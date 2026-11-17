@@ -17,6 +17,9 @@ layout only, with our own art, colours and icons):
   with the clock beside it; a card above it only when a decision needs buttons (steal, trade
   offer, road or ship, sending the pirate away, errors); and a row of icon buttons with their
   cost underneath: Trade, Road, Settlement, City, (Ship, Move ship), Dev card, (Place harbor).
+- Cards flying into the hand start exactly on their source (the bank panel or a player), and
+  nothing in the game screen can make the page scroll (`.layout-frame` clips), so a fly-in
+  never flashes a scrollbar.
 - The status line never widens the bar: a longer prompt wraps and the line grows upward
   over the map, keeping the bar's size. The road-or-ship card only appears when both are
   possible.
@@ -29,12 +32,15 @@ layout only, with our own art, colours and icons):
 - Build buttons carry a "left" badge: the limit minus pieces on the board (road 15,
   settlement 5, city 4, ship 15 in seafaring games); the dev card button shows the cards left
   in the deck (25 at the start). Hover or keyboard focus shows the name and cost.
-- The Trade button opens a small menu (bank, with your port rates, or an offer to players);
-  the side column's trade panel is gone.
+- One trade window: the Trade button opens it, and so does tapping a resource card in your
+  hand on your main step (that card starts as "give"). Pick what you give and want, then
+  choose "Offer to players" or "Trade with bank"; the bank button works only for exactly your
+  rate of one resource for one card, and the window states the rule otherwise. The side
+  column's trade panel is gone.
 - On your roll step the dice bob gently and clicking them rolls (blank faces before the
   first roll).
-- Side column order: the log (taller, 320px), a bank panel (cards left of each resource and
-  the dev deck), then players.
+- Side column order: players, the log (taller, 320px), then a bank panel (cards left of each
+  resource and the dev deck). The hand keeps its "Your hand" heading.
 - Spectators see the status line and clock only.
 - No stacking on small screens: the whole game screen (panels, not the map) is designed at
   1440×900 and scaled to the window (capped at 1.3×, floor 0.2×). Phones get the desktop
@@ -78,7 +84,8 @@ None change. Piece limits stay in the engine modules (`pieceLimits`).
 - Web: `ui/buildTiles.test.ts`: tiles carry the counts from the snapshot, are enabled only
   from `legal` (the engine already refuses a build with 0 left), add ship tiles in seafaring
   games, and show no badges without counts. `ui/uiScale.test.ts`: scale at common window
-  sizes and the caps. `board/viewport.test.ts`: a scale change refits.
+  sizes and the caps. `board/viewport.test.ts`: a scale change refits. `cards/cards.test.ts`:
+  `bankTrade` accepts only your rate of one resource for one other card.
 - Manual: the sandbox at desktop and phone widths; a seafaring game shows the ship tile.
 
 ## Open questions
@@ -91,5 +98,5 @@ None change. Piece limits stay in the engine modules (`pieceLimits`).
 
 ## Status
 
-In progress on the `ui-updates` branch. Also on it: softer robber/pirate target pulse, and buying a dev card
-plays the resource-gain sound.
+Shipped (merged into local `main`). Also included: softer robber/pirate target pulse, and
+buying a dev card plays the resource-gain sound.

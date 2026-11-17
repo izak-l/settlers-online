@@ -50,7 +50,7 @@ Engine tests above; maps component counts; `pnpm sim --scenario lost-settlers` c
 
 ## Open questions
 
-- Variable setup (page 13): the large island's hexes and tokens are random, the three hexes marked on its east side get no 5, 6, 8 or 9. Needs a constraint scoped to listed hexes (`no-tokens-on: [5,6,8,9]` with hex list). Fine to add?
+- None. (Decided: variable setup shuffles the large island's hexes and tokens; a new constraint scoped to listed hexes keeps 5, 6, 8 and 9 off the three marked hexes on its east side.)
 
 ## Status
 

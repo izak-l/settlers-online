@@ -15,7 +15,7 @@ Scenario 6 of the seafaring rulebook (pages 14–15; our name "Weavers' Isles"):
 - **Setup: three starting settlements.** The first two are placed as usual (snake order, with a road or ship each) but give no resources. Then each player, from the first player in turn order, places a third settlement with a road or ship, and takes starting resources for that one only. Settlements may go on either large island.
 - **No Longest Trade Route** (the feature switch from spec 014 is off). No island bonus.
 - **No settlements on the small islands.**
-- **Villages:** each small island has villages, each shown by a number token, each starting with 5 cloth; 10 more cloth are a general supply.
+- **Villages:** a village is a number token on a corner: on each small-island hex, one on its north corner and one on its south corner, each starting with 5 cloth next to it; 10 more cloth are a general supply.
   - When you make a route (your roads and ships, joined as for the longest route) from one of your buildings to a village, you take 1 cloth from that village at once, and you are now trading with it.
   - When a village's number is rolled, every player trading with it takes 1 cloth from it; if it runs short, the rest come from the general supply. A village with no cloth left produces nothing more (and the general supply isn't used for it).
   - Every 2 cloth you hold are worth 1 VP.
@@ -45,8 +45,7 @@ Engine tests above; maps component counts; `pnpm sim --scenario weavers-isles`; 
 
 ## Open questions
 
-- Where exactly villages sit (corners of the small islands, per the map diagram). To be confirmed while transcribing; the rules above assume a village is a corner.
-- The rulebook says the robber's start is a "12" hex the players choose; we'll pick the first 12 in map order (or let the map name it). OK?
+- None. (Decided: villages are on the north and south corners of each small-island hex; the robber starts on the 12 hex the map names.)
 
 ## Status
 

@@ -14,11 +14,11 @@ The rulebook's "new world" variant (page 20; our name "Uncharted Seas"): a rando
 
 - **Win:** 12 VP. Starting settlements on one or two islands, which become your home islands; 1 VP island bonus for each other island you settle.
 - **Hexes:** the rulebook's list (19 sea, 4 hills, 5 forest, 5 pasture, 5 fields, 4 mountains) placed at random inside the frame; number tokens at random, never 6/8 next to each other; ports (5×2:1, 5×3:1) on random coast edges, at least one edge apart.
-- **Robber and pirate:** the robber starts off the board until the first 7 (or on a random land hex); the pirate on a random sea hex.
+- **Robber and pirate:** the robber starts on the 12; the pirate on a random sea hex.
 
 ## Engine changes
 
-- None expected. Possibly the robber starting off the board (see open questions).
+- None expected (`robberStart: "token:12"` already exists, spec 017).
 
 ## Maps changes
 
@@ -36,8 +36,7 @@ Generator over 10,000 seeds: rules hold, counts right, ports spaced; `pnpm sim -
 
 ## Open questions
 
-- The rulebook places the robber and pirate "on the indicated locations", which a random map doesn't have. Simplest: robber on the 12 (or a random land hex), pirate on a random sea hex. OK?
-- How many hexes: the rulebook's 42 (fits the 4-player frame). For 3 players the same map, or a smaller frame?
+- None. (Decided: robber on the 12, pirate on a random sea hex; the same 42-hex map for 1–4 players.)
 
 ## Status
 

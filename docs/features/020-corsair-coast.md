@@ -42,8 +42,7 @@ Engine tests above; maps component counts; `pnpm sim --scenario corsair-coast` (
 
 ## Open questions
 
-- "Shortest path": we'd read it as "every ship added keeps the line on some shortest route to your beachhead (then fortress) over sea edges". OK?
-- Does the fortress attack happen every turn your line reaches it (until captured)? We read yes, automatically at the end of your main step.
+- None. (Decided: every ship added must keep the line on some shortest sea route to your beachhead, then your fortress; the fortress attack happens automatically at the end of every turn's main step while your line reaches it, until it's captured.)
 
 ## Status
 

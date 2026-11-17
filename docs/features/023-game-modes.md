@@ -13,7 +13,7 @@ This replaces the current rule where a seafaring scenario's 3p or 4p map is chos
 - A mode catalog: each mode has an id, our own display name, its modules, its player range, and the maps it offers.
 - Maps (catalog maps and scenario maps) say which modes they belong to.
 - Lobby flow: choose mode → choose map (→ fixed / variable for scenarios that have both). House rules (spec 014) stay where they are.
-- The seat count follows the mode (see open questions).
+- The host chooses the mode on the home screen, when creating the lobby; the lobby's seats are then 1 up to the mode's maximum. A mode's (and every map's) player count is an upper bound: a game may start with fewer players (later, bots can fill empty seats).
 - The dev sandbox uses the same two-step picker.
 
 **Non-scope**
@@ -26,15 +26,16 @@ This replaces the current rule where a seafaring scenario's 3p or 4p map is chos
 | Mode | Modules | Players | Maps |
 | --- | --- | --- | --- |
 | Base | base | 1–4 | Standard Island, Grand Diamond |
-| Seafaring (3 players) | base, seafaring | 3 (1–3, see below) | each scenario's 3p map |
-| Seafaring (4 players) | base, seafaring | 4 | each scenario's 4p map |
+| Seafaring (3 players) | base, seafaring | up to 3 | each scenario's 3p map |
+| Seafaring (4 players) | base, seafaring | up to 4 | each scenario's 4p map, Uncharted Seas |
 
 ## Server/UI changes
 
 - `packages/maps`: `MODE_CATALOG`; `mapsForMode(mode)`; maps tagged with modes (scenario maps by their size; catalog maps in the JSON).
 - `packages/protocol`: `lobby:map` gains the mode (`{ mode, map, setup? }`); `LobbyState` shows the mode.
 - `apps/server`: checks the map belongs to the mode and the seat count fits; stores the mode with the lobby.
-- `apps/web`: the lobby's map section becomes Mode → Map (→ Fixed / Variable); the home "new game" form may ask for the mode first.
+- `apps/web`: the home "new game" form asks for the mode first, then the seat count (up to the mode's maximum); the lobby's map section lists only that mode's maps (→ Fixed / Variable).
+- Maps' `players.min` becomes 1 everywhere (the maximum is the upper bound).
 
 ## Test plan
 

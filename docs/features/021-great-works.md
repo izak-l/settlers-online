@@ -14,14 +14,18 @@ Scenario 8 of the seafaring rulebook (pages 18–19; our name "Great Works"): ra
 
 - **No pirate.** The robber starts on a desert. Small islands give 1 island bonus VP each.
 - **Setup:** starting settlements only on the large island, and not on a corner with a wall or bridge marker, nor on the corners marked X beside the bridge markers.
-- **Wonders** (five; our own names for each, the rulebook's requirements):
-  - a wall wonder: needs a building on one of the wall-marker corners;
-  - a bridge wonder: needs a building on one of the bridge-marker corners;
-  - a monument: needs a city on a harbor and a route of 5 or more roads and/or ships;
-  - a theatre: needs 2 cities;
-  - a castle: needs a city and 6 or more VP.
-- **Claiming:** when you meet a wonder's requirement you may claim it (one wonder per player; nobody else can then claim it). Claiming costs the price on its tile and puts your marker on level 1.
-- **Building:** each of the four levels costs the same 5 resources (per wonder); you may build as many levels in a turn as you can afford. Level 4 completes it.
+- **Wonders** (our names; the requirement and the cost of each level, from the wonder tiles):
+
+  | Wonder | Requirement | Each level costs |
+  | --- | --- | --- |
+  | Sea Wall | a building on a wall-marker corner (the wasteland) | 1 wood, 3 brick, 1 wheat |
+  | Grand Bridge | a building on a bridge-marker corner (the strait) | 3 wood, 1 wheat, 1 sheep |
+  | Lighthouse Monument | a city on a harbor and a route of 5+ roads and/or ships | 3 wheat, 2 ore |
+  | Amphitheatre | 2 cities | 1 wood, 1 brick, 3 sheep |
+  | Citadel | a city and 6+ VP | 1 brick, 1 wheat, 3 ore |
+
+- **Claiming:** when you meet a wonder's requirement you may claim it, free (one wonder per player; nobody else can then claim it).
+- **Building:** each of the four levels costs that wonder's 5 resources; you may build as many levels in a turn as you can afford. Level 4 completes it.
 - **Win:** during your turn, finish your wonder; or have 10 or more VP and a higher completed wonder level than every other player.
 
 ## Engine changes
@@ -41,8 +45,7 @@ Engine tests above; maps component counts; `pnpm sim --scenario great-works`; ma
 
 ## Open questions
 
-- Each wonder's claim and level costs are printed only as icons on the wonder tiles; to be read from the rulebook's wonder art (pages 18–19) while transcribing, and checked with you.
-- Our wonder names: Sea Wall, Grand Bridge, Lighthouse Monument, Amphitheatre, Citadel. OK, or other names?
+- None. (Decided: the names and costs above; claiming is free and every level costs the wonder's 5 resources, per page 18.)
 
 ## Status
 

@@ -8,7 +8,7 @@ import { pickResetKey, startPick, type Pick } from "../cards/picking";
 import type { GameClient, Snapshot } from "../game/LocalGame";
 import { errorText, seatsOf, type BuildMode } from "../game/seats";
 import { ActionBar } from "./ActionBar";
-import { TradePanel } from "./TradePanel";
+import { BankPanel } from "./BankPanel";
 import { GameLog } from "./GameLog";
 import { PlayersPanel } from "./PlayersPanel";
 import { SettingsMenu } from "./SettingsMenu";
@@ -93,6 +93,19 @@ export function GameView({
           : startPick("gold", { wantLimit: goldOwed })
         : pick;
 
+  const actions = (
+    <ActionBar
+      snap={snap}
+      seats={seats}
+      mode={mode}
+      setMode={setMode}
+      send={(a) => void send(a)}
+      pick={activePick}
+      setPick={setPick}
+      error={error}
+    />
+  );
+
   return (
     <main className="layout">
       <div className="board-wrap">
@@ -106,9 +119,13 @@ export function GameView({
       </div>
       <div className="board-space" ref={setFitArea} aria-hidden="true" />
       <SettingsMenu onExit={onExit} exitLabel={exitLabel} />
-      {playing && (
-        <HandDock snap={snap} pick={activePick} setPick={setPick} send={(a) => void send(a)} />
-      )}
+      {/* Spec 232: your cards on the left, the status and action buttons on the right. */}
+      <div className="bottom-dock">
+        {playing && (
+          <HandDock snap={snap} pick={activePick} setPick={setPick} send={(a) => void send(a)} />
+        )}
+        {actions}
+      </div>
       <aside className="side">
         {snap.view.winner !== undefined && (
           <section className="panel winner" role="status">
@@ -124,17 +141,9 @@ export function GameView({
           </section>
         )}
         {!playing && <p className="panel muted">You're watching. Hands are hidden.</p>}
-        <PlayersPanel snap={snap} seats={seats} />
-        <ActionBar
-          snap={snap}
-          seats={seats}
-          mode={mode}
-          setMode={setMode}
-          send={(a) => void send(a)}
-          error={error}
-        />
-        {playing && <TradePanel snap={snap} pick={activePick} setPick={setPick} />}
         <GameLog snap={snap} seats={seats} client={client} />
+        <BankPanel snap={snap} />
+        <PlayersPanel snap={snap} seats={seats} />
       </aside>
     </main>
   );

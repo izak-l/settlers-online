@@ -99,7 +99,8 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
     ].filter((g) => g.n > 0),
   );
   const devFan = layoutFan({
-    width: dockWidth || 320,
+    // The fans share one row in the bottom bar (spec 232), so dev cards get part of it.
+    width: (dockWidth || 320) * 0.4,
     cardW,
     gap: GAP,
     groups: devGroups.map((g) => g.n),
@@ -111,7 +112,7 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
     if (!root) return;
     for (const el of root.querySelectorAll<HTMLElement>("[data-from]")) {
       const from = el.dataset["from"]!;
-      const src = from === "bank" ? null : document.querySelector(`[data-seat="${from}"]`);
+      const src = document.querySelector(from === "bank" ? "[data-bank]" : `[data-seat="${from}"]`);
       const me = el.getBoundingClientRect();
       let dx = 0;
       let dy = -140;
@@ -227,7 +228,7 @@ export function HandDock({ snap, pick, setPick, send }: Props) {
       style={{ "--card-w": `${cardW}px` } as React.CSSProperties}
       ref={setDock}
     >
-      <h3>Your hand</h3>
+      <h3 className="visually-hidden">Your hand</h3>
       {pick && (
         <Tray snap={snap} pick={pick} setPick={setPick} send={send} unpick={unpick} anchor={dock} />
       )}
@@ -317,10 +318,9 @@ function Tray({
 }) {
   const hand = snap.view.zones[`hand-${snap.seat}`]?.contents ?? {};
   const { purpose, give, want } = pick;
-  const floating = purpose === "bank" || purpose === "offer";
   const [floatingStyle, setFloatingStyle] = useState<React.CSSProperties | null>(null);
   useLayoutEffect(() => {
-    if (!floating || !anchor.current) return;
+    if (!anchor.current) return;
     const dock = anchor.current;
     const header = dock.closest(".app")?.querySelector(".topbar");
     const viewport = window.visualViewport;
@@ -332,7 +332,8 @@ function Tray({
         rect.top - 8,
         (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 8,
       );
-      const width = Math.max(1, Math.min(560, rect.width, window.innerWidth - 16));
+      // The hand shares the bottom bar (spec 232), so the tray takes its own width.
+      const width = Math.max(1, Math.min(560, window.innerWidth - 16));
       setFloatingStyle({
         left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
         bottom: window.innerHeight - bottom,
@@ -353,7 +354,7 @@ function Tray({
       viewport?.removeEventListener("resize", measure);
       viewport?.removeEventListener("scroll", measure);
     };
-  }, [floating, anchor]);
+  }, [anchor]);
   const giveKey = Object.keys(give)[0];
   const wantKey = Object.keys(want)[0];
 
@@ -425,8 +426,9 @@ function Tray({
   const usesBank = purpose !== "discard";
   const tray = (
     <div
-      className={floating ? "tray trade-tray" : "tray"}
-      style={floating ? (floatingStyle ?? undefined) : undefined}
+      // Every tray floats above the bar, which has a fixed height (spec 232).
+      className="tray trade-tray"
+      style={floatingStyle ?? undefined}
       role="group"
       aria-label={TITLES[purpose]}
     >
@@ -473,5 +475,5 @@ function Tray({
       </div>
     </div>
   );
-  return floating ? (floatingStyle ? createPortal(tray, document.body) : null) : tray;
+  return floatingStyle ? createPortal(tray, document.body) : null;
 }

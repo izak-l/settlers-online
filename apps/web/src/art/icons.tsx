@@ -12,6 +12,85 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M3 17 H22 L18 22 H7 Z M12 2 V15 H3 Z M14 4 L21 15 H14 Z" fill="currentColor" />
     </>
   ),
+  // A face-down card with a star seal: buying a development card (spec 232).
+  devCard: (
+    <>
+      <rect x="5" y="2" width="14" height="20" rx="2.5" fill="currentColor" />
+      <path
+        d="M12 7 L13.5 10.4 L17 10.8 L14.4 13.1 L15.1 16.6 L12 14.8 L8.9 16.6 L9.6 13.1 L7 10.8 L10.5 10.4 Z"
+        fill="var(--icon-cut, #0005)"
+      />
+    </>
+  ),
+  // A ship with a curved arrow over it: moving a ship you already placed.
+  moveShip: (
+    <>
+      <path d="M3 18 H21 L17.5 22 H6.5 Z M11 9 V16 H4 Z M13 10 L19 16 H13 Z" fill="currentColor" />
+      <path
+        d="M5 6 C9 1.5 15 1.5 19 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M19 2.5 V6.5 H15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
+  // Two arrows passing each other: trading.
+  trade: (
+    <>
+      <path
+        d="M3 8 H17 M13 4 L17 8 L13 12"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M21 16 H7 M11 12 L7 16 L11 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
+  // Two chevrons and a bar: finish your turn.
+  endTurn: (
+    <path d="M3 5 L10 12 L3 19 Z M11 5 L18 12 L11 19 Z M19 5 H22 V19 H19 Z" fill="currentColor" />
+  ),
+  // One die showing five: rolling.
+  dice: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="4" fill="currentColor" />
+      <g fill="var(--icon-cut, #0006)">
+        <circle cx="8" cy="8" r="1.7" />
+        <circle cx="16" cy="8" r="1.7" />
+        <circle cx="12" cy="12" r="1.7" />
+        <circle cx="8" cy="16" r="1.7" />
+        <circle cx="16" cy="16" r="1.7" />
+      </g>
+    </>
+  ),
+  // An anchor: placing a harbor you picked up.
+  harbor: (
+    <path
+      d="M12 3 a2 2 0 1 1 0 4 a2 2 0 1 1 0 -4 Z M12 7 V21 M8 10 H16 M4 14 C4 18.5 8 21 12 21 C16 21 20 18.5 20 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  ),
   wood: (
     <>
       <path d="M12 2 L5 11 h3 L4 16 h6 v6 h4 v-6 h6 L16 11 h3 Z" fill="currentColor" />

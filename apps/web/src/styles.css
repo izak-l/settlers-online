@@ -252,9 +252,10 @@ input {
 .board-controls {
   position: absolute;
   left: 16px;
-  /* Below the settings gear (spec 231). */
-  top: 68px;
+  /* A column below the settings gear (spec 231): same left edge, same button size. */
+  top: 64px;
   display: flex;
+  flex-direction: column;
   width: max-content;
   z-index: 2;
   gap: 6px;
@@ -1111,10 +1112,21 @@ button.danger {
   }
   .board-controls {
     left: 12px;
+    top: 64px;
   }
-  .settings-menu {
+  .layout > .settings-menu {
     left: 12px;
     top: 12px;
+  }
+}
+@media (max-width: 600px) {
+  .board-controls button,
+  .settings-menu .settings-trigger {
+    width: 44px;
+    height: 44px;
+  }
+  .board-controls {
+    top: 64px;
   }
 }
 @media (max-width: 600px) {
@@ -1575,8 +1587,9 @@ button.card-group:focus-visible {
 .settings-trigger {
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  /* The zoom buttons' size, so the column lines up (44px tap targets under 600px). */
+  width: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 10px;
   box-shadow: 0 1px 3px #0003;

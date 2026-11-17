@@ -31,7 +31,9 @@ export type Action =
   | { type: "MOVE_SHIP"; from: EdgeId; to: EdgeId }
   /** A sea hex, or null to park the pirate on the frame (off the board). */
   | { type: "MOVE_PIRATE"; hex: HexKey | null }
-  | { type: "CHOOSE_GOLD"; resources: Resources };
+  | { type: "CHOOSE_GOLD"; resources: Resources }
+  // Lost Settlers (spec 018)
+  | { type: "PLACE_HARBOR"; edge: EdgeId };
 
 export type ActionType = Action["type"];
 

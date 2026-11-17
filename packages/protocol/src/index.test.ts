@@ -73,6 +73,7 @@ describe("protocol schemas", () => {
       { type: "MOVE_PIRATE", hex: "3,0" },
       { type: "MOVE_PIRATE", hex: null },
       { type: "CHOOSE_GOLD", resources: { ore: 1 } },
+      { type: "PLACE_HARBOR", edge: "2,-1|2,0" },
     ]) {
       expect(ActionSchema.safeParse(a).success, a.type).toBe(true);
     }

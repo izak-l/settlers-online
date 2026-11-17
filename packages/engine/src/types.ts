@@ -29,6 +29,19 @@ export interface MapInput {
   scenario?: Record<string, unknown>;
   /** Base-game parts this map turns on or off (spec 014). */
   features?: FeatureOverrides;
+  /**
+   * Things lying on the board at the start (decision record 0001), e.g. VP tokens on sea edges.
+   * The core only carries them; the modules that know a marker's `kind` give it meaning, and
+   * take it off the map when it's collected.
+   */
+  markers?: MapMarker[];
+}
+
+export interface MapMarker {
+  id: string;
+  kind: string;
+  at: PieceLocation;
+  data?: Record<string, unknown>;
 }
 
 export interface RulesetDef {

@@ -13,9 +13,11 @@ export type Cue =
   | "offer"
   | "respond"
   | "dice"
-  | "robber"
   | "city"
   | "build"
+  | "road"
+  | "settlement"
+  | "turnWarning"
   | "devcard"
   | "award"
   | "gain"
@@ -29,8 +31,9 @@ const PRIORITY: Cue[] = [
   "offer",
   "respond",
   "dice",
-  "robber",
   "city",
+  "road",
+  "settlement",
   "build",
   "devcard",
   "award",
@@ -42,18 +45,16 @@ const MAX_CUES = 2;
 
 const EVENT_CUE: Record<string, Cue> = {
   ROLLED: "dice",
-  BUILT_ROAD: "build",
-  PLACED_ROAD: "build",
-  BUILT_SETTLEMENT: "build",
-  PLACED_SETTLEMENT: "build",
+  BUILT_ROAD: "road",
+  PLACED_ROAD: "road",
+  BUILT_SETTLEMENT: "settlement",
+  PLACED_SETTLEMENT: "settlement",
   BUILT_CITY: "city",
   BOUGHT_DEV_CARD: "devcard",
-  MOVED_ROBBER: "robber",
-  // Seafaring: ships sound like building, the pirate like the robber, a new island like an award.
-  BUILT_SHIP: "build",
-  PLACED_SHIP: "build",
+  // Ship placement shares roads; moving an existing ship keeps its original cue.
+  BUILT_SHIP: "road",
+  PLACED_SHIP: "road",
   MOVED_SHIP: "build",
-  MOVED_PIRATE: "robber",
   ISLAND_SETTLED: "award",
   REVEALED: "devcard",
   AWARD: "award",
@@ -80,7 +81,13 @@ function newlyAsked(prev: CueInput, next: CueInput, kind: string): boolean {
 export function cuesFor(prev: CueInput | null, next: CueInput, opts: { hidden: boolean }): Cue[] {
   if (!prev) return [];
   const me = next.seat;
-  const fresh = next.log.slice(prev.log.length);
+  const sameSeat = prev.seat === next.seat;
+  // The sandbox changes viewer after setup placements. Private log entries and hand
+  // counts can differ by viewer, but genuinely public events form a common timeline.
+  const publicLog = (log: GameEvent[]) => log.filter((e) => !e.visibleTo && !e.hiddenFrom);
+  const fresh = sameSeat
+    ? next.log.slice(prev.log.length)
+    : publicLog(next.log).slice(publicLog(prev.log).length);
   // Cues that are about you, and so still play when the tab is hidden.
   const personal = new Set<Cue>(["win", "yourTurn", "discard"]);
   const found = new Set<Cue>();
@@ -104,9 +111,9 @@ export function cuesFor(prev: CueInput | null, next: CueInput, opts: { hidden: b
       personal.add("respond");
     }
   }
-  if (newlyAsked(prev, next, "ROLL")) found.add("yourTurn");
-  if (newlyAsked(prev, next, "DISCARD")) found.add("discard");
-  if (fresh.length > 0 && total(next.hand) > total(prev.hand)) found.add("gain");
+  if (sameSeat && newlyAsked(prev, next, "ROLL")) found.add("yourTurn");
+  if (sameSeat && newlyAsked(prev, next, "DISCARD")) found.add("discard");
+  if (sameSeat && fresh.length > 0 && total(next.hand) > total(prev.hand)) found.add("gain");
 
   return PRIORITY.filter((c) => found.has(c) && (!opts.hidden || personal.has(c))).slice(
     0,

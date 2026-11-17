@@ -16,6 +16,21 @@ behind the existing game controls.
 - Keep part of the map within the clear area at pan limits. Fit always restores the map.
 - No engine/server changes, new art, rule changes or expansion changes.
 
+### Follow-up: stable board during steals
+
+On `feature/recorded-sounds`, user testing identified unwanted whole-board zoom
+while stealing. Keep the flying-card animation. Capture the camera's fit reference
+at initial map fit, actual viewport resize or explicit Fit; do not recalculate its
+scale/position for transient hand/sidebar resizing. Continue using the live clear
+area for popovers, keyboard reveal and pan limits. Regression tests cover transient
+overlay heights, panned/zoomed views, explicit refit, viewport resize and keyboard
+reveal/cursor zoom after overlay changes.
+
+Validation: all 132 web tests, web typecheck/build and lint pass. Chromium checks
+at 1440×900 and 375×812 confirm flying cards still animate while the SVG viewBox
+stays unchanged throughout a simulated steal and transient hand-height changes;
+wheel zoom still works and no browser errors were observed.
+
 ## Rules
 
 Gestures do not change legal targets. Preserve the 6px drag threshold and suppress the click

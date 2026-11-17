@@ -29,7 +29,7 @@ None.
 
 ## Server/UI changes
 
-- `apps/web/src/audio/synth.ts` (new): every sound is generated with the Web Audio API (oscillators, filtered noise and gain envelopes; each recipe is a few lines). There are **no audio files**, so nothing needs licensing. If we ever add a file, it goes in `apps/web/public/sounds/` with its source and licence in `CREDITS.md` there, and only our own or CC0 files are allowed.
+- Initially every sound was generated in `apps/web/src/audio/synth.ts` with the Web Audio API. Spec 227 adds explicit recorded sources through `audio/catalog.ts` and `audio/player.ts`, starting with eight supplied dice recordings; other cues remain synthesized. Runtime recordings go in `apps/web/public/sounds/` with provenance and permissions in `CREDITS.md`. Original or CC0 files remain the default policy; the project owner explicitly confirmed rights and authorized use of these eight dice recordings on 2026-11-16. Recorded cues have no automatic fallback.
 - `apps/web/src/audio/cues.ts` (new, pure): `cuesFor(prev, next, { hidden })` (each input carries its seat) → a list of cue ids, deduplicated so one action plays at most one or two sounds (a roll that produces resources plays the dice, then a soft card sound).
 - `apps/web/src/audio/settings.ts` (new): mute and volume with safe `localStorage` access, plus a tiny subscribe API.
 - `apps/web/src/audio/useSounds.ts` (new): runs `cuesFor` on each snapshot and plays chat ticks for recent messages from others (history that arrives after a join is older than 15 seconds, so it stays quiet).
@@ -48,3 +48,8 @@ None.
 ## Status
 
 Shipped
+
+Spec 228 supersedes shared building and movement effects: roads/settlements use
+separate recordings, successful steals use the supplied swipe, and robber/pirate
+movement is silent. A personal ticking warning starts five seconds before the
+existing turn deadline, stops when the clock ends or changes, and respects mute/volume.

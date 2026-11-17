@@ -18,6 +18,8 @@ export interface Size {
   h: number;
   /** Unobstructed screen rectangle; the SVG itself still fills w × h. */
   frame?: Box;
+  /** Clear area captured at initial fit, resize or explicit Fit; overlays may change independently. */
+  fitFrame?: Box;
 }
 export interface Pt {
   x: number;
@@ -37,13 +39,23 @@ function frameOf(size: Size): Box {
   return size.frame ?? { x: 0, y: 0, w: size.w, h: size.h };
 }
 
+function fitFrameOf(size: Size): Box {
+  return size.fitFrame ?? frameOf(size);
+}
+
+/** Keep the camera's fit reference while only overlays change; refit on container resize. */
+export function measuredSize(previous: Size, next: Size): Size {
+  const sameViewport = previous.w === next.w && previous.h === next.h;
+  return { ...next, fitFrame: sameViewport ? fitFrameOf(previous) : frameOf(next) };
+}
+
 export function fitView(fit: Box): View {
   return { zoom: 1, cx: fit.x + fit.w / 2, cy: fit.y + fit.h / 2 };
 }
 
 /** Pixels per board unit at this zoom. */
 export function pxPerUnit(v: View, fit: Box, size: Size): number {
-  const frame = frameOf(size);
+  const frame = fitFrameOf(size);
   const base = Math.min(frame.w / fit.w, frame.h / fit.h);
   return base * v.zoom;
 }
@@ -53,7 +65,7 @@ export function viewBox(v: View, fit: Box, size: Size): [number, number, number,
   const s = pxPerUnit(v, fit, size);
   const w = size.w / s;
   const h = size.h / s;
-  const frame = frameOf(size);
+  const frame = fitFrameOf(size);
   return [v.cx - (frame.x + frame.w / 2) / s, v.cy - (frame.y + frame.h / 2) / s, w, h];
 }
 
@@ -69,6 +81,9 @@ function clamp(v: View, fit: Box, size: Size): View {
   const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v.zoom));
   const s = pxPerUnit({ ...v, zoom }, fit, size);
   const frame = frameOf(size);
+  const anchor = fitFrameOf(size);
+  const dx = (frame.x + frame.w / 2 - (anchor.x + anchor.w / 2)) / s;
+  const dy = (frame.y + frame.h / 2 - (anchor.y + anchor.h / 2)) / s;
   const axis = (c: number, start: number, len: number, viewLen: number) => {
     const overlap = Math.min(len, viewLen) * 0.2;
     return Math.min(
@@ -78,15 +93,15 @@ function clamp(v: View, fit: Box, size: Size): View {
   };
   return {
     zoom,
-    cx: axis(v.cx, fit.x, fit.w, frame.w / s),
-    cy: axis(v.cy, fit.y, fit.h, frame.h / s),
+    cx: axis(v.cx + dx, fit.x, fit.w, frame.w / s) - dx,
+    cy: axis(v.cy + dy, fit.y, fit.h, frame.h / s) - dy,
   };
 }
 
 /** Zoom by `factor` around a screen point, which stays over the same board point. */
 export function zoomAt(v: View, fit: Box, size: Size, at: Pt, factor: number): View {
   const p = toBoard(v, fit, size, at);
-  const frame = frameOf(size);
+  const frame = fitFrameOf(size);
   const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v.zoom * factor));
   const s = pxPerUnit({ ...v, zoom }, fit, size);
   return clamp(
@@ -115,7 +130,18 @@ export function reveal(v: View, fit: Box, size: Size, p: Pt, marginPx = 32): Vie
   const h = frame.h / s;
   const m = Math.min(marginPx / s, w / 4, h / 4);
   const inside = p.x >= x + m && p.x <= x + w - m && p.y >= y + m && p.y <= y + h - m;
-  return inside ? v : clamp({ ...v, cx: p.x, cy: p.y }, fit, size);
+  const anchor = fitFrameOf(size);
+  return inside
+    ? v
+    : clamp(
+        {
+          ...v,
+          cx: p.x - (frame.x + frame.w / 2 - (anchor.x + anchor.w / 2)) / s,
+          cy: p.y - (frame.y + frame.h / 2 - (anchor.y + anchor.h / 2)) / s,
+        },
+        fit,
+        size,
+      );
 }
 
 /** Wanted size of a target's hit area, in screen pixels (a 44px circle). */

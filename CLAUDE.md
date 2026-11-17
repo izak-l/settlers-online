@@ -6,6 +6,13 @@ A free, self-hosted, browser-based hex-tile trading and building game that a pri
 
 ## Current focus
 
+Sound specs 227–228 are Shipped and approved for integration into local `main` on
+2026-11-16: recorded dice variants, road/ship/settlement/swipe/resource-gain effects,
+silent robber/pirate movement, and a personal five-second turn warning. The board
+stays steady during flying-card animations, and setup sounds survive sandbox seat
+switches. See `docs/AUDIO.md` for adding effects. Source audio remains untracked;
+only prepared runtime recordings are committed. No push or deployment is included.
+
 Everything so far is merged into local `main` (not pushed or deployed): the client work
 (specs 223–226: immersive board, map build popups, floating trade trays, artwork selector) and
 M10 up to spec 019 (switches, seafaring core, scenarios 1–6). Next is M10 spec 020 on a new

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   MAX_ZOOM,
   MIN_ZOOM,
+  measuredSize,
   fitView,
   hitRadius,
   panBy,
@@ -18,6 +19,62 @@ const fit: Box = { x: -300, y: -250, w: 600, h: 500 };
 const size: Size = { w: 1200, h: 800 };
 
 describe("viewport", () => {
+  it("keeps zoom and position steady when stealing or card motion changes overlay size", () => {
+    const initial = measuredSize(
+      { w: 0, h: 0 },
+      {
+        w: 1440,
+        h: 900,
+        frame: { x: 16, y: 80, w: 1040, h: 600 },
+      },
+    );
+    const expandedHand = measuredSize(initial, {
+      w: 1440,
+      h: 900,
+      frame: { x: 16, y: 80, w: 1040, h: 480 },
+    });
+    const settledHand = measuredSize(expandedHand, {
+      w: 1440,
+      h: 900,
+      frame: { x: 16, y: 80, w: 1040, h: 640 },
+    });
+    for (const v of [fitView(fit), { zoom: 2, cx: 50, cy: -20 }]) {
+      expect(viewBox(v, fit, expandedHand)).toEqual(viewBox(v, fit, initial));
+      expect(viewBox(v, fit, settledHand)).toEqual(viewBox(v, fit, initial));
+      expect(pxPerUnit(v, fit, settledHand)).toBe(pxPerUnit(v, fit, initial));
+    }
+    // Explicit Fit uses the current clear area; a genuine viewport resize refits too.
+    const refitted = { ...settledHand, fitFrame: settledHand.frame! };
+    expect(pxPerUnit(fitView(fit), fit, refitted)).toBeCloseTo(640 / 500);
+    const resized = measuredSize(settledHand, {
+      w: 375,
+      h: 812,
+      frame: { x: 16, y: 80, w: 343, h: 300 },
+    });
+    expect(resized.fitFrame).toEqual(resized.frame);
+    expect(pxPerUnit(fitView(fit), fit, resized)).toBeCloseTo(343 / 600);
+  });
+
+  it("uses the current clear area for keyboard reveal after overlays resize", () => {
+    const screen = {
+      w: 1440,
+      h: 900,
+      fitFrame: { x: 16, y: 80, w: 1040, h: 600 },
+      frame: { x: 16, y: 80, w: 1040, h: 300 },
+    };
+    const before = fitView(fit);
+    const target = { x: 0, y: 180 };
+    const revealed = reveal(before, fit, screen, target);
+    const centre = toBoard(revealed, fit, screen, { x: 536, y: 230 });
+    expect(centre.x).toBeCloseTo(target.x);
+    expect(centre.y).toBeCloseTo(target.y);
+    const cursor = { x: 400, y: 200 };
+    const point = toBoard(before, fit, screen, cursor);
+    const zoomed = zoomAt(before, fit, screen, cursor, 1.5);
+    expect(toBoard(zoomed, fit, screen, cursor).x).toBeCloseTo(point.x);
+    expect(toBoard(zoomed, fit, screen, cursor).y).toBeCloseTo(point.y);
+  });
+
   it("fits the whole box at zoom 1, centred, filling the container's aspect", () => {
     const v = fitView(fit);
     expect(v.zoom).toBe(1);

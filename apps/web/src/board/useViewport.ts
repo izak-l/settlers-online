@@ -3,6 +3,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   fitView,
+  measuredSize,
   panBy,
   pxPerUnit,
   reveal,
@@ -50,14 +51,17 @@ export function useViewport(fit: Box, fitArea: HTMLElement | null = null): Viewp
   // A new map (or a changed fit box) starts from the fit view again.
   const fitKey = `${fit.x},${fit.y},${fit.w},${fit.h}`;
   // eslint has no react-hooks plugin here; `fitKey` stands in for `fit` on purpose.
-  useEffect(() => setView(fitView(fit)), [fitKey]);
+  useEffect(() => {
+    setView(fitView(fit));
+    setSize((s) => (s.frame ? { ...s, fitFrame: s.frame } : s));
+  }, [fitKey]);
 
   useEffect(() => {
     if (!el) return;
     const measure = () => {
       const board = el.getBoundingClientRect();
       const area = fitArea?.getBoundingClientRect() ?? board;
-      setSize({
+      const measured: Size = {
         w: Math.max(1, board.width),
         h: Math.max(1, board.height),
         frame: {
@@ -66,7 +70,8 @@ export function useViewport(fit: Box, fitArea: HTMLElement | null = null): Viewp
           w: Math.max(1, area.width),
           h: Math.max(1, area.height),
         },
-      });
+      };
+      setSize((previous) => measuredSize(previous, measured));
     };
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -188,7 +193,10 @@ export function useViewport(fit: Box, fitArea: HTMLElement | null = null): Viewp
     canZoomOut: view.zoom > MIN_ZOOM,
     zoomIn: () => ready && setView((v) => zoomAt(v, fit, size, centre(), BUTTON_STEP)),
     zoomOut: () => ready && setView((v) => zoomAt(v, fit, size, centre(), 1 / BUTTON_STEP)),
-    fit: () => setView(fitView(fit)),
+    fit: () => {
+      setSize((s) => (s.frame ? { ...s, fitFrame: s.frame } : s));
+      setView(fitView(fit));
+    },
     show: (p) => ready && setView((v) => reveal(v, fit, size, p)),
   };
 }

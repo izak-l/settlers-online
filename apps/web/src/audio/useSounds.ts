@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import type { ChatMessage } from "@settlers/protocol";
 import type { GameClient, Snapshot } from "../game/LocalGame";
 import { cuesFor, type CueInput } from "./cues";
-import { play } from "./synth";
+import { play } from "./player";
+import { TurnWarning, warningClock } from "./turnWarning";
 
 function cueInput(snap: Snapshot): CueInput {
   const top = snap.view.decisions.at(-1);
@@ -24,15 +25,23 @@ const hidden = () => typeof document !== "undefined" && document.visibilityState
 
 /** Play cues for each new snapshot, and a tick for other people's chat messages. */
 export function useSounds(snap: Snapshot | null, client: GameClient, myUserId?: string): void {
-  const prev = useRef<CueInput | null>(null);
+  const prev = useRef<{ client: GameClient; input: CueInput } | null>(null);
+  useEffect(() => {
+    const warning = new TurnWarning();
+    const unsubscribe = client.subscribe((next) => warning.update(warningClock(next)));
+    return () => {
+      unsubscribe();
+      warning.dispose();
+    };
+  }, [client]);
   useEffect(() => {
     if (!snap) return;
     const next = cueInput(snap);
-    // The dev sandbox switches seats in one tab; compare like with like.
-    const before = prev.current?.seat === next.seat ? prev.current : null;
-    prev.current = next;
+    // A new game has no history baseline; switching sandbox seats still has public events.
+    const before = prev.current?.client === client ? prev.current.input : null;
+    prev.current = { client, input: next };
     play(cuesFor(before, next, { hidden: hidden() }));
-  }, [snap]);
+  }, [snap, client]);
 
   useEffect(() => {
     if (!client.chat) return;

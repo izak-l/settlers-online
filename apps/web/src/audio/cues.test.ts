@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { GameEvent } from "@settlers/engine";
 import { cuesFor, type CueInput } from "./cues";
+import { LocalGame, type Snapshot } from "../game/LocalGame";
 
 type Decision = { kind: string; pendingFrom: string[]; data?: Record<string, unknown> };
 
@@ -30,15 +31,58 @@ describe("cuesFor", () => {
     const before = snap("p0", [], main("p1"));
     const cases: [string, string][] = [
       ["ROLLED", "dice"],
-      ["BUILT_ROAD", "build"],
-      ["PLACED_SETTLEMENT", "build"],
+      ["BUILT_ROAD", "road"],
+      ["PLACED_ROAD", "road"],
+      ["BUILT_SETTLEMENT", "settlement"],
+      ["PLACED_SETTLEMENT", "settlement"],
       ["BUILT_CITY", "city"],
       ["BOUGHT_DEV_CARD", "devcard"],
-      ["MOVED_ROBBER", "robber"],
+      ["BUILT_SHIP", "road"],
+      ["PLACED_SHIP", "road"],
+      ["MOVED_SHIP", "build"],
       ["AWARD", "award"],
     ];
     for (const [type, cue] of cases)
       expect(cuesFor(before, snap("p0", [ev(type)], main("p1")), opts)).toEqual([cue]);
+  });
+
+  it("robber and pirate movement are silent, including when no theft follows", () => {
+    const before = snap("p0", [], main("p1"));
+    for (const type of ["MOVED_ROBBER", "MOVED_PIRATE"])
+      expect(cuesFor(before, snap("p0", [ev(type)], main("p1")), opts)).toEqual([]);
+  });
+
+  it("plays every setup road across automatic sandbox seat switches", async () => {
+    const game = new LocalGame(["A", "B", "C", "D"], "setup-road-sounds");
+    const input = (s: Snapshot): CueInput => ({
+      seat: s.seat,
+      log: s.log,
+      top: s.view.decisions.at(-1),
+      hand: s.view.zones[`hand-${s.seat}`]?.contents ?? {},
+    });
+    let roads = 0;
+    let switched = 0;
+    while (game.snapshot().view.turn.number === 0) {
+      const before = game.snapshot();
+      const action = before.legal[0]!;
+      expect(await game.send(action)).toBeNull();
+      const after = game.snapshot();
+      if (action.type !== "PLACE_ROAD") continue;
+      roads++;
+      if (before.seat !== after.seat) switched++;
+      expect(cuesFor(input(before), input(after), opts)).toContain("road");
+    }
+    expect(roads).toBe(8);
+    expect(switched).toBeGreaterThan(0);
+  });
+
+  it("seat changes preserve public placements without replaying private history or comparing hands", () => {
+    const privateEvent: GameEvent = { type: "STOLE", text: "private", visibleTo: ["p0"] };
+    const publicEvent = ev("BUILT_CITY");
+    const before = snap("p0", [privateEvent, publicEvent], main("p0"), {});
+    const after = snap("p1", [publicEvent, ev("PLACED_ROAD")], main("p1"), { wood: 12 });
+    expect(cuesFor(before, after, opts)).toEqual(["road"]);
+    expect(cuesFor(before, after, { hidden: true })).toEqual([]);
   });
 
   it("your turn fires only for you, when it starts", () => {

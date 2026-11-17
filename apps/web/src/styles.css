@@ -190,10 +190,25 @@ input {
   display: flex;
   flex-direction: column;
 }
-.layout {
+/* Spec 232: the frame is the space under any banner. The layout inside it is laid out at
+   1/scale of the frame's size and scaled back up, so every window gets the same arrangement,
+   just bigger or smaller (--ui-scale comes from ui/uiScale.ts). The map is not scaled. */
+.layout-frame {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   isolation: isolate;
+  pointer-events: none;
+}
+.layout {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: calc(100% / var(--ui-scale, 1));
+  height: calc(100% / var(--ui-scale, 1));
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: 0 0;
   pointer-events: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 380px);
@@ -207,7 +222,7 @@ input {
 .board-wrap {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: auto;
 }
 .board-space {
@@ -283,23 +298,25 @@ input {
   max-height: 40dvh;
   overflow-y: auto;
 }
+/* The status row never sets the bar's width (width 0, at least the buttons' width) or its
+   height (a fixed 46px). A longer prompt makes the pill taller, growing upward over the map. */
 .status-row {
   display: flex;
-  align-items: stretch;
+  align-items: flex-end;
   gap: 8px;
-  min-width: 0;
+  width: 0;
+  min-width: 100%;
+  height: 46px;
 }
-/* Two lines at most, in a fixed height. */
 .status-pill {
   flex: 1 1 0;
   min-width: 0;
-  height: 46px;
+  min-height: 46px;
   margin: 0;
-  padding: 0.25rem 0.8rem;
+  padding: 0.35rem 0.8rem;
   display: flex;
   align-items: center;
-  overflow: hidden;
-  line-height: 1.2;
+  line-height: 1.25;
   font-size: 0.92rem;
   border-radius: 10px;
   background: var(--surface);
@@ -311,6 +328,7 @@ input {
   border-color: var(--accent);
 }
 .status-row .timer {
+  align-self: stretch;
   margin: 0;
   padding: 0.3rem 0.75rem;
   border-radius: 10px;
@@ -529,9 +547,12 @@ button.board-dice.rollable:focus-visible {
 }
 .board-controls {
   position: absolute;
-  left: 16px;
-  /* A column below the settings gear (spec 231): same left edge, same button size. */
-  top: 64px;
+  /* A column below the settings gear (spec 231): same left edge, same button size, and the
+     same scale as the panels (spec 232), though the map itself isn't scaled. */
+  left: calc(16px * var(--ui-scale, 1));
+  top: calc(64px * var(--ui-scale, 1));
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: 0 0;
   display: flex;
   flex-direction: column;
   width: max-content;
@@ -1376,98 +1397,12 @@ button.danger {
 }
 
 /* ---- M6: small screens ---- */
-@media (max-width: 860px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(80px, 1fr) minmax(0, auto) auto;
-    grid-template-areas: "board" "side" "hand";
-    gap: 10px;
-    padding: 12px;
-  }
-  .board-space {
-    margin-top: 52px;
-  }
-  .side > .winner {
-    order: -2;
-  }
-  .side {
-    max-height: 32dvh;
-    gap: 10px;
-  }
-  /* The bar stacks (status, buttons, then the dice and turn button) above the hand, and its
-     height follows its content here; the side column gets less height so the map stays usable. */
-  .bottom-dock {
-    height: auto;
-    flex-direction: column-reverse;
-    gap: 8px;
-  }
-  .bottom-dock > .hand-panel {
-    flex: none;
-    min-width: 0;
-  }
-  .action-dock {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .square-row {
-    flex-wrap: wrap;
-  }
-  .layout:has(.bottom-dock) .side {
-    max-height: 18dvh;
-  }
-  .turn-col {
-    width: auto;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-  }
-  .turn-col .board-dice {
-    position: static;
-    flex: none;
-  }
-  .turn-button {
-    height: 52px;
-    flex: 1 1 auto;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-  }
-  .board-dice .die {
-    width: 40px;
-    height: 40px;
-    padding: 6px;
-  }
-  .board-dice .die .pip {
-    width: 7px;
-    height: 7px;
-  }
-  button.square {
-    width: 56px;
-    height: 76px;
-  }
-  .board-controls {
-    left: 12px;
-    top: 64px;
-  }
-  .layout > .settings-menu {
-    left: 12px;
-    top: 12px;
-  }
-}
+/* Phone touch sizes for the home and lobby screens. The game screen scales as a whole instead
+   (spec 232), so it keeps its desktop sizes; :where() keeps these selectors' specificity. */
 @media (max-width: 600px) {
-  .board-controls button,
-  .settings-menu .settings-trigger {
-    width: 44px;
-    height: 44px;
-  }
-  .board-controls {
-    top: 64px;
-  }
-}
-@media (max-width: 600px) {
-  button,
-  select,
-  input:not([type="radio"]):not([type="checkbox"]) {
+  :where(.app:not(:has(.layout))) button,
+  :where(.app:not(:has(.layout))) select,
+  :where(.app:not(:has(.layout))) input:not([type="radio"]):not([type="checkbox"]) {
     min-height: 44px;
   }
   fieldset label,
@@ -1477,18 +1412,11 @@ button.danger {
     align-items: center;
     gap: 0.4rem;
   }
-  button.link {
+  :where(.app:not(:has(.layout))) button.link {
     min-height: 44px;
     padding: 0.25rem 0.5rem;
   }
-  .layout {
-    padding: 8px 8px 16px;
-    gap: 10px;
-  }
-  .side {
-    gap: 10px;
-  }
-  .panel {
+  :where(.app:not(:has(.layout))) .panel {
     padding: 0.75rem;
   }
   .card {

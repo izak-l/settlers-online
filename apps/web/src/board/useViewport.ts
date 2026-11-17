@@ -15,6 +15,7 @@ import {
   type Size,
   type View,
 } from "./viewport";
+import { currentUiScale } from "../ui/uiScale";
 
 /** A press that moves less than this is a click, not a drag. */
 const DRAG_PX = 6;
@@ -64,6 +65,7 @@ export function useViewport(fit: Box, fitArea: HTMLElement | null = null): Viewp
       const measured: Size = {
         w: Math.max(1, board.width),
         h: Math.max(1, board.height),
+        uiScale: currentUiScale(el),
         frame: {
           x: area.left - board.left,
           y: area.top - board.top,

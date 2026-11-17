@@ -17,6 +17,9 @@ layout only, with our own art, colours and icons):
   with the clock beside it; a card above it only when a decision needs buttons (steal, trade
   offer, road or ship, sending the pirate away, errors); and a row of icon buttons with their
   cost underneath: Trade, Road, Settlement, City, (Ship, Move ship), Dev card, (Place harbor).
+- The status line never widens the bar: a longer prompt wraps and the line grows upward
+  over the map, keeping the bar's size. The road-or-ship card only appears when both are
+  possible.
 - A column to the right: the dice over a big End turn button, which becomes Roll dice on
   your roll step.
 - The bar has a fixed height, the same for the hand and the status + buttons stack. The map
@@ -33,8 +36,10 @@ layout only, with our own art, colours and icons):
 - Side column order: the log (taller, 320px), a bank panel (cards left of each resource and
   the dev deck), then players.
 - Spectators see the status line and clock only.
-- Narrow screens (≤ 860px): the status and buttons stack above the hand strip; the side
-  column gets less height so the map stays usable.
+- No stacking on small screens: the whole game screen (panels, not the map) is designed at
+  1440×900 and scaled to the window (capped at 1.3×, floor 0.2×). Phones get the desktop
+  layout, very small; the user prefers that to a rearranged layout. The map fits itself as
+  before, and a scale change refits it like a window resize.
 - Also on this branch: softer robber/pirate target flashing and the dev-card buy sound.
 
 Not in scope: an own-seat card, chat changes, new
@@ -62,6 +67,9 @@ None change. Piece limits stay in the engine modules (`pieceLimits`).
 - `ActionBar`: rewritten as status line + optional card + square buttons (above).
 - `HandDock`: unchanged fan; cards from the bank fly in from the bank panel (`data-bank`).
 - `BankPanel` (new) and a clickable `BoardDice`.
+- `ui/uiScale.ts` (pure `uiScale` + hook); `.layout-frame` holds the map and the scaled
+  `.layout`. The phone-only game CSS (≤ 860px stacking, 48px cards) is removed; phone touch
+  sizes still apply to the home and lobby screens.
 - Icons: new original `devCard`, `moveShip`, `trade`, `endTurn`, `dice`, `harbor`.
 
 ## Test plan
@@ -69,7 +77,8 @@ None change. Piece limits stay in the engine modules (`pieceLimits`).
 - Engine: the `piecesLeft` tests above.
 - Web: `ui/buildTiles.test.ts`: tiles carry the counts from the snapshot, are enabled only
   from `legal` (the engine already refuses a build with 0 left), add ship tiles in seafaring
-  games, and show no badges without counts.
+  games, and show no badges without counts. `ui/uiScale.test.ts`: scale at common window
+  sizes and the caps. `board/viewport.test.ts`: a scale change refits.
 - Manual: the sandbox at desktop and phone widths; a seafaring game shows the ship tile.
 
 ## Open questions

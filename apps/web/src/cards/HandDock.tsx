@@ -6,6 +6,7 @@ import { CardBack, DevCardFace, ResourceCard, devName, resourceName } from "./Ca
 import { layoutFan } from "./fan";
 import { addPick, bankGive, removePick, startPick, total, type Pick, type Side } from "./picking";
 import { useCardMotion } from "./useCardMotion";
+import { currentUiScale } from "../ui/uiScale";
 
 const GAP = 8;
 
@@ -24,18 +25,8 @@ const BLURB: Record<string, string> = {
   victoryPoint: "Worth 1 VP. Kept secret until the game ends.",
 };
 
-/** The card width for this screen; the CSS reads it from --card-w, so there's one source. */
-function useCardWidth(): number {
-  const query = "(max-width: 600px)";
-  const [small, setSmall] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const on = () => setSmall(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return small ? 48 : 64;
-}
+/** Cards are always 64px wide: the whole game screen scales to the window instead (spec 232). */
+const CARD_W = 64;
 
 function useWidth(): [(el: HTMLElement | null) => void, number] {
   const [el, setEl] = useState<HTMLElement | null>(null);
@@ -63,7 +54,7 @@ interface Props {
 
 /** Your cards: resources fanned by type, then development cards; plus the tray while picking. */
 export function HandDock({ snap, pick, setPick, send }: Props) {
-  const cardW = useCardWidth();
+  const cardW = CARD_W;
   const [resRef, resWidth] = useWidth();
   const [dockRef, dockWidth] = useWidth();
   const dock = useRef<HTMLElement | null>(null);
@@ -332,13 +323,17 @@ function Tray({
         rect.top - 8,
         (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 8,
       );
-      // The hand shares the bottom bar (spec 232), so the tray takes its own width.
-      const width = Math.max(1, Math.min(560, window.innerWidth - 16));
+      // The tray lives outside the scaled game layer (a portal), so it scales itself to match:
+      // its width and height are in design pixels, its position in screen pixels (spec 232).
+      const scale = currentUiScale();
+      const width = Math.max(1, Math.min(560, (window.innerWidth - 16) / scale));
       setFloatingStyle({
-        left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - width * scale - 8)),
         bottom: window.innerHeight - bottom,
         width,
-        maxHeight: Math.max(1, bottom - top),
+        maxHeight: Math.max(1, (bottom - top) / scale),
+        transform: `scale(${scale})`,
+        transformOrigin: "bottom left",
       });
     };
     const observer = new ResizeObserver(measure);

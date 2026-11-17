@@ -55,6 +55,23 @@ describe("viewport", () => {
     expect(pxPerUnit(fitView(fit), fit, resized)).toBeCloseTo(343 / 600);
   });
 
+  it("refits when the UI scale changes, even if the window size doesn't (spec 232)", () => {
+    const before = measuredSize(
+      { w: 0, h: 0 },
+      { w: 390, h: 844, uiScale: 1, frame: { x: 4, y: 4, w: 10, h: 700 } },
+    );
+    const scaled = measuredSize(before, {
+      w: 390,
+      h: 844,
+      uiScale: 0.27,
+      frame: { x: 4, y: 4, w: 296, h: 793 },
+    });
+    expect(scaled.fitFrame).toEqual(scaled.frame);
+    // Overlays changing at the same scale still keep the fit.
+    const overlay = measuredSize(scaled, { ...scaled, frame: { x: 4, y: 4, w: 296, h: 600 } });
+    expect(overlay.fitFrame).toEqual(scaled.frame);
+  });
+
   it("uses the current clear area for keyboard reveal after overlays resize", () => {
     const screen = {
       w: 1440,

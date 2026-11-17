@@ -79,19 +79,8 @@ function SquareButton({
   );
 }
 
-/** When a road and a ship are both possible, which one the board's targets place. */
-function RoadOrShip({
-  road,
-  ship,
-  mode,
-  setMode,
-}: {
-  road: boolean;
-  ship: boolean;
-  mode: BuildMode;
-  setMode(mode: BuildMode): void;
-}) {
-  if (!road || !ship) return null;
+/** Which one the board's targets place, when a road and a ship are both possible. */
+function RoadOrShip({ mode, setMode }: { mode: BuildMode; setMode(mode: BuildMode): void }) {
   const shipOn = mode === "ship";
   return (
     <div className="row" role="group" aria-label="Place a road or a ship">
@@ -133,6 +122,10 @@ export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, err
   const playing = snap.seat !== "spectator";
   const myMove = playing && !!top?.pendingFrom.includes(snap.seat);
   const canDo = (type: string) => snap.legal.some((a) => a.type === type);
+  // The road-or-ship choice only when both are possible; otherwise there's nothing to show,
+  // and an empty prompt card would open.
+  const roadOrShip = (road: string, ship: string) =>
+    canDo(road) && canDo(ship) ? <RoadOrShip mode={mode} setMode={setMode} /> : null;
   const [tradeMenu, setTradeMenu] = useState(false);
   // A new decision closes the trade menu.
   useEffect(() => setTradeMenu(false), [top?.kind, myMove]);
@@ -184,25 +177,11 @@ export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, err
         status = canDo("PLACE_SHIP")
           ? "Place a road, or a ship on the sea, touching that settlement."
           : "Place a road touching that settlement.";
-        detail = (
-          <RoadOrShip
-            road={canDo("PLACE_ROAD")}
-            ship={canDo("PLACE_SHIP")}
-            mode={mode}
-            setMode={setMode}
-          />
-        );
+        detail = roadOrShip("PLACE_ROAD", "PLACE_SHIP");
         break;
       case "PLACE_FREE_ROAD":
         status = `Place a free ${canDo("PLACE_FREE_SHIP") ? "road or ship" : "road"} (${String(top.data?.["remaining"])} left).`;
-        detail = (
-          <RoadOrShip
-            road={canDo("PLACE_FREE_ROAD")}
-            ship={canDo("PLACE_FREE_SHIP")}
-            mode={mode}
-            setMode={setMode}
-          />
-        );
+        detail = roadOrShip("PLACE_FREE_ROAD", "PLACE_FREE_SHIP");
         break;
       case "GOLD_CHOICE": {
         const owed = (top.data?.["amounts"] as Record<string, number>)[snap.seat] ?? 0;

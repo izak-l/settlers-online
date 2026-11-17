@@ -19,20 +19,14 @@ import {
 import type { Ack, GameStateMessage, SeatPlayer } from "@settlers/protocol";
 import { KeyedQueue } from "./queue";
 import type { GamePlayer, Store } from "./store/types";
-import {
-  clockKey,
-  MAX_TIMEOUT_ACTIONS,
-  SHORT_SECONDS,
-  TurnClock,
-  type RunningClock,
-} from "./timers";
+import { clockKey, GameClock, MAX_TIMEOUT_ACTIONS, type RunningClock } from "./timers";
 
 export type Role = PlayerId | "spectator";
 
 /** One live game: the authoritative state, rebuilt from storage, changed only through `submit`. */
 export class GameRoom {
-  /** Null when the game has no turn timer. */
-  private clock: TurnClock | null;
+  /** Every game has clocks: games without a turn timer still auto-roll (spec 231). */
+  private clock: GameClock;
   private running: RunningClock | null = null;
 
   private constructor(
@@ -47,8 +41,7 @@ export class GameRoom {
     turnSeconds: number,
     secondMs: number,
   ) {
-    this.clock =
-      turnSeconds > 0 ? new TurnClock(turnSeconds * secondMs, SHORT_SECONDS * secondMs) : null;
+    this.clock = new GameClock(turnSeconds > 0 ? turnSeconds * secondMs : null, secondMs);
   }
 
   /** Rebuild from the latest snapshot plus every action logged after it. */
@@ -116,6 +109,8 @@ export class GameRoom {
     this.state = res.state;
     this.seq = seq;
     this.log.push(...res.events);
+    // Time added for trading and development cards (spec 231).
+    this.clock.bonus(res.events);
 
     if (this.state.winner !== undefined) {
       const scores: Record<PlayerId, number> = {};
@@ -134,11 +129,10 @@ export class GameRoom {
   }
 
   /**
-   * Re-evaluate the turn timer after a change. Clocks only run while at least one seated player
+   * Re-evaluate the clocks after a change. Clocks only run while at least one seated player
    * is connected to the game; otherwise they reset and start from full when someone returns.
    */
   updateClock(now: number, anyoneHome: boolean): RunningClock | null {
-    if (!this.clock) return null;
     if (!anyoneHome) this.clock.reset();
     this.running = anyoneHome ? this.clock.update(this.state, now) : null;
     return this.running;

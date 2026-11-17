@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { RunningServer } from "../server";
 import type { Store } from "../store/types";
-import { pick, startTestServer, TEST_SECOND_MS, TestClient } from "./harness";
+import { pick, startTestServer, TestClient } from "./harness";
 
 /**
  * The M4 "done when" scenario, end to end over real sockets:
@@ -95,6 +95,27 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       });
     }
 
+    /**
+     * Whoever the game is waiting on takes one action, and everyone waits to see it. The server
+     * may have moved first (the auto-roll, spec 231): then nothing is sent and the caller looks
+     * at the new state.
+     */
+    async function actOnce(gameId: string, everyone: TestClient[]): Promise<void> {
+      const actor = everyone.find((c) => (c.state?.legal.length ?? 0) > 0);
+      if (!actor) throw new Error("nobody can act");
+      const seqBefore = actor.state!.seq;
+      const ack = await actor.act(gameId, pick(actor.state!));
+      if (!ack.ok) {
+        const moved = await actor
+          .until(() => actor.state!.seq > seqBefore, 1000)
+          .then(() => true)
+          .catch(() => false);
+        if (!moved) throw new Error(`${ack.code}: ${ack.message}`);
+        return;
+      }
+      await Promise.all(everyone.map((c) => c.until(() => c.state!.seq >= ack.seq)));
+    }
+
     /** Whoever the game is waiting on acts, until `turns` full turns have been played. */
     async function playUntilTurn(gameId: string, everyone: TestClient[], turn: number) {
       for (let guard = 0; guard < 2000; guard++) {
@@ -105,9 +126,7 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
           actor.state!.view.decisions.at(-1)?.kind === "ROLL"
         )
           return;
-        const ack = await actor.act(gameId, pick(actor.state!));
-        if (!ack.ok) throw new Error(`${ack.code}: ${ack.message}`);
-        await Promise.all(everyone.map((c) => c.until(() => c.state!.seq === ack.seq)));
+        await actOnce(gameId, everyone);
       }
       throw new Error("game didn't reach the turn");
     }
@@ -171,11 +190,7 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
         guard < 20_000 && everyone[0]!.state!.view.winner === undefined;
         guard++
       ) {
-        const actor = everyone.find((c) => (c.state?.legal.length ?? 0) > 0);
-        if (!actor) throw new Error("nobody can act");
-        const ack = await actor.act(gameId, pick(actor.state!));
-        if (!ack.ok) throw new Error(`${ack.code}: ${ack.message}`);
-        await Promise.all(everyone.map((c) => c.until(() => c.state!.seq === ack.seq)));
+        await actOnce(gameId, everyone);
       }
       const winner = spec.state!.view.winner;
       expect(winner).toBeDefined();
@@ -527,6 +542,9 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       const { gameId, players, spec } = await setUpGame();
       await playUntilTurn(gameId, [...players, spec], 3);
 
+      // Let the auto-roll (spec 231) happen first, so nothing moves while Cyd is away.
+      await players[2]!.until(() => players[2]!.state!.view.decisions.at(-1)?.kind !== "ROLL");
+      await new Promise((r) => setTimeout(r, 50));
       const before = players[2]!.state!;
       const beforeLog = players[2]!.log;
       players[2]!.close();
@@ -566,7 +584,7 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       const { gameId, spec } = await setUpGame(30);
       // Nobody acts: setup placements, rolls, robber moves and discards all come from timeouts.
       await spec.until(() => spec.state!.view.turn.number >= 4, 20_000);
-      expect(spec.state!.clock).toMatchObject({ totalMs: 30 * TEST_SECOND_MS });
+      expect(spec.state!.clock).toBeDefined();
       const stored = await store.actionsAfter(gameId, 0);
       expect(stored.length).toBeGreaterThan(16); // 8 setup placements + 8 roads, at least
       expect(new Set(stored.map((a) => a.actor))).toEqual(new Set(["system"]));
@@ -588,11 +606,50 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
       expect(back.state!.clock?.remainingMs).toBeGreaterThan(0);
     });
 
-    it("a game without a timer never moves by itself", async () => {
+    it("every game opens with a logged roll-off; untimed games wait during setup (spec 231)", async () => {
       const { gameId, spec } = await setUpGame(0);
       await new Promise((r) => setTimeout(r, 200));
       expect(spec.state!.clock).toBeUndefined();
-      expect(await store.actionsAfter(gameId, 0)).toEqual([]);
+      const stored = await store.actionsAfter(gameId, 0);
+      expect(stored.map((a) => [a.actor, a.action.type])).toEqual([["system", "ROLL_FOR_ORDER"]]);
+      const first = stored[0]!.events.find((e) => e.type === "FIRST_PLAYER")!;
+      expect(spec.log.at(-1)).toBe(first.text);
+      expect(spec.state!.view.turn.activePlayer).toBe(first.data!["player"]);
+    });
+
+    it("untimed games still auto-roll, then wait; a declined offer withdraws itself (spec 231)", async () => {
+      const { gameId, players, spec } = await setUpGame(0);
+      const everyone = [...players, spec];
+      await playUntilTurn(gameId, everyone, 1);
+      // Nobody rolls: the server does, after 5 (test) seconds.
+      await spec.until(() => spec.state!.view.decisions.at(-1)?.kind !== "ROLL", 2000);
+      const rolled = (await store.actionsAfter(gameId, 0)).filter((a) => a.action.type === "ROLL");
+      expect(rolled.map((a) => a.actor)).toEqual(["system"]);
+      // Settle any robber step a 7 brought, by hand, until the main step.
+      for (let i = 0; i < 20 && spec.state!.view.decisions.at(-1)?.kind !== "MAIN"; i++) {
+        const actor = players.find((c) => (c.state?.legal.length ?? 0) > 0)!;
+        const ack = await actor.act(gameId, pick(actor.state!));
+        if (ack.ok) await spec.until(() => spec.state!.seq >= ack.seq);
+      }
+      const seq = spec.state!.seq;
+      await new Promise((r) => setTimeout(r, 100));
+      expect(spec.state!.seq).toBe(seq); // no turn timer: the turn doesn't end by itself
+
+      const active = players.find((c) => c.state!.you === spec.state!.view.turn.activePlayer)!;
+      const offer = active.state!.legal.find((a) => a.type === "OFFER_TRADE");
+      if (!offer) return; // nothing in hand to offer: the rest needs cards
+      expect((await active.act(gameId, offer)).ok).toBe(true);
+      for (const p of players.filter((c) => c !== active)) {
+        await p.until(() => p.state!.view.decisions.at(-1)?.kind === "TRADE_OFFER");
+        expect((await p.act(gameId, { type: "RESPOND_TRADE", accept: false })).ok).toBe(true);
+        // Declining twice is refused (spec 231).
+        expect((await p.act(gameId, { type: "RESPOND_TRADE", accept: false })).ok).toBe(false);
+      }
+      await spec.until(() => spec.state!.view.decisions.at(-1)?.kind === "MAIN", 2000);
+      const cancel = (await store.actionsAfter(gameId, 0)).find(
+        (a) => a.action.type === "CANCEL_TRADE",
+      );
+      expect(cancel?.actor).toBe("system");
     });
 
     it("chat: players talk to everyone, spectators only to spectators; history on rejoin", async () => {

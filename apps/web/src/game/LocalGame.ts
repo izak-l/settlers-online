@@ -18,7 +18,7 @@ import {
   type PlayerView,
 } from "@settlers/engine";
 import { DEFAULT_MAP_DEF, generateMap, type MapDef } from "@settlers/maps";
-import type { ChatMessage } from "@settlers/protocol";
+import type { ChatMessage, GameStateMessage } from "@settlers/protocol";
 
 export interface SnapshotPlayer {
   id: PlayerId;
@@ -41,7 +41,12 @@ export interface Snapshot {
   log: GameEvent[];
   players: SnapshotPlayer[];
   /** The running turn timer: `deadline` is in this browser's clock (epoch ms). */
-  clock?: { kind: "turn" | "short"; deadline: number; totalMs: number };
+  /** The running clock (spec 231 kinds: turn, roll, short, robber, setup, expire). */
+  clock?: {
+    kind: NonNullable<GameStateMessage["clock"]>["kind"];
+    deadline: number;
+    totalMs: number;
+  };
 }
 
 export interface SendError {

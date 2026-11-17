@@ -5,7 +5,25 @@ type Clock = NonNullable<Snapshot["clock"]>;
 
 const URGENT_MS = 10_000;
 
-/** Countdown for the running turn or discard clock. When it hits zero the server moves for you. */
+/** What each clock is timing (spec 231). */
+function labelFor(kind: Clock["kind"], mine: boolean): string {
+  switch (kind) {
+    case "short":
+      return "Discard";
+    case "roll":
+      return mine ? "Rolling in" : "Rolls in";
+    case "robber":
+      return "Robber";
+    case "setup":
+      return mine ? "Your placement" : "Placement";
+    case "expire":
+      return "Withdrawing";
+    default:
+      return mine ? "Your turn" : "Turn";
+  }
+}
+
+/** Countdown for the running clock. When it hits zero the server moves for whoever it waits on. */
 export function TurnTimer({ clock, mine }: { clock: Clock; mine: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -16,8 +34,9 @@ export function TurnTimer({ clock, mine }: { clock: Clock; mine: boolean }) {
   const left = Math.max(0, clock.deadline - now);
   const secs = Math.ceil(left / 1000);
   const text = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-  const urgent = left <= URGENT_MS;
-  const label = clock.kind === "short" ? "Discard" : mine ? "Your turn" : "Turn";
+  // The short automatic clocks (roll, expire) aren't a warning.
+  const urgent = left <= URGENT_MS && clock.kind !== "roll" && clock.kind !== "expire";
+  const label = labelFor(clock.kind, mine);
   return (
     <div
       className={urgent ? "timer urgent" : "timer"}

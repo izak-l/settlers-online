@@ -316,7 +316,12 @@ export interface GameStateMessage {
    * The running turn timer, if the game has one and it's running. Relative times, so the
    * client's own clock never needs to agree with the server's.
    */
-  clock?: { kind: "turn" | "short"; remainingMs: number; totalMs: number };
+  clock?: {
+    /** Spec 231: the turn, the auto-roll, discards, the robber, a setup round, a declined offer. */
+    kind: "turn" | "roll" | "short" | "robber" | "setup" | "expire";
+    remainingMs: number;
+    totalMs: number;
+  };
 }
 
 /** Where a friend is. `lobbyId` / `gameId` let you join or watch them. */

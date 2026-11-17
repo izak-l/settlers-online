@@ -6,6 +6,7 @@ import {
   PROTOCOL_ERROR_MESSAGES,
   SetLobbyFeaturesSchema,
   SetLobbyMapSchema,
+  SetLobbyTypeSchema,
   UsernameSchema,
 } from "./index";
 
@@ -43,6 +44,25 @@ describe("protocol schemas", () => {
       expect(CreateLobbySchema.safeParse({ maxSeats, allowSpectators: true }).success).toBe(true);
     for (const maxSeats of [0, 5, 6])
       expect(CreateLobbySchema.safeParse({ maxSeats, allowSpectators: true }).success).toBe(false);
+  });
+
+  it("takes a game type when creating a lobby, defaulting to the base game (spec 023)", () => {
+    const parsed = CreateLobbySchema.parse({ maxSeats: 3, allowSpectators: true });
+    expect(parsed.gameType).toBe("base");
+    expect(
+      CreateLobbySchema.safeParse({ gameType: "seafaring-3", maxSeats: 3, allowSpectators: true })
+        .success,
+    ).toBe(true);
+    expect(
+      CreateLobbySchema.safeParse({ gameType: "seafaring-6", maxSeats: 3, allowSpectators: true })
+        .success,
+    ).toBe(false);
+    expect(SetLobbyTypeSchema.safeParse({ lobbyId: "abc", gameType: "seafaring-4" }).success).toBe(
+      true,
+    );
+    expect(SetLobbyTypeSchema.safeParse({ lobbyId: "abc", gameType: "knights" }).success).toBe(
+      false,
+    );
   });
 
   it("accepts a built-in map choice for a lobby", () => {

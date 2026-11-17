@@ -10,7 +10,7 @@ import type {
   PlayerId,
   PlayerView,
 } from "@settlers/engine";
-import { FeaturesSchema, type MapDef } from "@settlers/maps";
+import { FeaturesSchema, GAME_TYPE_IDS, type GameTypeId, type MapDef } from "@settlers/maps";
 
 // ---------------------------------------------------------------------------
 // Shared pieces
@@ -130,7 +130,11 @@ export const _actionSchemaCheck: _SchemaMatchesEngine = true;
 export const SetUsernameSchema = z.object({ username: UsernameSchema });
 /** Turn timer choices; 0 means off. */
 export const TURN_SECONDS_CHOICES = [0, 30, 60, 90, 120] as const;
+/** The game types a lobby can be (spec 023): see `GAME_TYPES` in `@settlers/maps`. */
+export const GameTypeSchema = z.enum(GAME_TYPE_IDS);
 export const CreateLobbySchema = z.object({
+  /** Older clients send no type: the base game. The seat count must fit the type. */
+  gameType: GameTypeSchema.default("base"),
   maxSeats: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   allowSpectators: z.boolean(),
   turnSeconds: z
@@ -146,8 +150,14 @@ export const MapChoiceSchema = z.union([
   z.object({ builtin: Id }).strict(),
   z.object({ scenario: Id, setup: z.enum(["fixed", "variable"]) }).strict(),
 ]);
-/** Host only, while the lobby is open. Clears every ready flag. */
+/** Host only, while the lobby is open. The map must belong to the lobby's game type. Clears every ready flag. */
 export const SetLobbyMapSchema = z.object({ lobbyId: Id, map: MapChoiceSchema });
+/**
+ * Host only, while open (spec 023): switch the game type. Everyone seated must fit its player
+ * limit (they move up into the first seats; empty seats beyond it go). Picks the type's default
+ * map and clears every ready flag.
+ */
+export const SetLobbyTypeSchema = z.object({ lobbyId: Id, gameType: GameTypeSchema });
 /**
  * Host only, while open: the lobby's house rules (spec 014), each overriding the map's value.
  * Sent whole: a switch left out goes back to the map's value. Clears every ready flag.
@@ -179,6 +189,7 @@ export type CreateLobbyParsed = z.infer<typeof CreateLobbySchema>;
 export type LobbyRef = z.infer<typeof LobbyRefSchema>;
 export type MapChoice = z.infer<typeof MapChoiceSchema>;
 export type SetLobbyMap = z.infer<typeof SetLobbyMapSchema>;
+export type SetLobbyType = z.infer<typeof SetLobbyTypeSchema>;
 export type SetLobbyFeatures = z.infer<typeof SetLobbyFeaturesSchema>;
 export type TakeSeat = z.infer<typeof TakeSeatSchema>;
 export type SetReady = z.infer<typeof SetReadySchema>;
@@ -225,6 +236,8 @@ export interface LobbyMap {
 export interface LobbyState {
   id: string;
   hostId: string;
+  /** Base game or a seafaring player size (spec 023). */
+  gameType: GameTypeId;
   maxSeats: number;
   allowSpectators: boolean;
   /** 0 = no turn timer. */
@@ -347,6 +360,7 @@ export interface ClientToServerEvents {
   "lobby:seat": (payload: TakeSeat, reply: Reply) => void;
   "lobby:ready": (payload: SetReady, reply: Reply) => void;
   "lobby:map": (payload: SetLobbyMap, reply: Reply) => void;
+  "lobby:type": (payload: SetLobbyType, reply: Reply) => void;
   "lobby:features": (payload: SetLobbyFeatures, reply: Reply) => void;
   "lobby:start": (payload: LobbyRef, reply: Reply<{ gameId: string }>) => void;
   "game:join": (payload: JoinGame, reply: Reply<{ you: PlayerId | "spectator" }>) => void;

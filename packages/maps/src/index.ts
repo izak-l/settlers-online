@@ -4,3 +4,4 @@ export * from "./generator";
 export * from "./definitions";
 export * from "./catalog";
 export * from "./scenarios";
+export * from "./gameTypes";

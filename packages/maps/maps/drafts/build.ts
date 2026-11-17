@@ -262,54 +262,6 @@ x x x . . . . . . . . . . . . x x . . . . x .
 . . . . . . . . x x x x x x x x x x x x x x .
 `,
   },
-  {
-    id: "rising-chain",
-    name: "Rising Chain",
-    description:
-      "Four main islands in a long arc, after Japan, from the cold north-east to the warm south-west. Needs ships (seafaring).",
-    vpToWin: 12,
-    modules: ["base", "seafaring"],
-    tokenCopies: 2,
-    art: `
-. . . . . . . . . . x x x .
- . . . . . . . . . . x x x .
-. . . . . . . . . . . . . .
- . . . . . . . . . x x . . .
-. . . . . . . . . x x x . .
- . . . . . . . . x x x . . .
-. . . . . . x M x x x . . .
- . . x x x x x x x . . . . .
-. . x x x x . . . . . . . .
- . . . . . . x x . . . . . .
-x x x . . . x . . . . . . .
- x x . . . . . . . . . . . .
-x . . . . . . . . . . . . .
-`,
-  },
-  {
-    id: "home-waters",
-    name: "Home Waters",
-    description:
-      "A home island in the middle, with six smaller isles around it to sail out and settle. Needs ships (seafaring).",
-    vpToWin: 12,
-    modules: ["base", "seafaring"],
-    tokenCopies: 2,
-    art: `
-. x x . . . . . . . . . . . . . . x x . .
- x x x . . . . . . . . . . . . . x x x . .
-. . x . . . . . . . . . . . . . . . x . .
- . . . . . . . . . . . . . . . . . . . . .
-. . . . . . . . x x x . . . . . . . . . .
- . . . . . . . x x x x . . . . . . . . . .
-. . x x . . . x x x x x . . . . . x x . .
- . . . . . . . x x x x . . . . . . . . . .
-. . . . . . . . x x x . . . . . . . . . .
- . . . . . . . . . . . . . . . . . . . . .
-. x x . . . . . . . . . . . . . . x x . .
- x x x . . . . . . . . . . . . . x x x . .
-. . x . . . . . . . . . . . . . . . x . .
-`,
-  },
 ];
 
 /**

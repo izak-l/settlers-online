@@ -1,50 +1,58 @@
-# 023 — Game modes: pick the mode, then the map
+# 023 — Game modes: pick the game type, then the map
 
 ## Goal
 
-The lobby host picks a **game mode** first, then a **map** within it. A mode is a rule set and player count: e.g. Base, Seafaring (3 players), Seafaring (4 players), later Seafaring (5–6 players) and Cities & Knights. Each map belongs to one or more modes, so only maps that fit the mode are offered, and nothing has to support every rule set and player count.
+The lobby makes it obvious what game is being set up. The host picks a **game type** (a rule set and player count: Base, Seafaring for 3 players, Seafaring for 4 players), then a **map** within it. For Seafaring the map is either a **scenario** (the rulebook's scenarios, each with its own rules, played fixed or variable) or **free play** (the seafaring rules on a plain island map). Only maps that fit the game type are offered, and nothing has to support every rule set and player count.
 
-This replaces the current rule where a seafaring scenario's 3p or 4p map is chosen silently from the seat count.
+This replaces the current single list of every map and scenario, the global Fixed / Variable switch above it, and the rule where a scenario's 3p or 4p map is chosen silently from the seat count. It also fixes the lobby's layout, which overflows its panel.
 
 ## Scope / non-scope
 
 **Scope**
 
-- A mode catalog: each mode has an id, our own display name, its modules, its player range, and the maps it offers.
-- Maps (catalog maps and scenario maps) say which modes they belong to.
-- Lobby flow: choose mode → choose map (→ fixed / variable for scenarios that have both). House rules (spec 014) stay where they are.
-- The host chooses the mode on the home screen, when creating the lobby; the lobby's seats are then 1 up to the mode's maximum. A mode's (and every map's) player count is an upper bound: a game may start with fewer players (later, bots can fill empty seats).
-- The dev sandbox uses the same two-step picker.
+- A game-type catalog: each type has an id, our own display name, its modules, its maximum players and the maps it offers.
+- Maps (catalog maps and scenario maps) say which game types they belong to.
+- Home screen "New game": choose the game type, then the seat count (1 up to the type's maximum).
+- Lobby: the host may change the game type at any time before the start, as long as everyone already seated fits its player limit; seats beyond the new limit must be empty and are removed. Changing type picks that type's default map (the base map, or the type's first scenario) and asks everyone to ready up again.
+- Lobby layout: two columns on wide screens (the game on the left; invite link, friends and seats on the right), one column on narrow ones. No overflow at any width.
+- The game section: a summary card everyone sees (game type, map or scenario, setup, VP target, a one-line note of special rules); below it, for the host, the picker. Base lists its maps. Seafaring has two tabs: **Scenarios** and **Free play**. The selected card is clearly marked (filled border and a "Selected" tick); Fixed / Variable is a choice inside the selected scenario card (only shown when the scenario has both).
+- A player count is an upper bound: a game may start with fewer players (later, bots can fill empty seats).
+- The dev sandbox uses the same game-type and map picker.
 
 **Non-scope**
 
-- 5–6 player modes: they need 5–6 player games (the rulebook's 5–6 extension adds a special building phase and more pieces), which we don't support yet. The mode list is ready for them.
-- Cities & Knights maps (M11).
+- 5–6 player modes (they need 5–6 player games: a special building phase and more pieces). The catalog shape allows them later; they are not shown.
+- Cities & Knights (M11).
 
-## Modes at first
+## Game types at first
 
-| Mode | Modules | Players | Maps |
-| --- | --- | --- | --- |
-| Base | base | 1–4 | Standard Island, Grand Diamond |
-| Seafaring (3 players) | base, seafaring | up to 3 | each scenario's 3p map |
-| Seafaring (4 players) | base, seafaring | up to 4 | each scenario's 4p map, Uncharted Seas |
+| Id | Display name | Modules | Players | Maps |
+| --- | --- | --- | --- | --- |
+| `base` | Base game | base | up to 4 | Standard Island, Grand Diamond |
+| `seafaring-3` | Seafaring · 3 players | base, seafaring | up to 3 | each scenario's 3p maps; free-play maps |
+| `seafaring-4` | Seafaring · 4 players | base, seafaring | up to 4 | each scenario's 4p maps; free-play maps |
+
+Free-play maps are seafaring island maps with no scenario rules (players pick their home islands in setup; no island bonus). The first ones are promoted from `packages/maps/maps/drafts/` once they pass the catalog checks and fuzzing; Uncharted Seas (spec 022) joins them when it is built.
 
 ## Server/UI changes
 
-- `packages/maps`: `MODE_CATALOG`; `mapsForMode(mode)`; maps tagged with modes (scenario maps by their size; catalog maps in the JSON).
-- `packages/protocol`: `lobby:map` gains the mode (`{ mode, map, setup? }`); `LobbyState` shows the mode.
-- `apps/server`: checks the map belongs to the mode and the seat count fits; stores the mode with the lobby.
-- `apps/web`: the home "new game" form asks for the mode first, then the seat count (up to the mode's maximum); the lobby's map section lists only that mode's maps (→ Fixed / Variable).
-- Maps' `players.min` becomes 1 everywhere (the maximum is the upper bound).
+- `packages/maps`: `GAME_TYPES` (id, name, modules, max players); `mapsForType(type)` returning base maps, scenarios (with the type's player size) and free-play maps; catalog maps carry `types` in their JSON; scenario maps belong to `seafaring-3` / `seafaring-4` by size.
+- `packages/protocol`: create-lobby takes the game type; `lobby:map` becomes `{ type, map }` where `map` is `{ builtin: id }` or `{ scenario: id, setup }`; `LobbyState` includes the type.
+- `apps/server`: the lobby stores the game type (migration); the server refuses a map outside the type and a type change that doesn't fit the seated players; the stored map id still names the scenario, setup and size, so games and history need no change.
+- `apps/web`: home form (type, then seats); lobby layout and game section as above; the sandbox picker.
+- Maps' `players.min` is 1 everywhere (the maximum is the upper bound).
 
 ## Test plan
 
-Protocol payloads; server: a map outside its mode is refused, a seat count outside the mode is refused; web: the picker only lists a mode's maps; sandbox the same.
+- Maps: every map belongs to at least one type; `mapsForType` lists only fitting maps; scenario maps by size.
+- Protocol: the new payloads parse, malformed ones fail.
+- Server (online suite): create a lobby of each type; a map outside the type is refused; changing type with too many seated players is refused; changing type with an empty extra seat works and drops the seat.
+- Web: the picker lists only the type's maps; the selected card is marked; Fixed / Variable only on the selected scenario; the lobby doesn't overflow at phone and desktop widths (checked in the browser).
 
 ## Open questions
 
-- None. (Decided: the mode is chosen on the home screen before the lobby exists; player counts are upper bounds, fewer may start.)
+- None. (Decided: the type is chosen on the home screen and may be changed in the lobby while the seated players fit; no 5–6 player option is shown yet; player counts are upper bounds.)
 
 ## Status
 
-Draft
+In progress (on `lobby-modes`).

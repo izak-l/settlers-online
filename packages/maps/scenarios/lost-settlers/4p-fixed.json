@@ -4,7 +4,7 @@
   "description": "Settle the great island, then sail among the bare islets for victory tokens, hidden cards and harbors you can move.",
   "version": 1,
   "players": {
-    "min": 4,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 13,

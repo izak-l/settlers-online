@@ -70,9 +70,9 @@ Written by a separate session from ASCII shapes in `drafts/build.ts`; `drafts/ch
 | `little-harbour.json` | Little Harbour | 14 | 8 | base | yes (draft, 1–3 players) |
 | `six-point-star.json` | Six-Point Star | 31 | 10 | base | yes (draft) |
 | `the-boot.json` | The Boot | 25 | 10 | base | yes (draft) |
-| `home-waters.json` | Home Waters | 47 | 12 | base, seafaring | after seafaring |
+| `home-waters.json` | Home Waters | 47 | 12 | base, seafaring | in the catalog (seafaring free play, spec 023) |
 | `inland-sea.json` | Inland Sea | 82 | 14 | base, seafaring | after seafaring |
-| `rising-chain.json` | Rising Chain | 39 | 12 | base, seafaring | after seafaring |
+| `rising-chain.json` | Rising Chain | 39 | 12 | base, seafaring | in the catalog (seafaring free play, spec 023) |
 
 Review notes for when they move into the catalog:
 

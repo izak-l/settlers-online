@@ -34,15 +34,15 @@ describe("sandbox map options", () => {
     );
     const why = (id: string) => opts.find((o) => o.id === id)?.disabledReason;
     expect(why("later")).toMatch(/knights-and-cities/);
-    expect(why("small")).toMatch(/1–2 players/);
+    expect(why("small")).toMatch(/up to 2 players/);
     expect(why("short")).toMatch(/tokens/);
     // Unparseable files are listed by file name with the reason.
     expect(opts.find((o) => o.id === "broken.json")?.disabledReason).toMatch(/invalid/i);
   });
 
-  it("disables catalog maps outside the seat count too", () => {
+  it("treats player counts as upper bounds: every catalog map takes a single player", () => {
     const opts = sandboxMapOptions({}, 1);
-    expect(opts.find((o) => o.id === "grand-diamond")?.disabledReason).toMatch(/2–4 players/);
+    expect(opts.find((o) => o.id === "grand-diamond")?.disabledReason).toBeUndefined();
     expect(opts.find((o) => o.id === "base-4p")?.disabledReason).toBeUndefined();
   });
 });

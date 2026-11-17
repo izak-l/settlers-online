@@ -5,8 +5,8 @@ import { scenarioOptions, type MapOption } from "./MapPicker";
 function whyNot(def: MapDef, seats: number): string | undefined {
   const missing = def.modules.filter((m) => !MODULE_IDS.includes(m));
   if (missing.length > 0) return `Needs ${missing.join(", ")} (not built yet)`;
-  const { min, max } = def.players;
-  if (seats < min || seats > max) return `For ${min}–${max} players`;
+  // Player counts are upper bounds (spec 023): fewer players may start.
+  if (seats > def.players.max) return `For up to ${def.players.max} players`;
   const check = validateMapDef(def);
   if (!check.ok) return check.errors.map((e) => e.message).join("; ");
   return undefined;

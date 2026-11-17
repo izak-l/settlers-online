@@ -1,10 +1,10 @@
 {
   "id": "home-waters",
   "name": "Home Waters",
-  "description": "A home island in the middle, with six smaller isles around it to sail out and settle. Needs ships (seafaring).",
+  "description": "A home island in the middle, with six smaller isles around it to sail out to and settle.",
   "version": 1,
   "players": {
-    "min": 2,
+    "min": 1,
     "max": 4
   },
   "vpToWin": 12,

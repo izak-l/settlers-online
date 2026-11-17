@@ -6,7 +6,13 @@ import {
   type FeatureOverrides,
   type Features,
 } from "@settlers/engine";
-import { DEFAULT_MAP_DEF, findMap, generateMap, scenarioMap } from "@settlers/maps";
+import {
+  defaultMapForType,
+  findGameType,
+  generateMap,
+  mapForType,
+  type GameTypeId,
+} from "@settlers/maps";
 import type { Ack, CreateLobbyParsed, MapChoice } from "@settlers/protocol";
 import { fail } from "./errors";
 import type { KeyedQueue } from "./queue";
@@ -24,7 +30,9 @@ export class LobbyService {
     private queue: KeyedQueue,
   ) {}
 
-  async create(hostId: string, opts: CreateLobbyParsed): Promise<LobbyRecord> {
+  async create(hostId: string, opts: CreateLobbyParsed): Promise<LobbyRecord | null> {
+    const type = findGameType(opts.gameType);
+    if (!type || opts.maxSeats > type.maxPlayers) return null;
     const lobby: LobbyRecord = {
       id: randomBytes(6).toString("base64url"),
       hostId,
@@ -36,8 +44,9 @@ export class LobbyService {
       ),
       status: "open",
       gameId: null,
-      map: DEFAULT_MAP_DEF,
+      map: defaultMapForType(type),
       features: {},
+      gameType: type.id,
     };
     await this.store.createLobby(lobby);
     return lobby;
@@ -87,16 +96,46 @@ export class LobbyService {
       if (!lobby) return fail("NOT_FOUND");
       if (lobby.hostId !== userId) return fail("NOT_HOST");
       if (lobby.status !== "open") return fail("LOBBY_STARTED");
-      const def =
-        "builtin" in choice
-          ? findMap(choice.builtin)?.def
-          : scenarioMap(choice.scenario, lobby.maxSeats, choice.setup);
+      // Only maps of the lobby's game type, at its player size (spec 023).
+      const type = findGameType(lobby.gameType);
+      const def = type ? mapForType(type, choice) : undefined;
       if (!def) return fail("UNKNOWN_MAP");
-      const { min, max } = def.players;
-      if (lobby.maxSeats < min || lobby.maxSeats > max) {
-        return fail("BAD_REQUEST", `This map is for ${min}–${max} players.`);
+      if (lobby.maxSeats > def.players.max) {
+        return fail("BAD_REQUEST", `This map is for up to ${def.players.max} players.`);
       }
       lobby.map = def;
+      lobby.seats = lobby.seats.map((s) => (s ? { ...s, ready: false } : null));
+      await this.store.saveLobby(lobby);
+      return { ok: true };
+    });
+  }
+
+  /**
+   * Host only, while open (spec 023): switch the game type. Everyone seated must fit: they move
+   * up into the first seats, and empty seats beyond the type's limit go. The lobby gets the type's
+   * default map, and everyone has to ready up again.
+   */
+  setType(lobbyId: string, userId: string, gameType: GameTypeId): Promise<Ack> {
+    return this.queue.run(`lobby:${lobbyId}`, async () => {
+      const lobby = await this.store.getLobby(lobbyId);
+      if (!lobby) return fail("NOT_FOUND");
+      if (lobby.hostId !== userId) return fail("NOT_HOST");
+      if (lobby.status !== "open") return fail("LOBBY_STARTED");
+      const type = findGameType(gameType);
+      if (!type) return fail("BAD_REQUEST");
+      const seated = lobby.seats.filter((s) => s !== null);
+      if (seated.length > type.maxPlayers) {
+        return fail(
+          "BAD_REQUEST",
+          `${type.name} is for up to ${type.maxPlayers} players: ask someone to leave a seat first.`,
+        );
+      }
+      if (lobby.maxSeats > type.maxPlayers) {
+        lobby.maxSeats = type.maxPlayers;
+        lobby.seats = [...seated, ...Array<null>(type.maxPlayers - seated.length).fill(null)];
+      }
+      lobby.gameType = type.id;
+      lobby.map = defaultMapForType(type);
       lobby.seats = lobby.seats.map((s) => (s ? { ...s, ready: false } : null));
       await this.store.saveLobby(lobby);
       return { ok: true };

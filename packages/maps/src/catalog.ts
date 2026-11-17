@@ -2,6 +2,8 @@ import { MapDefSchema, type MapDef } from "./schema";
 import { findScenarioMap, scenarioOfMap } from "./scenarios";
 import baseRaw from "../maps/base-4p.json" with { type: "json" };
 import grandDiamondRaw from "../maps/grand-diamond.json" with { type: "json" };
+import homeWatersRaw from "../maps/home-waters.json" with { type: "json" };
+import risingChainRaw from "../maps/rising-chain.json" with { type: "json" };
 
 /** A built-in map: a JSON file in `packages/maps/maps/`, checked in CI. */
 export interface CatalogMap {
@@ -22,7 +24,13 @@ function entry(raw: unknown): CatalogMap {
  * here; `catalog.test.ts` fails if a file is missing from this list. Ids never change once
  * shipped.
  */
-export const MAP_CATALOG: readonly CatalogMap[] = [entry(baseRaw), entry(grandDiamondRaw)];
+export const MAP_CATALOG: readonly CatalogMap[] = [
+  entry(baseRaw),
+  entry(grandDiamondRaw),
+  // Seafaring free play (spec 023): islands and ships, no scenario rules.
+  entry(homeWatersRaw),
+  entry(risingChainRaw),
+];
 
 export const DEFAULT_MAP_ID = "base-4p";
 

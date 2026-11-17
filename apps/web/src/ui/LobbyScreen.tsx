@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
-import { mergeFeatures } from "@settlers/engine";
 import { findGameType } from "@settlers/maps";
 import type { LobbyState } from "@settlers/protocol";
 import { go } from "../app/route";
 import { useSession } from "../app/session";
 import { SEAT_COLORS, errorText } from "../game/seats";
 import { GameSummary, GameTypePicker, MapChooser, type GameChoice } from "./GamePicker";
-import { HouseRules } from "./HouseRules";
-import { toggleRule } from "./features";
 
 type Ack = { ok: boolean; code?: string; message?: string };
 
 /**
  * The game this lobby will play (spec 023): everyone sees the summary; the host picks the game
- * type, then a map or scenario, and the house rules, while the lobby is open.
+ * type, then a map or scenario, and the settings, while the lobby is open.
  */
 function LobbyGame({
   lobby,
@@ -61,28 +58,10 @@ function LobbyGame({
             onChoose={(map) => send(socket.emitWithAck("lobby:map", { lobbyId: lobby.id, map }))}
           />
           <p className="muted small">
-            Changing the game, map or house rules asks everyone to ready up again.
+            Changing the game, map or settings asks everyone to ready up again.
           </p>
         </>
       )}
-      <HouseRules
-        features={lobby.features}
-        editable={editable}
-        disabled={busy}
-        onToggle={(feature, on) =>
-          send(
-            socket.emitWithAck("lobby:features", {
-              lobbyId: lobby.id,
-              features: toggleRule(
-                mergeFeatures(lobby.map.def.features),
-                lobby.houseRules,
-                feature,
-                on,
-              ),
-            }),
-          )
-        }
-      />
     </section>
   );
 }

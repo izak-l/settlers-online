@@ -29,6 +29,8 @@
   --t-mountains-light: #a2a8b1;
   --t-desert: #e2d1a1;
   --t-desert-light: #ede0b9;
+  --t-fog: #b9c2cc;
+  --t-fog-light: #e4e9ee;
   --t-gold: #c9a53a;
   --t-gold-light: #ead27a;
   /* Land drawn at random when the game starts (map previews) */
@@ -380,6 +382,11 @@ input {
 }
 .piece.moving .ship-piece {
   filter: drop-shadow(0 0 4px var(--target));
+}
+.fog-mark {
+  font-size: 34px;
+  font-weight: 700;
+  fill: #5c6772;
 }
 .pirate {
   pointer-events: none;

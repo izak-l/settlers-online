@@ -205,9 +205,9 @@ export const shipActions: ActionHandlers = {
     apply(draft, player, { edge }, ctx) {
       const piece = placeShip(draft, player, edge);
       ctx.events.push({ type: "BUILT_SHIP", text: `${player} built a free ship` });
-      runOnPlace(ctx.modules, draft, piece, ctx);
       updateAwards(draft, ctx.events, ctx.modules);
       takeFreePlacement(draft, player, ctx.modules);
+      runOnPlace(ctx.modules, draft, piece, ctx);
     },
     candidates: (s, p) => edgesNearOwn(s, p).map((edge) => ({ type: "PLACE_FREE_SHIP", edge })),
   },

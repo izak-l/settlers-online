@@ -258,3 +258,23 @@ A ship can move only from an open end (a corner with none of the player's buildi
 The rulebook's variable setups say which areas are shuffled but not which tiles go where, so each area's pool is exactly the terrain and number tokens that area has on the fixed map, and port types are shuffled over the fixed port spots. Scenario 4's deserts stay put. The robber starts on the 12 (scenario 1 with 3 players, scenario 2), the desert (scenario 1 with 4 players) or its fixed spot (scenario 4).
 
 **Test:** `scenarios.test.ts` — "matches the rulebook's components" and "generates boards that keep the regions and the token rules" for every variable map.
+
+## Spec 016 — Fog (M10e)
+
+### A41: One placement can reveal two hexes; they're drawn in hex-key order
+
+A road or ship whose corners touch two face-down hexes reveals both, the lower hex key first, each drawn from the hidden stacks with the game RNG.
+
+**Test:** `fog.test.ts` — "a ship reaching a fog corner reveals it, with a token and a discovery card".
+
+### A42: A revealed hex joins the region of the land next to it
+
+Revealed land takes the region of an adjacent land hex, or becomes a region of its own. Two regions that a reveal happens to connect stay separate (no scenario with fog has an island bonus).
+
+**Test:** `fog.test.ts` — "… The new land joins the main island's region".
+
+### A43: Discovery rewards come from the bank, and gold gives a pick
+
+A revealed producing hex gives one card of its resource if the bank has one; a revealed gold hex gives a `GOLD_CHOICE` pick of one. Reveals during setup (a starting road or ship) pay the reward too.
+
+**Test:** `fog.test.ts` — "a revealed gold hex lets the player pick the reward".

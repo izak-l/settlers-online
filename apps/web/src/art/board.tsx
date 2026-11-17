@@ -5,7 +5,17 @@
  */
 import type { Point } from "../board/geometry";
 
-const TERRAINS = ["forest", "pasture", "fields", "hills", "mountains", "desert", "sea", "gold"];
+const TERRAINS = [
+  "forest",
+  "pasture",
+  "fields",
+  "hills",
+  "mountains",
+  "desert",
+  "sea",
+  "gold",
+  "fog",
+];
 
 /** One radial gradient per terrain (lighter in the middle), referenced as url(#tg-<terrain>). */
 export function TerrainDefs() {
@@ -206,6 +216,27 @@ export function TerrainArt({ terrain, at: [cx, cy] }: { terrain: string; at: Poi
       break;
     case "sea":
       body = [0, 4, 5].map((i) => <Wave key={i} at={p(i)} />);
+      break;
+    case "fog":
+      // A face-down hex (spec 016): drifting mist and a question mark.
+      body = (
+        <>
+          {[0, 2, 5].map((i) => (
+            <path
+              key={i}
+              d={`M${p(i)[0] - 16} ${p(i)[1]} q8 -6 16 0 t16 0`}
+              stroke="#ffffff"
+              strokeOpacity={0.7}
+              strokeWidth={3}
+              fill="none"
+              strokeLinecap="round"
+            />
+          ))}
+          <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" className="fog-mark">
+            ?
+          </text>
+        </>
+      );
       break;
     case "gold":
       body = (

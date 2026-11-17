@@ -55,6 +55,7 @@ const EVENT_CUE: Record<string, Cue> = {
   MOVED_SHIP: "build",
   MOVED_PIRATE: "robber",
   ISLAND_SETTLED: "award",
+  REVEALED: "devcard",
   AWARD: "award",
   GAME_WON: "win",
 };

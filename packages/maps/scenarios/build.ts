@@ -11,6 +11,7 @@
  * Cells:
  *
  *   ~      sea (inside the frame)       _   nothing (a gap: no hex here)
+ *   ?      fog: a face-down hex (spec 016), drawn from the layout's fog stack when revealed
  *   H F P W M G D  hills forest pasture fields(wheat) mountains gold desert, then the token,
  *                  then an optional lowercase region letter (no letter = the main region)
  *
@@ -37,6 +38,8 @@ interface Layout {
   robber: [number, number];
   /** A sea hex, or "frame": in play but starting off the board. Omitted: no pirate. */
   pirate?: [number, number] | "frame";
+  /** Scenario settings for this map only (e.g. its fog stack), merged over the scenario's. */
+  scenario?: Record<string, unknown>;
 }
 
 interface Scenario {
@@ -70,7 +73,7 @@ function variableOf(s: Scenario, fixed: ReturnType<typeof build>, size: string) 
   const terrain: Record<string, Record<string, number>> = {};
   const tokens: Record<string, number[]> = {};
   const hexes = (fixed.hexes as HexOut[]).map((h): HexOut => {
-    if (h.terrain === "sea") return h;
+    if (h.terrain === "sea" || h.terrain === "fog") return h;
     const name = v.pool(h.region ?? "main", h.terrain);
     if (!name) return h;
     terrain[name] = { ...terrain[name], [h.terrain]: (terrain[name]?.[h.terrain] ?? 0) + 1 };
@@ -143,6 +146,10 @@ function build(s: Scenario, layout: Layout) {
         hexes.push({ q, r, terrain: "sea" });
         continue;
       }
+      if (cell === "?") {
+        hexes.push({ q, r, terrain: "fog" });
+        continue;
+      }
       const m = /^([HFPWMGD])(\d{0,2})([a-z]?)$/.exec(cell);
       if (!m) throw new Error(`${s.id} ${layout.variant}: bad cell "${cell}" in row ${row}`);
       const [, t, token, letter] = m;
@@ -177,6 +184,7 @@ function build(s: Scenario, layout: Layout) {
     robberStart: at(layout.robber),
     scenario: {
       ...s.scenario,
+      ...layout.scenario,
       ...(layout.pirate === "frame"
         ? { pirateStart: "frame" }
         : layout.pirate
@@ -333,6 +341,88 @@ const SCENARIOS: Scenario[] = [
         ],
         robber: [1, 7],
         pirate: "frame",
+      },
+    ],
+  },
+  {
+    // Scenario 3 (pages 8–9). Face-down hexes between two islands; no island bonus.
+    id: "misty-passage",
+    name: "Misty Passage",
+    description:
+      "Fog hides the waters between two islands. Explore it with roads and ships: every new land hex you find pays you a card.",
+    vpToWin: 12,
+    scenario: { home: "setup", discoveryReward: true },
+    // Each island's face-up land shuffled within it; 6s and 8s may be neighbours (page 9).
+    variable: {
+      pool: (region) => region,
+      constraints: [],
+      robber: { "3p": "token:12", "4p": "token:12" },
+    },
+    layouts: [
+      {
+        variant: "3p-fixed",
+        players: THREE,
+        rows: [
+          "2: ? ? ~ H6a F11a",
+          "1: ? ? ? ~ F5a W3a",
+          "0: ~ ~ ~ ? ~ P8a P9a",
+          "-1: ~ F6b P5b ~ ? ~ M4a ~",
+          "0: ~ H11b F9b ~ ? ~ ~",
+          "1: ~ M8b W10b ~ ? ?",
+          "2: ~ P12b ~ ? ?",
+        ],
+        regions: { a: "northeast", b: "southwest" },
+        ports: [
+          { at: [0, 8], dir: "NE", type: "any3to1" },
+          { at: [0, 10], dir: "E", type: "sheep2to1" },
+          { at: [2, 12], dir: "NE", type: "wheat2to1" },
+          { at: [3, 11], dir: "E", type: "any3to1" },
+          { at: [3, 1], dir: "SW", type: "ore2to1" },
+          { at: [4, 2], dir: "SW", type: "wood2to1" },
+          { at: [5, 5], dir: "SE", type: "brick2to1" },
+          { at: [6, 4], dir: "W", type: "any3to1" },
+        ],
+        robber: [6, 4],
+        pirate: "frame",
+        scenario: {
+          fog: {
+            terrain: { sea: 2, gold: 2, hills: 2, forest: 1, pasture: 1, fields: 2, mountains: 2 },
+            tokens: [3, 3, 4, 5, 6, 8, 9, 10, 11, 12],
+          },
+        },
+      },
+      {
+        variant: "4p-fixed",
+        players: FOUR,
+        rows: [
+          "2: ? ~ H4a W10a M3a",
+          "1: ? ? ~ P9a F6a H12a",
+          "0: ~ ~ ? ~ ~ P10a M8a",
+          "-1: ~ M3b ~ ? ? ~ W11a ~",
+          "0: W6b F4b ~ ? ? ~ F5a",
+          "1: H9b P8b ~ ? ? ~",
+          "2: P2b F5b ~ ? ?",
+        ],
+        regions: { a: "northeast", b: "southwest" },
+        ports: [
+          { at: [0, 6], dir: "NE", type: "sheep2to1" },
+          { at: [0, 10], dir: "NW", type: "wheat2to1" },
+          { at: [0, 10], dir: "E", type: "any3to1" },
+          { at: [2, 12], dir: "NE", type: "brick2to1" },
+          { at: [4, 12], dir: "NE", type: "any3to1" },
+          { at: [3, 1], dir: "W", type: "wood2to1" },
+          { at: [4, 0], dir: "SW", type: "ore2to1" },
+          { at: [6, 2], dir: "W", type: "any3to1" },
+          { at: [6, 2], dir: "SE", type: "any3to1" },
+        ],
+        robber: [1, 11],
+        pirate: "frame",
+        scenario: {
+          fog: {
+            terrain: { sea: 2, gold: 2, hills: 2, forest: 1, pasture: 1, fields: 2, mountains: 2 },
+            tokens: [3, 4, 5, 6, 8, 9, 10, 11, 11, 12],
+          },
+        },
       },
     ],
   },

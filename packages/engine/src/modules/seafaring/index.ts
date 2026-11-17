@@ -1,5 +1,6 @@
 import type { RulesModule } from "../../module";
 import { SHIP_LIMIT } from "./data";
+import { checkFog, revealAround, setupFog } from "./fog";
 import { seafaringInvariants } from "./invariants";
 import { goldActions, goldForStartingSettlement, produceGold } from "./gold";
 import { pirateActions } from "./pirate";
@@ -48,6 +49,7 @@ export const seafaringModule: RulesModule = {
       pirateInPlay: scenario.pirateStart !== undefined,
     };
     draft.moduleState["seafaring"] = state;
+    setupFog(draft);
     if (scenario.pirateStart !== undefined && scenario.pirateStart !== "frame") {
       draft.pieces["pirate"] = { id: "pirate", type: "pirate", at: { hex: scenario.pirateStart } };
     }
@@ -56,12 +58,18 @@ export const seafaringModule: RulesModule = {
     produce: (draft, total) => produceGold(draft, total),
     vpSources: (state, player) => islandBonusVP(state, player),
     canPlace(state, _player, pieceType, at, decisionKind) {
+      const fog = checkFog(state, pieceType, at);
+      if (fog) return fog;
       if (pieceType === "settlement" && decisionKind === "PLACE_SETTLEMENT" && "vertex" in at) {
         return checkSetupRegion(state, at.vertex);
       }
       return null;
     },
     onPlace(draft, piece, { events }) {
+      // A road or ship reaching a corner of a face-down hex reveals it (spec 016).
+      if ((piece.type === "road" || piece.type === "ship") && piece.owner && "edge" in piece.at) {
+        revealAround(draft, piece.at.edge, piece.owner, events);
+      }
       announceIslandBonus(draft, piece, events);
       // A starting settlement: the setup road step for it is now on top (base set `mustTouch`).
       const top = draft.decisions.at(-1);

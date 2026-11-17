@@ -5,6 +5,10 @@ import fourIsles3p from "../scenarios/four-isles/3p-fixed.json" with { type: "js
 import fourIsles4p from "../scenarios/four-isles/4p-fixed.json" with { type: "json" };
 import acrossTheSands3p from "../scenarios/across-the-sands/3p-fixed.json" with { type: "json" };
 import acrossTheSands4p from "../scenarios/across-the-sands/4p-fixed.json" with { type: "json" };
+import mistyPassage3p from "../scenarios/misty-passage/3p-fixed.json" with { type: "json" };
+import mistyPassage4p from "../scenarios/misty-passage/4p-fixed.json" with { type: "json" };
+import mistyPassage3pV from "../scenarios/misty-passage/3p-variable.json" with { type: "json" };
+import mistyPassage4pV from "../scenarios/misty-passage/4p-variable.json" with { type: "json" };
 import newHorizons3pV from "../scenarios/new-horizons/3p-variable.json" with { type: "json" };
 import newHorizons4pV from "../scenarios/new-horizons/4p-variable.json" with { type: "json" };
 import fourIsles3pV from "../scenarios/four-isles/3p-variable.json" with { type: "json" };
@@ -55,6 +59,7 @@ function scenario(order: number, ...raws: unknown[]): CatalogScenario {
 export const SCENARIO_CATALOG: readonly CatalogScenario[] = [
   scenario(1, newHorizons3p, newHorizons4p, newHorizons3pV, newHorizons4pV),
   scenario(2, fourIsles3p, fourIsles4p, fourIsles3pV, fourIsles4pV),
+  scenario(3, mistyPassage3p, mistyPassage4p, mistyPassage3pV, mistyPassage4pV),
   scenario(4, acrossTheSands3p, acrossTheSands4p, acrossTheSands3pV, acrossTheSands4pV),
 ];
 

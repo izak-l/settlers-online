@@ -91,6 +91,15 @@ export const ScenarioSchema = z
     setupRegions: z.array(RegionName).min(1),
     /** Where the pirate starts (a sea hex). Omitted: no pirate. */
     pirateStart: z.union([HexKeyString, z.literal("frame")]),
+    /** Fog (spec 016): the face-down stacks drawn as fog hexes are revealed. */
+    fog: z
+      .object({
+        terrain: z.record(TerrainValue, z.number().int().nonnegative()),
+        tokens: z.array(z.number().int().min(2).max(12)),
+      })
+      .strict(),
+    /** A newly revealed land hex gives one card of what it produces. */
+    discoveryReward: z.boolean(),
   })
   .partial()
   .strict();

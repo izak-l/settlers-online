@@ -17,6 +17,10 @@ export interface SeafaringScenario {
    * Omitted: no pirate in this scenario.
    */
   pirateStart?: HexKey | "frame";
+  /** Fog (spec 016): the face-down stacks of terrain (counts) and number tokens. */
+  fog?: { terrain: Record<string, number>; tokens: number[] };
+  /** A newly revealed land hex gives the player one card of what it produces. */
+  discoveryReward?: boolean;
 }
 
 /** Read the scenario with defaults. Malformed fields are ignored here; the map validator rejects them. */
@@ -30,6 +34,8 @@ export function scenarioOf(state: GameState): SeafaringScenario {
         : "setup",
     ...(Array.isArray(raw.setupRegions) ? { setupRegions: raw.setupRegions } : {}),
     ...(typeof raw.pirateStart === "string" ? { pirateStart: raw.pirateStart } : {}),
+    ...(raw.fog && typeof raw.fog === "object" ? { fog: raw.fog } : {}),
+    ...(raw.discoveryReward === true ? { discoveryReward: true } : {}),
   };
 }
 

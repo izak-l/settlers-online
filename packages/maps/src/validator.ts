@@ -118,8 +118,31 @@ function checkScenario(def: MapDef): ValidationError[] {
   if ((def.scenario || usesRegions) && !def.modules.includes("seafaring")) {
     errors.push(err("SCENARIO", "Scenario settings and regions need the seafaring module"));
   }
+  const fogHexes = def.hexes.filter((h) => h.terrain === "fog").length;
+  if (fogHexes > 0 && !def.modules.includes("seafaring"))
+    errors.push(err("FOG", "Fog hexes need the seafaring module"));
   const s = def.scenario;
-  if (!s) return errors;
+  if (!s) {
+    if (fogHexes > 0) errors.push(err("FOG", "Fog hexes need a scenario.fog stack"));
+    return errors;
+  }
+  if (fogHexes > 0 || s.fog) {
+    const stack = Object.values(s.fog?.terrain ?? {}).reduce((a, b) => a + b, 0);
+    if (stack !== fogHexes)
+      errors.push(
+        err("FOG", `The fog stack has ${stack} hexes but the map has ${fogHexes} fog hexes`),
+      );
+    const land = Object.entries(s.fog?.terrain ?? {})
+      .filter(([t]) => t !== "sea" && t !== "desert")
+      .reduce((a, [, n]) => a + n, 0);
+    if ((s.fog?.tokens.length ?? 0) !== land)
+      errors.push(
+        err(
+          "FOG",
+          `The fog stack has ${land} producing hexes but ${s.fog?.tokens.length ?? 0} tokens`,
+        ),
+      );
+  }
   const regions = new Set(def.hexes.flatMap((h) => (h.region ? [h.region] : [])));
   const named = [...(s.setupRegions ?? []), ...(typeof s.home === "object" ? s.home.regions : [])];
   for (const r of named) {

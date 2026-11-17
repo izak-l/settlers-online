@@ -148,8 +148,9 @@ export function finishSetupRoad(
   ctx: ActionContext,
   piece: Parameters<typeof runOnPlace>[2],
 ): void {
-  runOnPlace(ctx.modules, draft, piece, ctx);
   updateAwards(draft, ctx.events, ctx.modules);
   popDecision(draft);
   if (draft.decisions.at(-1)?.kind === "ROLL") draft.turn.number = 1; // setup is over
+  // Last, so a step a module pushes (e.g. a gold pick for a discovered hex) sits on top.
+  runOnPlace(ctx.modules, draft, piece, ctx);
 }

@@ -193,9 +193,10 @@ export const devCardActions: ActionHandlers = {
     apply(draft, player, { edge }, ctx) {
       const piece = addPiece(draft, "road", player, { edge });
       ctx.events.push({ type: "BUILT_ROAD", text: `${player} built a free road` });
-      runOnPlace(ctx.modules, draft, piece, ctx);
       updateAwards(draft, ctx.events, ctx.modules);
       takeFreePlacement(draft, player, ctx.modules);
+      // Last, so a step a module pushes (e.g. a gold pick) sits above the free-placement step.
+      runOnPlace(ctx.modules, draft, piece, ctx);
     },
     candidates: (s) => allEdges(s).map((edge) => ({ type: "PLACE_FREE_ROAD", edge })),
   },

@@ -38,6 +38,14 @@ export function seafaringInvariants(state: GameState): {
     vp[p] = bonus * foreign.size;
   }
 
+  // Fog: the face-down stack always matches the hexes still face down.
+  const stack = state.zones["fog-terrain"];
+  if (stack) {
+    const left = Object.values(stack.contents).reduce((a, b) => a + b, 0);
+    const fogged = state.map.hexes.filter((h) => h.terrain === "fog").length;
+    if (left !== fogged) out.push(`fog stack has ${left} hexes but ${fogged} are face down`);
+  }
+
   const robber = state.pieces["robber"];
   if (robber && "hex" in robber.at && WATER.has(terrainAt(state, robber.at.hex) ?? "sea"))
     out.push(`the robber is on water (${robber.at.hex})`);

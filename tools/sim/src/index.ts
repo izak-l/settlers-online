@@ -136,6 +136,7 @@ const watched = [
   "MOVED_PIRATE",
   "GOLD_PICKED",
   "ISLAND_SETTLED",
+  "REVEALED",
   "AWARD",
 ];
 const seen = watched.filter((t) => totals[t]).map((t) => `${t} ${totals[t]}`);

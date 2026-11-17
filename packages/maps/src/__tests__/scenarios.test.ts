@@ -40,6 +40,17 @@ const RULEBOOK: Record<
     tokens: [1, 2, 3, 3, 2, 2, 3, 3, 3, 1],
     ports: { two: 5, three: 4 },
   },
+  // Face-up land and tokens, plus the 12 face-down (fog) hexes; their stack is checked below.
+  "misty-passage-3p-fixed": {
+    land: { hills: 2, forest: 4, pasture: 4, fields: 2, mountains: 2, fog: 12 },
+    tokens: [0, 1, 1, 2, 2, 2, 2, 1, 2, 1],
+    ports: { two: 5, three: 3 },
+  },
+  "misty-passage-4p-fixed": {
+    land: { hills: 3, forest: 4, pasture: 4, fields: 3, mountains: 3, fog: 12 },
+    tokens: [1, 2, 2, 2, 2, 2, 2, 2, 1, 1],
+    ports: { two: 5, three: 4 },
+  },
   "across-the-sands-3p-fixed": {
     land: { gold: 2, hills: 3, forest: 5, pasture: 4, fields: 4, mountains: 4, desert: 3 },
     tokens: [1, 2, 3, 3, 3, 3, 3, 2, 1, 1],
@@ -103,6 +114,24 @@ describe("scenario catalog", () => {
         : ports.map((p) => p.type);
       expect(portTypes.filter((t) => t === "any3to1")).toHaveLength(expected.ports.three);
       expect(portTypes.filter((t) => t !== "any3to1")).toHaveLength(expected.ports.two);
+    });
+
+    it("has the rulebook's face-down stack when it has fog", () => {
+      const fog = def.scenario?.fog;
+      if (!def.hexes.some((h) => h.terrain === "fog")) return expect(fog).toBeUndefined();
+      expect(fog!.terrain).toEqual({
+        sea: 2,
+        gold: 2,
+        hills: 2,
+        forest: 1,
+        pasture: 1,
+        fields: 2,
+        mountains: 2,
+      });
+      const facedown = id.startsWith("misty-passage-3p")
+        ? [3, 3, 4, 5, 6, 8, 9, 10, 11, 12]
+        : [3, 4, 5, 6, 8, 9, 10, 11, 11, 12];
+      expect([...fog!.tokens].sort((a, b) => a - b)).toEqual(facedown);
     });
 
     it("generates boards that keep the regions and the token rules (300 seeds)", () => {

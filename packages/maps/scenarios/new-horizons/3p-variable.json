@@ -1,0 +1,319 @@
+{
+  "id": "new-horizons-3p-variable",
+  "name": "New Horizons",
+  "description": "Your home island is settled; small islands lie just offshore. Settle each one for 2 extra VP.",
+  "version": 1,
+  "players": {
+    "min": 1,
+    "max": 3
+  },
+  "vpToWin": 14,
+  "hexes": [
+    {
+      "q": 1,
+      "r": -3,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "north"
+    },
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "north"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "east"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "east"
+    },
+    {
+      "q": -1,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "east"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "east"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": -2,
+      "r": 2,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "south"
+    },
+    {
+      "q": -2,
+      "r": 3,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "pool:main",
+      "token": "pool:main",
+      "region": "main"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "pool:islands",
+      "token": "pool:islands",
+      "region": "south"
+    }
+  ],
+  "ports": [
+    {
+      "edge": "-1,-1|0,-1",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "1,-1|2,-1",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-2,0|-2,1",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-2,1|-3,2",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "1,1|2,0",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-2,3|-3,3",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-1,3|-2,4",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-1,3|0,3",
+      "type": "pool:ports"
+    }
+  ],
+  "robberStart": "token:12",
+  "scenario": {
+    "islandBonus": 2,
+    "home": {
+      "regions": ["main"]
+    },
+    "setupRegions": ["main"],
+    "pirateStart": "4,0"
+  },
+  "modules": ["base", "seafaring"],
+  "pools": {
+    "terrain": {
+      "islands": {
+        "hills": 2,
+        "gold": 2,
+        "pasture": 1,
+        "mountains": 2,
+        "fields": 1
+      },
+      "main": {
+        "fields": 3,
+        "pasture": 4,
+        "mountains": 2,
+        "forest": 3,
+        "hills": 2
+      }
+    },
+    "tokens": {
+      "islands": [3, 4, 4, 5, 8, 9, 10, 12],
+      "main": [2, 3, 4, 5, 5, 6, 6, 8, 8, 9, 10, 10, 11, 11]
+    },
+    "ports": {
+      "ports": {
+        "wheat2to1": 1,
+        "any3to1": 3,
+        "ore2to1": 1,
+        "sheep2to1": 1,
+        "brick2to1": 1,
+        "wood2to1": 1
+      }
+    }
+  },
+  "constraints": ["no-adjacent-red-tokens"]
+}

@@ -322,11 +322,8 @@ export function onlineSuite(name: string, makeStore: () => Promise<Store>) {
         ok: false,
         code: "UNKNOWN_MAP",
       });
-      // Variable setup isn't built yet (spec 017): no such map.
-      expect(await choose({ scenario: "new-horizons", setup: "variable" })).toMatchObject({
-        ok: false,
-        code: "UNKNOWN_MAP",
-      });
+      // Variable setup (spec 017) picks the random map for the seat count.
+      expect(await choose({ scenario: "new-horizons", setup: "variable" })).toEqual({ ok: true });
       expect((await bo!.socket.emitWithAck("lobby:join", { lobbyId })).ok).toBe(true);
       expect(await choose({ scenario: "new-horizons", setup: "fixed" })).toEqual({ ok: true });
       await bo!.until(() => bo!.lobby?.map.scenario?.id === "new-horizons");

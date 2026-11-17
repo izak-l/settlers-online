@@ -72,6 +72,7 @@ describe("scenario catalog", () => {
     expect(scenarioMap("new-horizons", 3, "fixed")!.id).toBe("new-horizons-3p-fixed");
     expect(scenarioMap("new-horizons", 4, "fixed")!.id).toBe("new-horizons-4p-fixed");
     expect(scenarioMap("nope", 4, "fixed")).toBeUndefined();
+    expect(scenarioMap("four-isles", 2, "variable")!.id).toBe("four-isles-3p-variable");
     expect(scenarioOfMap("four-isles-4p-fixed")).toMatchObject({
       scenario: { id: "four-isles" },
       setup: "fixed",
@@ -81,19 +82,64 @@ describe("scenario catalog", () => {
 
   describe.each(allMaps.map((m) => [m.id, m] as const))("%s", (id, def) => {
     it("matches the rulebook's components", () => {
-      const expected = RULEBOOK[id]!;
+      // A variable map has the same components as its fixed map, partly in pools.
+      const expected = RULEBOOK[id.replace(/-variable$/, "-fixed")]!;
       const land: Record<string, number> = {};
       const tokens = Array(11).fill(0) as number[];
       for (const h of def.hexes) {
-        if (h.terrain === "sea") continue;
+        if (h.terrain === "sea" || String(h.terrain).startsWith("pool:")) continue;
         land[String(h.terrain)] = (land[String(h.terrain)] ?? 0) + 1;
         if (typeof h.token === "number") tokens[h.token - 2]!++;
       }
+      for (const pool of Object.values(def.pools?.terrain ?? {}))
+        for (const [t, n] of Object.entries(pool)) land[t] = (land[t] ?? 0) + (n ?? 0);
+      for (const pool of Object.values(def.pools?.tokens ?? {}))
+        for (const t of pool) tokens[t - 2]!++;
       expect(land).toEqual(expected.land);
       expect(tokens.filter((_, i) => i !== 5)).toEqual(expected.tokens); // no 7
       const ports = def.ports ?? [];
-      expect(ports.filter((p) => p.type === "any3to1")).toHaveLength(expected.ports.three);
-      expect(ports.filter((p) => p.type !== "any3to1")).toHaveLength(expected.ports.two);
+      const portTypes = ports.some((p) => p.type === "pool:ports")
+        ? Object.entries(def.pools!.ports!["ports"]!).flatMap(([t, n]) => Array<string>(n!).fill(t))
+        : ports.map((p) => p.type);
+      expect(portTypes.filter((t) => t === "any3to1")).toHaveLength(expected.ports.three);
+      expect(portTypes.filter((t) => t !== "any3to1")).toHaveLength(expected.ports.two);
+    });
+
+    it("generates boards that keep the regions and the token rules (300 seeds)", () => {
+      const fixedId = id.replace(/-variable$/, "-fixed");
+      const fixed = allMaps.find((m) => m.id === fixedId)!;
+      const regionAt = new Map(fixed.hexes.map((h) => [`${h.q},${h.r}`, h.region]));
+      for (let i = 0; i < 300; i++) {
+        const { map } = generateMap(def, seedFromString(`var:${id}:${i}`));
+        expect(validateResolvedMap(map).ok).toBe(true);
+        for (const h of map.hexes) expect(h.region).toBe(regionAt.get(`${h.q},${h.r}`));
+        const at = new Map(map.hexes.map((h) => [`${h.q},${h.r}`, h]));
+        for (const c of def.constraints ?? []) {
+          for (const h of map.hexes) {
+            const red = h.token === 6 || h.token === 8;
+            if (c === "no-red-on-gold") expect(h.terrain === "gold" && red).toBe(false);
+            if (c === "no-low-tokens-on-forest-pasture")
+              expect(
+                (h.terrain === "forest" || h.terrain === "pasture") &&
+                  [2, 3, 11, 12].includes(h.token ?? 0),
+              ).toBe(false);
+            if (c === "no-adjacent-red-tokens" && red) {
+              for (const [dq, dr] of [
+                [1, 0],
+                [1, -1],
+                [0, -1],
+                [-1, 0],
+                [-1, 1],
+                [0, 1],
+              ] as const) {
+                const n = at.get(`${h.q + dq},${h.r + dr}`);
+                expect(n?.token === 6 || n?.token === 8).toBe(false);
+              }
+            }
+          }
+        }
+        expect(map.robberStart).toBeDefined();
+      }
     });
 
     it("validates, generates and sets up with every seat count it allows", () => {

@@ -250,3 +250,11 @@ The bonus is computed from the pieces: the scenario's VP for each non-home regio
 A ship can move only from an open end (a corner with none of the player's buildings or other ships). A ship in a line joining two of the player's buildings never has one, even when an opponent has built on the line (that corner still has the player's other ship), so no separate check is needed.
 
 **Test:** `seafaring.test.ts` — "a line joining two of your buildings never moves, even if an opponent builds on it".
+
+## Spec 017 — Variable setup (M10d)
+
+### A40: A variable map shuffles the fixed map's own pieces within each area
+
+The rulebook's variable setups say which areas are shuffled but not which tiles go where, so each area's pool is exactly the terrain and number tokens that area has on the fixed map, and port types are shuffled over the fixed port spots. Scenario 4's deserts stay put. The robber starts on the 12 (scenario 1 with 3 players, scenario 2), the desert (scenario 1 with 4 players) or its fixed spot (scenario 4).
+
+**Test:** `scenarios.test.ts` — "matches the rulebook's components" and "generates boards that keep the regions and the token rules" for every variable map.

@@ -46,6 +46,55 @@ interface Scenario {
   vpToWin: number;
   scenario: Record<string, unknown>;
   layouts: Layout[];
+  /** How to make the variable-setup maps (spec 017) from the fixed ones. */
+  variable?: Variable;
+}
+
+/**
+ * Variable setup: the fixed map's land is shuffled within areas. `pool` names the area (pool) a
+ * hex's region draws from, or null to keep the hex as it is (e.g. scenario 4's deserts). Each
+ * pool holds exactly the terrain and number tokens of its hexes on the fixed map; ports keep their
+ * spots and shuffle their types.
+ */
+interface Variable {
+  pool(region: string, terrain: string): string | null;
+  constraints: string[];
+  /** Per player size: "token:12", "desert", or "fixed" (where the fixed map puts it). */
+  robber: Record<string, string>;
+}
+
+type HexOut = { q: number; r: number; terrain: string; token?: number | string; region?: string };
+
+function variableOf(s: Scenario, fixed: ReturnType<typeof build>, size: string) {
+  const v = s.variable!;
+  const terrain: Record<string, Record<string, number>> = {};
+  const tokens: Record<string, number[]> = {};
+  const hexes = (fixed.hexes as HexOut[]).map((h): HexOut => {
+    if (h.terrain === "sea") return h;
+    const name = v.pool(h.region ?? "main", h.terrain);
+    if (!name) return h;
+    terrain[name] = { ...terrain[name], [h.terrain]: (terrain[name]?.[h.terrain] ?? 0) + 1 };
+    if (typeof h.token === "number") tokens[name] = [...(tokens[name] ?? []), h.token];
+    return { ...h, terrain: `pool:${name}`, token: `pool:${name}` };
+  });
+  const portCounts: Record<string, number> = {};
+  for (const p of fixed.ports) portCounts[p.type] = (portCounts[p.type] ?? 0) + 1;
+  const robber = v.robber[size] ?? "fixed";
+  return {
+    ...fixed,
+    id: fixed.id.replace(/-fixed$/, "-variable"),
+    hexes,
+    pools: {
+      terrain,
+      tokens: Object.fromEntries(
+        Object.entries(tokens).map(([k, t]) => [k, t.sort((a, b) => a - b)]),
+      ),
+      ports: { ports: portCounts },
+    },
+    ports: fixed.ports.map((p) => ({ edge: p.edge, type: "pool:ports" })),
+    robberStart: robber === "fixed" ? fixed.robberStart : robber,
+    ...(v.constraints.length > 0 ? { constraints: v.constraints } : {}),
+  };
 }
 
 const TERRAIN: Record<string, string> = {
@@ -154,6 +203,12 @@ const SCENARIOS: Scenario[] = [
       "Your home island is settled; small islands lie just offshore. Settle each one for 2 extra VP.",
     vpToWin: 14,
     scenario: { islandBonus: 2, home: { regions: ["main"] }, setupRegions: ["main"] },
+    // Main island shuffled within itself, the small islands among themselves (page 5).
+    variable: {
+      pool: (region) => (region === "main" ? "main" : "islands"),
+      constraints: ["no-adjacent-red-tokens"],
+      robber: { "3p": "token:12", "4p": "desert" },
+    },
     layouts: [
       {
         variant: "3p-fixed",
@@ -218,6 +273,12 @@ const SCENARIOS: Scenario[] = [
       "Four islands and no mainland. Start on one or two of them; every other island you settle is worth 2 extra VP.",
     vpToWin: 13,
     scenario: { islandBonus: 2, home: "setup" },
+    // All four islands shuffled together; forests and pastures never get 2, 3, 11, 12 (page 7).
+    variable: {
+      pool: () => "islands",
+      constraints: ["no-low-tokens-on-forest-pasture"],
+      robber: { "3p": "token:12", "4p": "token:12" },
+    },
     layouts: [
       {
         variant: "3p-fixed",
@@ -284,6 +345,14 @@ const SCENARIOS: Scenario[] = [
       "A desert splits your island. Cross it, or sail to the islands to the east: each new region is worth 2 extra VP.",
     vpToWin: 14,
     scenario: { islandBonus: 2, home: { regions: ["main"] }, setupRegions: ["main"] },
+    // Deserts stay; the main island shuffles within itself, the unexplored regions together; no
+    // 6/8 next to each other or on gold (page 11).
+    variable: {
+      pool: (region, terrain) =>
+        terrain === "desert" ? null : region === "main" ? "main" : "unexplored",
+      constraints: ["no-adjacent-red-tokens", "no-red-on-gold"],
+      robber: { "3p": "fixed", "4p": "fixed" },
+    },
     layouts: [
       {
         variant: "3p-fixed",
@@ -350,5 +419,14 @@ for (const s of SCENARIOS) {
     writeFileSync(join(here, s.id, `${layout.variant}.json`), JSON.stringify(def, null, 2) + "\n");
     const land = def.hexes.filter((x) => x.terrain !== "sea").length;
     console.log(`${def.id}: ${def.hexes.length} hexes (${land} land), ${def.ports.length} ports`);
+    if (s.variable && layout.variant.endsWith("-fixed")) {
+      const size = layout.variant.slice(0, 2);
+      const vdef = variableOf(s, def, size);
+      writeFileSync(
+        join(here, s.id, `${size}-variable.json`),
+        JSON.stringify(vdef, null, 2) + "\n",
+      );
+      console.log(`${vdef.id}: pools ${Object.keys(vdef.pools.terrain).join(", ")}`);
+    }
   }
 }

@@ -13,6 +13,7 @@ import {
 } from "./regions";
 import { scenarioOf, type SeafaringState } from "./scenario";
 import { shipActions } from "./ships";
+import { givesStartingResources } from "../base/setup";
 
 export { SHIP_COST } from "./data";
 
@@ -83,7 +84,8 @@ export const seafaringModule: RulesModule = {
         return;
       }
       recordHome(draft, piece.owner, piece.at.vertex);
-      if (top.data?.["round"] === 2) goldForStartingSettlement(draft, piece.owner, piece.at.vertex);
+      if (givesStartingResources(top.data))
+        goldForStartingSettlement(draft, piece.owner, piece.at.vertex);
     },
   },
 };

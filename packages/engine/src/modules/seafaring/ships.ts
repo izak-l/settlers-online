@@ -1,5 +1,5 @@
 import type { EdgeId, VertexId } from "../../board/graph";
-import { reject, runCanPlace, runOnPlace, type ActionHandlers } from "../../module";
+import { reject, runCanMove, runCanPlace, runOnPlace, type ActionHandlers } from "../../module";
 import type { GameState, Piece, PlayerId, Rejection } from "../../types";
 import { updateAwards } from "../base/awards";
 import { takeFreePlacement } from "../base/devcards";
@@ -219,7 +219,8 @@ export const shipActions: ActionHandlers = {
       if (to === from) return reject("ILLEGAL_PLACEMENT", "Move the ship to a different edge.");
       return (
         shipSpotProblem(state, player, to, from) ??
-        runCanPlace(modules, state, player, "ship", { edge: to }, "MAIN")
+        runCanPlace(modules, state, player, "ship", { edge: to }, "MAIN") ??
+        runCanMove(modules, state, player, edgePieceAt(state, from)!, { edge: to })
       );
     },
     apply(draft, player, { from, to }, ctx) {

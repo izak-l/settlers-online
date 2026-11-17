@@ -86,7 +86,11 @@ export const ActionSchema = z.discriminatedUnion("type", [
     resources: ResourceCounts,
   }),
   z.object({ type: z.literal("MOVE_ROBBER"), hex: VertexOrEdge }),
-  z.object({ type: z.literal("STEAL"), from: z.string().min(1).max(8) }),
+  z.object({
+    type: z.literal("STEAL"),
+    from: z.string().min(1).max(8),
+    what: z.string().min(1).max(20).optional(),
+  }),
   z.object({ type: z.literal("BUY_DEV_CARD") }),
   z.object({ type: z.literal("PLAY_KNIGHT") }),
   z.object({ type: z.literal("PLAY_ROAD_BUILDING") }),

@@ -1,5 +1,5 @@
 import { nextInt } from "../../rng";
-import { runProduce, runRollDice, type ActionHandlers } from "../../module";
+import { runOnTurnEnd, runProduce, runRollDice, type ActionHandlers } from "../../module";
 import type { GameState } from "../../types";
 import { mainDecision, rollDecision } from "./helpers";
 import { startSevenFlow } from "./robber";
@@ -32,13 +32,14 @@ export const turnActions: ActionHandlers = {
 
   END_TURN: {
     validate: () => null,
-    apply(draft, player, _action, { events }) {
+    apply(draft, player, _action, ctx) {
       const next = draft.players[(draft.players.indexOf(player) + 1) % draft.players.length]!;
       draft.decisions.pop();
       endTurnDevCards(draft, player);
       draft.turn = { number: draft.turn.number + 1, activePlayer: next };
       draft.decisions.push(rollDecision(next));
-      events.push({ type: "TURN_ENDED", text: `${player} ended their turn` });
+      ctx.events.push({ type: "TURN_ENDED", text: `${player} ended their turn` });
+      runOnTurnEnd(ctx.modules, draft, player, ctx);
     },
     candidates: () => [{ type: "END_TURN" }],
   },

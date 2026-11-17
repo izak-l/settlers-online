@@ -7,6 +7,7 @@ import {
   legalFor,
   reject,
   routeAwardName,
+  runCheckWin,
   runTradeRatio,
   runVpSources,
   type RulesModule,
@@ -120,14 +121,11 @@ export function apply(state: GameState, actor: Actor, action: Action): ApplyResu
   const events: GameEvent[] = [];
   handler.apply(draft, player, action, { events, modules });
 
-  for (const m of modules) {
-    const winner = m.hooks?.checkWin?.(draft, modules);
-    if (winner) {
-      draft.winner = winner;
-      draft.decisions = [];
-      events.push({ type: "GAME_WON", text: `${winner} won the game`, data: { winner } });
-      break;
-    }
+  const winner = runCheckWin(modules, draft);
+  if (winner) {
+    draft.winner = winner;
+    draft.decisions = [];
+    events.push({ type: "GAME_WON", text: `${winner} won the game`, data: { winner } });
   }
   return { ok: true, state: draft, events };
 }

@@ -12,7 +12,8 @@ export type Action =
   | { type: "END_TURN" }
   | { type: "DISCARD"; resources: Resources }
   | { type: "MOVE_ROBBER"; hex: HexKey }
-  | { type: "STEAL"; from: PlayerId }
+  /** `what`: a module's item (e.g. "cloth") instead of a random resource card (omitted). */
+  | { type: "STEAL"; from: PlayerId; what?: string | undefined }
   | { type: "BUY_DEV_CARD" }
   | { type: "PLAY_KNIGHT" }
   | { type: "PLAY_ROAD_BUILDING" }

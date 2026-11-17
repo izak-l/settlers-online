@@ -55,10 +55,31 @@ export interface Hooks {
    */
   vpSources(state: GameState, player: PlayerId, includeHidden: boolean): number;
   /**
-   * After every action: return the winner, or null. The first module (in ruleset order) to
-   * name one decides; the core then ends the game.
+   * After every action: return the winner, or null. Like `rollDice`, the last module in the
+   * ruleset that defines it decides (a scenario may replace the base rule, e.g. with an
+   * end-of-turn ending); the core then ends the game.
    */
   checkWin(state: GameState, modules: RulesModule[]): PlayerId | null;
+  /** When a turn ends (after the next player's turn is set up). Every module, in ruleset order. */
+  onTurnEnd(draft: GameState, player: PlayerId, ctx: ActionContext): void;
+  /**
+   * May `player` move `piece` (e.g. a ship) to `to`? Every module must agree. Called by the module
+   * that moves the piece, after its own checks.
+   */
+  canMove(state: GameState, player: PlayerId, piece: Piece, to: PieceLocation): Rejection | null;
+  /**
+   * What else (besides a random resource card) `thief` may take from `victim` when robbing with
+   * `source` ("robber" or "pirate"), e.g. "cloth". Combined across modules.
+   */
+  stealOptions(state: GameState, thief: PlayerId, victim: PlayerId, source: PieceTypeId): string[];
+  /** Take one `item` (one of `stealOptions`) from `victim`. Returns true if this module handled it. */
+  stealItem(
+    draft: GameState,
+    thief: PlayerId,
+    victim: PlayerId,
+    item: string,
+    events: GameEvent[],
+  ): boolean;
   /** Cards of `resource` needed for one card from the bank. Lowest across modules wins. */
   tradeRatio(state: GameState, player: PlayerId, resource: string): number;
   /**
@@ -177,6 +198,59 @@ export function runOnPlace(
   ctx: ActionContext,
 ): void {
   for (const m of modules) m.hooks?.onPlace?.(draft, piece, ctx);
+}
+
+/** The winner, if any: the last module that defines `checkWin` decides. */
+export function runCheckWin(modules: RulesModule[], state: GameState): PlayerId | null {
+  for (let i = modules.length - 1; i >= 0; i--) {
+    const check = modules[i]!.hooks?.checkWin;
+    if (check) return check(state, modules);
+  }
+  return null;
+}
+
+export function runOnTurnEnd(
+  modules: RulesModule[],
+  draft: GameState,
+  player: PlayerId,
+  ctx: ActionContext,
+): void {
+  for (const m of modules) m.hooks?.onTurnEnd?.(draft, player, ctx);
+}
+
+export function runCanMove(
+  modules: RulesModule[],
+  state: GameState,
+  player: PlayerId,
+  piece: Piece,
+  to: PieceLocation,
+): Rejection | null {
+  for (const m of modules) {
+    const fail = m.hooks?.canMove?.(state, player, piece, to);
+    if (fail) return fail;
+  }
+  return null;
+}
+
+export function runStealOptions(
+  modules: RulesModule[],
+  state: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  source: PieceTypeId,
+): string[] {
+  return modules.flatMap((m) => m.hooks?.stealOptions?.(state, thief, victim, source) ?? []);
+}
+
+export function runStealItem(
+  modules: RulesModule[],
+  draft: GameState,
+  thief: PlayerId,
+  victim: PlayerId,
+  item: string,
+  events: GameEvent[],
+): void {
+  for (const m of modules) if (m.hooks?.stealItem?.(draft, thief, victim, item, events)) return;
 }
 
 /** Every module's route piece types, in ruleset order, without repeats. */

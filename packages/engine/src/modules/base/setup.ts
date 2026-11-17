@@ -27,6 +27,14 @@ import {
 import { updateAwards } from "./awards";
 import { setupDevCards } from "./devcards";
 
+/**
+ * Does this setup step's settlement collect starting resources? A step may say so (`resources`,
+ * set by a module building its own setup sequence); otherwise only the second round does.
+ */
+export function givesStartingResources(data: Record<string, unknown> | undefined): boolean {
+  return typeof data?.["resources"] === "boolean" ? data["resources"] : data?.["round"] === 2;
+}
+
 export const setupSettlement = (p: PlayerId, round: number): Decision =>
   decision("PLACE_SETTLEMENT", p, ["PLACE_SETTLEMENT"], { round });
 
@@ -87,8 +95,7 @@ export const setupActions: ActionHandlers = {
       const piece = addPiece(draft, "settlement", player, { vertex });
       events.push({ type: "PLACED_SETTLEMENT", text: `${player} placed a settlement` });
 
-      const round = draft.decisions.at(-1)!.data?.["round"];
-      if (round === 2) {
+      if (givesStartingResources(draft.decisions.at(-1)!.data)) {
         const gained: Resources = {};
         const bank = draft.zones["bank"]!.contents;
         for (const key of draft.graph.vertices.get(vertex)!.hexes) {

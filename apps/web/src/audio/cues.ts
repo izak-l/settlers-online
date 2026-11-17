@@ -50,7 +50,8 @@ const EVENT_CUE: Record<string, Cue> = {
   BUILT_SETTLEMENT: "settlement",
   PLACED_SETTLEMENT: "settlement",
   BUILT_CITY: "city",
-  BOUGHT_DEV_CARD: "devcard",
+  // Buying a dev card sounds like drawing a resource card.
+  BOUGHT_DEV_CARD: "gain",
   // Ship placement shares roads; moving an existing ship keeps its original cue.
   BUILT_SHIP: "road",
   PLACED_SHIP: "road",

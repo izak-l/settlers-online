@@ -12,6 +12,8 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
     largestArmy?: string | null;
   };
   const zoneCount = (id: string) => snap.view.zones[id]?.count ?? 0;
+  const lost = snap.view.moduleState["sf-lost-settlers"] as
+    { held?: Record<string, string[]> } | undefined;
   return (
     <section className="panel">
       <h3>Players</h3>
@@ -19,6 +21,9 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
         {seats.map((s) => {
           const knights = snap.view.zones[`played-${s.id}`]?.contents?.["knight"] ?? 0;
           const devCards = zoneCount(`dev-${s.id}`) + zoneCount(`devnew-${s.id}`);
+          // Lost Settlers (spec 018): VP tokens found, harbors picked up and not yet placed.
+          const vpTokens = snap.view.zones[`vp-${s.id}`]?.contents?.["vpToken"] ?? 0;
+          const harbors = lost?.held?.[s.id]?.length ?? 0;
           return (
             <li
               key={s.id}
@@ -37,6 +42,8 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
                     <CardFan count={devCards} kind="dev" label="development cards" />
                   )}
                   {knights > 0 && <span>{plural(knights, "knight")}</span>}
+                  {vpTokens > 0 && <span>{plural(vpTokens, "VP token")}</span>}
+                  {harbors > 0 && <span>{plural(harbors, "harbor")} to place</span>}
                 </span>
                 {(base.longestRoad === s.id || base.largestArmy === s.id) && (
                   <span className="awards">

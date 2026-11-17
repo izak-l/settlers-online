@@ -2,7 +2,7 @@
 
 ## Goal
 
-Scenario 5 of the seafaring rulebook (pages 12–13; our name "Lost Settlers"): a large island to start on, and small islands to the west reached by sea, where things lie waiting on the water: VP tokens, face-down development cards and harbors that a ship can pick up. Part of M10 (M10f), as a module `sf-lost-settlers` on top of `seafaring`.
+Scenario 5 of the seafaring rulebook (pages 12–13; our name "Lost Settlers"): a large island to start on, and bare islets around it reached by sea, where things lie waiting on the water: VP tokens, face-down development cards and harbors that a ship can pick up. Part of M10 (M10f), as a module `sf-lost-settlers` on top of `seafaring`.
 
 ## Scope / non-scope
 
@@ -54,4 +54,10 @@ Engine tests above; maps component counts; `pnpm sim --scenario lost-settlers` c
 
 ## Status
 
-Draft
+Shipped (M10f, on `m10`). As built:
+
+- **Ports as state:** `state.map` is already part of the state (fog writes to it), so placed harbors are appended to `state.map.ports`; no separate `state.ports` field and no change for base games.
+- **Dev-card conservation** counts every development card in any zone (the deck, hands, played, `board-devcards`), so the base invariant needs no knowledge of the module's zone; every hidden zone is checked for leaks in views.
+- **Maps:** the rulebook prints one map for 3 and 4 players, so `3p-fixed` and `4p-fixed` share a layout (51 hexes inside the frame: 30 land, 19 sea tiles plus the two water spaces on the frame pieces). Harbor markers take `data.port` from a port pool (`pools.ports.harbors`), so their types are shuffled at setup in fixed maps too, as the rulebook says. The new constraint is written `{ "rule": "no-tokens-on-hexes", "tokens": [5, 6, 8, 9], "hexes": [...] }`.
+- **UI:** markers drawn on their edges (VP medallion, card back, dashed harbor sign); a "Place harbor" step and main-step button with its legal edges as targets; VP tokens and held harbors in the players panel.
+- Readings A44–A47 in ASSUMPTIONS.md.

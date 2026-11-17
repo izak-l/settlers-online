@@ -278,3 +278,29 @@ Revealed land takes the region of an adjacent land hex, or becomes a region of i
 A revealed producing hex gives one card of its resource if the bank has one; a revealed gold hex gives a `GOLD_CHOICE` pick of one. Reveals during setup (a starting road or ship) pay the reward too.
 
 **Test:** `fog.test.ts` — "a revealed gold hex lets the player pick the reward".
+
+## Spec 018 — Lost Settlers (M10f)
+
+### A44: Things on the water go to the first ship placed on their edge, however it got there
+
+Building a ship, moving one, a Road Crew ship and a setup ship all collect what lies on that edge. Each thing is taken once and leaves the map.
+
+**Test:** `lost-settlers.test.ts` — "building a ship onto the token takes it: 1 VP", "moving a ship onto the token takes it".
+
+### A45: A harbor goes on a coast edge at your own settlement or city, one edge clear of other harbors
+
+The edge has land on one side and water (or the frame) on the other, and touches a corner with your settlement or city. "One edge between ports" means no harbor on it or on any edge sharing a corner with it.
+
+**Test:** `lost-settlers.test.ts` — "a ship reaching a harbor takes it; it must be placed next to your building", "harbors keep at least one edge between them".
+
+### A46: A harbor you can place is placed at once; one you can't is kept and placed later in your main step
+
+Taking a harbor pushes a `PLACE_HARBOR` step if there is a legal edge. Otherwise you hold it (everyone can see it), and placing it is offered in your main step once a spot exists. With several held, the oldest goes first.
+
+**Test:** `lost-settlers.test.ts` — "with nowhere to place it, you keep it and place it later in your main step".
+
+### A47: Harbor types are shuffled at setup in both fixed and variable maps; dev cards off removes the card markers
+
+The rulebook places the harbors face up at random even in the fixed setup, so harbor markers draw their type from a port pool when the map is generated. With development cards switched off there is nothing to deal, so the card markers are left off the board.
+
+**Test:** `validator.test.ts` — "accepts tokens, cards and harbors on sea edges, with a port pool for the harbors"; `lost-settlers.test.ts` — "with development cards switched off, no cards are dealt and the markers go".

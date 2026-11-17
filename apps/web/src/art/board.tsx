@@ -370,3 +370,28 @@ export function RobberFigure() {
     </g>
   );
 }
+
+/** A VP token lying on the water (spec 018): a red medallion with a gold star. */
+export function VpTokenArt({ at: [x, y] }: { at: Point }) {
+  const star = Array.from({ length: 10 }, (_, i) => {
+    const r = i % 2 === 0 ? 6.5 : 2.8;
+    const a = (Math.PI / 5) * i - Math.PI / 2;
+    return `${(x + r * Math.cos(a)).toFixed(2)},${(y + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+  return (
+    <g className="marker vp-marker">
+      <circle cx={x} cy={y} r={11} className="vp-medal" />
+      <polygon points={star} className="vp-star" />
+    </g>
+  );
+}
+
+/** A face-down development card lying on the water (spec 018). */
+export function BoardCardArt({ at: [x, y] }: { at: Point }) {
+  return (
+    <g className="marker card-marker" transform={`translate(${x} ${y}) rotate(-12)`}>
+      <rect x={-8} y={-11} width={16} height={22} rx={2.5} className="card-back" />
+      <rect x={-5} y={-8} width={10} height={16} rx={1.5} className="card-back-inner" />
+    </g>
+  );
+}

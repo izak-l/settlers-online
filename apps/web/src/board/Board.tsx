@@ -14,6 +14,7 @@ import {
 } from "./geometry";
 import { Icon } from "../art/icons";
 import {
+  BoardCardArt,
   Building,
   PirateShip,
   RobberFigure,
@@ -22,6 +23,7 @@ import {
   TerrainArt,
   TerrainDefs,
   Token,
+  VpTokenArt,
 } from "../art/board";
 import { BoardControls } from "./BoardControls";
 import { useViewport } from "./useViewport";
@@ -40,6 +42,7 @@ const MODE_ACTION: Record<Exclude<BuildMode, null>, ActionSpec["type"]> = {
   city: "BUILD_CITY",
   ship: "BUILD_SHIP",
   move: "MOVE_SHIP",
+  harbor: "PLACE_HARBOR",
 };
 
 const OF_KIND: Record<string, ActionSpec["type"][]> = {
@@ -47,6 +50,7 @@ const OF_KIND: Record<string, ActionSpec["type"][]> = {
   PLACE_ROAD: ["PLACE_ROAD", "PLACE_SHIP"],
   MOVE_ROBBER: ["MOVE_ROBBER", "MOVE_PIRATE"],
   PLACE_FREE_ROAD: ["PLACE_FREE_ROAD", "PLACE_FREE_SHIP"],
+  PLACE_HARBOR: ["PLACE_HARBOR"],
 };
 
 /**
@@ -86,7 +90,38 @@ const EDGE_LABEL: Partial<Record<ActionSpec["type"], string>> = {
   BUILD_SHIP: "Build ship here",
   PLACE_FREE_SHIP: "Place ship here",
   MOVE_SHIP: "Move the ship here",
+  PLACE_HARBOR: "Place your harbor here",
 };
+
+/** A port type as words, e.g. "2 wheat for 1" or "3 of a kind for 1". */
+function portLabel(type: string): string {
+  const resource = type.endsWith("2to1") ? type.slice(0, -4) : null;
+  return resource ? `2 ${resource} for 1` : "3 of a kind for 1";
+}
+
+/** A harbor sign: the rate, and the resource icon (or "?" for 3:1). Drawn at (px, py). */
+function HarborSign({ type, px, py }: { type: string; px: number; py: number }) {
+  const resource = type.endsWith("2to1") ? type.slice(0, -4) : null;
+  return (
+    <>
+      <circle className="port-sign" cx={px} cy={py} r={17} />
+      {resource ? (
+        <g className={`port-icon res-${resource}`}>
+          <svg x={px - 8} y={py - 15} width={16} height={16} viewBox="0 0 24 24">
+            <Icon name={resource} />
+          </svg>
+        </g>
+      ) : (
+        <text className="port-any" x={px} y={py - 6} textAnchor="middle" dominantBaseline="middle">
+          ?
+        </text>
+      )}
+      <text className="port-rate" x={px} y={py + 8} textAnchor="middle" dominantBaseline="middle">
+        {resource ? "2:1" : "3:1"}
+      </text>
+    </>
+  );
+}
 
 const FRESH_MS = 700;
 
@@ -277,41 +312,38 @@ export function Board({ snap, seats, mode, onAction }: Props) {
           const px = mx + (mx - lx) * 0.6;
           const py = my + (my - ly) * 0.6;
           const [[ax, ay], [bx, by]] = edgeEndpoints(graph, port.edgeId);
-          const resource = port.type.endsWith("2to1") ? port.type.slice(0, -4) : null;
-          const rate = resource ? "2:1" : "3:1";
-          const label = resource ? `Port: 2 ${resource} for 1` : "Port: 3 of a kind for 1";
+          const label = `Port: ${portLabel(port.type)}`;
           return (
             <g key={port.edgeId} className="port" role="img" aria-label={label}>
               <title>{label}</title>
               <line className="pier" x1={ax} y1={ay} x2={px} y2={py} />
               <line className="pier" x1={bx} y1={by} x2={px} y2={py} />
-              <circle className="port-sign" cx={px} cy={py} r={17} />
-              {resource ? (
-                <g className={`port-icon res-${resource}`}>
-                  <svg x={px - 8} y={py - 15} width={16} height={16} viewBox="0 0 24 24">
-                    <Icon name={resource} />
-                  </svg>
+              <HarborSign type={port.type} px={px} py={py} />
+            </g>
+          );
+        })}
+
+        {/* Things lying on the water (spec 018): taken by the first ship to reach their edge */}
+        {(view.map.markers ?? []).map((m) => {
+          if (!("edge" in m.at)) return null;
+          const mid = edgeMidpoint(m.at.edge);
+          const port = typeof m.data?.["port"] === "string" ? m.data["port"] : "any3to1";
+          const label =
+            m.kind === "vp-token"
+              ? "Victory point token: the first ship here takes it"
+              : m.kind === "dev-card"
+                ? "Face-down development card: the first ship here takes it"
+                : `Harbor (${portLabel(port)}): the first ship here takes it`;
+          return (
+            <g key={m.id} role="img" aria-label={label}>
+              <title>{label}</title>
+              {m.kind === "vp-token" && <VpTokenArt at={mid} />}
+              {m.kind === "dev-card" && <BoardCardArt at={mid} />}
+              {m.kind === "harbor" && (
+                <g className="marker harbor-marker">
+                  <HarborSign type={port} px={mid[0]} py={mid[1]} />
                 </g>
-              ) : (
-                <text
-                  className="port-any"
-                  x={px}
-                  y={py - 6}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                >
-                  ?
-                </text>
               )}
-              <text
-                className="port-rate"
-                x={px}
-                y={py + 8}
-                textAnchor="middle"
-                dominantBaseline="middle"
-              >
-                {rate}
-              </text>
             </g>
           );
         })}

@@ -553,6 +553,7 @@ Expansions are added as modules on top of `base`; each row lists what the module
 - `modules/seafaring/`: ships (`BUILD_SHIP`, `PLACE_SHIP` in setup, `PLACE_FREE_SHIP` with Road Crew, `MOVE_SHIP` once per turn from an open end, not on the turn built), gold (`GOLD_CHOICE`, everyone owed picks at once like discards; also a second starting settlement next to gold), the pirate (`MOVE_PIRATE` to a sea hex or the frame; steals from ship owners; blocks ships on its hex's edges), regions and home regions, island bonus VP (computed), Longest Trade Route. All through the M10b seams; no seafaring checks in the core or base.
 - Scenarios live in `packages/maps/scenarios/<id>/<3p|4p>-<fixed|variable>.json`, built from text layouts in `scenarios/build.ts` and checked against the rulebook's component tables. `SCENARIO_CATALOG` groups them; the lobby sends `{ scenario, setup }` and the server stores the map for its seat count. Map JSON gains hex `region` labels, a strict `scenario` block and a robber start given as a hex.
 - **Variable setup (spec 017):** map pools are named (`pools.terrain`, `pools.tokens`, `pools.ports`, keyed by name; a hex draws from `pool:<name>`), and each is drawn only into its own hexes. Constraints: `no-adjacent-red-tokens`, `no-red-on-gold`, `no-low-tokens-on-forest-pasture`. `robberStart` may be `"token:12"`. Each scenario has `3p-variable` / `4p-variable` maps next to the fixed ones; the lobby's Variable choice picks them.
+- **Lost Settlers (spec 018), module `sf-lost-settlers`:** map JSON may carry `markers` (`{ id, kind, at: { edge | vertex | hex }, data? }`), which the core passes through and modules read; a marker is removed from `state.map.markers` when collected. Settlements and the robber need a numbered hex (`canPlace`). A ship placed on a marker's edge (`onPlace`) takes it: a VP token goes to the public zone `vp-<p>` (1 VP each via `vpSources`); a face-down dev card, dealt at setup from `devdeck` into the hidden zone `board-devcards`, moves to `devnew-<p>`; a harbor is held in `moduleState` and placed with `PLACE_HARBOR` (its own step when a spot exists, otherwise in the main step later). Placed harbors are appended to `state.map.ports`, which already lives in the state, so `tradeRatio` sees them at once ("ports as state" from decision record 0001 needed no new field). Harbor markers draw their type from a port pool; the constraint `{ rule: "no-tokens-on-hexes", tokens, hexes }` keeps tokens off listed hexes. The base invariant counts dev cards in every zone, and checks every hidden zone stays hidden in views.
 - **Fog (spec 016):** fog hexes stay `"fog"` in the map; the face-down stacks live in hidden zones `fog-terrain` / `fog-tokens` (so views show only counts) and are drawn when a road or ship reaches a fog corner. Fog counts as water until revealed. Scenario 3 (Misty Passage) uses it, with a discovery card for each new land hex.
 - The web board draws the frame and island outlines, ships and the pirate; a Road / Ship switch picks between them on coast edges in setup and with Road Crew; moving a ship is two taps. `pnpm sim --scenario <id>` fuzzes a scenario and reports how often ships, gold, the pirate and island bonuses came up.
 
@@ -560,7 +561,7 @@ Expansions are added as modules on top of `base`; each row lists what the module
 
 **Seafaring scenarios**
 
-Seafaring follows the published rulebook (2025 edition): eight scenarios plus a simplified random "new world", each with 3- and 4-player maps and fixed or variable setup, picked in the lobby. Scenarios 1–4 are data on the `seafaring` module; 5–8 are small modules on top of it. The plan, rules and readings are in specs 015–017 (018–022 to come) and decision record 0001.
+Seafaring follows the published rulebook (2025 edition): eight scenarios plus a simplified random "new world", each with 3- and 4-player maps and fixed or variable setup, picked in the lobby. Scenarios 1–4 are data on the `seafaring` module; 5–8 are small modules on top of it. The plan, rules and readings are in specs 015–018 (019–022 to come) and decision record 0001. Built so far: scenarios 1–5.
 
 **Decisions**
 
@@ -574,7 +575,7 @@ Seafaring follows the published rulebook (2025 edition): eight scenarios plus a 
 
 **Open questions**
 
-- [ ] Seafaring scenario layouts: to be transcribed from the rulebook diagrams (spec 015).
+- [ ] Seafaring scenario layouts: scenarios 1–5 transcribed; 6–8 to come with specs 019–021.
 
 ## 15. Notes for Claude Code
 

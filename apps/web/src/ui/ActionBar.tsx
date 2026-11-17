@@ -36,7 +36,11 @@ const WAITING_FOR: Record<string, string> = {
   STEAL: "to choose who to rob",
   PLACE_FREE_ROAD: "to place free roads",
   GOLD_CHOICE: "to pick gold",
+  PLACE_HARBOR: "to place a harbor",
 };
+
+/** A port type in words, e.g. "2:1 wheat" or "3:1". */
+const harborName = (type: string) => (type.endsWith("2to1") ? `2:1 ${type.slice(0, -4)}` : "3:1");
 
 /** Pip positions on a 3×3 grid (0–8, row by row) for each face. */
 const PIPS: Record<number, number[]> = {
@@ -120,6 +124,13 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
   const canDo = (type: string) => snap.legal.some((a) => a.type === type);
   // Games with ships: the map's graph covers the sea (seafaring). The engine decides legality.
   const hasShips = snap.view.modules.includes("seafaring");
+  // Harbors this player picked up off the water and still holds (spec 018).
+  const held =
+    snap.seat === "spectator"
+      ? []
+      : ((snap.view.moduleState["sf-lost-settlers"] as { held?: Record<string, string[]> })?.held?.[
+          snap.seat
+        ] ?? []);
   const lastRoll = (
     snap.view.moduleState["base"] as { lastRoll?: Record<string, number> } | undefined
   )?.lastRoll;
@@ -220,6 +231,14 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
       case "STEAL":
         body = <StealPicker snap={snap} seats={seats} send={send} />;
         break;
+      case "PLACE_HARBOR":
+        body = (
+          <p className="prompt">
+            You picked up a {harborName(held[0] ?? "any3to1")} harbor. Place it on a highlighted
+            coast edge next to your settlement or city.
+          </p>
+        );
+        break;
       case "ROLL":
         body = (
           <>
@@ -248,6 +267,16 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
                   {b.cost && <Cost cost={b.cost} />}
                 </button>
               ))}
+              {canDo("PLACE_HARBOR") && (
+                <button
+                  className={mode === "harbor" ? "build active" : "build"}
+                  aria-pressed={mode === "harbor"}
+                  onClick={() => setMode(mode === "harbor" ? null : "harbor")}
+                >
+                  <span>Place harbor</span>
+                  <span className="cost muted small">{harborName(held[0] ?? "any3to1")}</span>
+                </button>
+              )}
               {snap.view.options.features?.devCards !== false && (
                 <button
                   className="build"
@@ -259,6 +288,13 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
                 </button>
               )}
             </div>
+            {held.length > 0 && !canDo("PLACE_HARBOR") && (
+              <p className="muted small">
+                You hold {held.length === 1 ? "a harbor" : `${held.length} harbors`} (
+                {held.map(harborName).join(", ")}). Place it once you have a settlement or city by a
+                free coast edge, at least one edge from other harbors.
+              </p>
+            )}
             {mode && (
               <p className="prompt">
                 {mode === "move"

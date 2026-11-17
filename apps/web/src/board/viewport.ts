@@ -20,6 +20,8 @@ export interface Size {
   frame?: Box;
   /** Clear area captured at initial fit, resize or explicit Fit; overlays may change independently. */
   fitFrame?: Box;
+  /** The panels' scale (spec 232). A new scale moves every panel, so it refits like a resize. */
+  uiScale?: number;
 }
 export interface Pt {
   x: number;
@@ -45,7 +47,8 @@ function fitFrameOf(size: Size): Box {
 
 /** Keep the camera's fit reference while only overlays change; refit on container resize. */
 export function measuredSize(previous: Size, next: Size): Size {
-  const sameViewport = previous.w === next.w && previous.h === next.h;
+  const sameViewport =
+    previous.w === next.w && previous.h === next.h && previous.uiScale === next.uiScale;
   return { ...next, fitFrame: sameViewport ? fitFrameOf(previous) : frameOf(next) };
 }
 

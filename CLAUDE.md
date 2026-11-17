@@ -22,6 +22,11 @@ Everything below is merged into local `main` (not pushed or deployed):
 - Client spec 231: game flow fixes (in-game settings gear, logged roll-off for the first player,
   auto-roll and other clocks, one answer per offer, named discards, direct builds in build mode).
 
+- Client spec 232: action dock (a fixed bottom bar with the hand, icon build buttons showing
+  costs and pieces left, dice over a big End turn; one trade window; bank panel; the whole
+  game screen scales to the window instead of stacking). Web and server deploy in either order
+  (`piecesLeft` in the state message is optional; without it the badges are hidden).
+
 Next: M10 continues with spec 020 (scenario 7) on a branch cut from `main`. Client specs are
 numbered from 223 so expansion specs keep 0xx.
 

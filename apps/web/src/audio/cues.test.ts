@@ -36,7 +36,7 @@ describe("cuesFor", () => {
       ["BUILT_SETTLEMENT", "settlement"],
       ["PLACED_SETTLEMENT", "settlement"],
       ["BUILT_CITY", "city"],
-      ["BOUGHT_DEV_CARD", "devcard"],
+      ["BOUGHT_DEV_CARD", "gain"],
       ["BUILT_SHIP", "road"],
       ["PLACED_SHIP", "road"],
       ["MOVED_SHIP", "build"],

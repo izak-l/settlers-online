@@ -8,10 +8,11 @@ import { pickResetKey, startPick, type Pick } from "../cards/picking";
 import type { GameClient, Snapshot } from "../game/LocalGame";
 import { errorText, seatsOf, type BuildMode } from "../game/seats";
 import { ActionBar } from "./ActionBar";
-import { TradePanel } from "./TradePanel";
+import { BankPanel } from "./BankPanel";
 import { GameLog } from "./GameLog";
 import { PlayersPanel } from "./PlayersPanel";
 import { SettingsMenu } from "./SettingsMenu";
+import { useUiScale } from "./uiScale";
 
 /** The board and panels for any GameClient: online (SocketGame) or the dev sandbox (LocalGame). */
 export function GameView({
@@ -25,6 +26,9 @@ export function GameView({
   exitLabel?: string;
 }) {
   const [fitArea, setFitArea] = useState<HTMLDivElement | null>(null);
+  // Spec 232: the panels are laid out at one design size and scaled to the window as a whole.
+  const [frame, setFrame] = useState<HTMLElement | null>(null);
+  const scale = useUiScale(frame);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [mode, setMode] = useState<BuildMode>(null);
   const [pick, setPick] = useState<Pick | null>(null);
@@ -93,8 +97,26 @@ export function GameView({
           : startPick("gold", { wantLimit: goldOwed })
         : pick;
 
+  const actions = (
+    <ActionBar
+      snap={snap}
+      seats={seats}
+      mode={mode}
+      setMode={setMode}
+      send={(a) => void send(a)}
+      pick={activePick}
+      setPick={setPick}
+      error={error}
+    />
+  );
+
   return (
-    <main className="layout">
+    // The map stays outside the scaled layer: it already fits itself to the screen.
+    <main
+      className="layout-frame"
+      ref={setFrame}
+      style={{ "--ui-scale": scale } as React.CSSProperties}
+    >
       <div className="board-wrap">
         <Board
           fitArea={fitArea}
@@ -104,38 +126,38 @@ export function GameView({
           onAction={(a) => void send(a)}
         />
       </div>
-      <div className="board-space" ref={setFitArea} aria-hidden="true" />
-      <SettingsMenu onExit={onExit} exitLabel={exitLabel} />
-      {playing && (
-        <HandDock snap={snap} pick={activePick} setPick={setPick} send={(a) => void send(a)} />
-      )}
-      <aside className="side">
-        {snap.view.winner !== undefined && (
-          <section className="panel winner" role="status">
-            <h2>{seats.find((s) => s.id === snap.view.winner)?.name ?? snap.view.winner} wins!</h2>
-            {/* A scenario's own ending (spec 019: the villages ran out of cloth). */}
-            {snap.log.some((e) => e.type === "VILLAGES_EMPTY") && (
-              <p>Five villages ran out of cloth, so the most victory points won.</p>
-            )}
-            <p className="muted">
-              Final scores: {seats.map((s) => `${s.name} ${snap.scores[s.id] ?? 0}`).join(" · ")}
-            </p>
-            <a href="#/">Back home</a>
-          </section>
-        )}
-        {!playing && <p className="panel muted">You're watching. Hands are hidden.</p>}
-        <PlayersPanel snap={snap} seats={seats} />
-        <ActionBar
-          snap={snap}
-          seats={seats}
-          mode={mode}
-          setMode={setMode}
-          send={(a) => void send(a)}
-          error={error}
-        />
-        {playing && <TradePanel snap={snap} pick={activePick} setPick={setPick} />}
-        <GameLog snap={snap} seats={seats} client={client} />
-      </aside>
+      <div className="layout">
+        <div className="board-space" ref={setFitArea} aria-hidden="true" />
+        <SettingsMenu onExit={onExit} exitLabel={exitLabel} />
+        {/* Spec 232: your cards on the left, the status and action buttons on the right. */}
+        <div className="bottom-dock">
+          {playing && (
+            <HandDock snap={snap} pick={activePick} setPick={setPick} send={(a) => void send(a)} />
+          )}
+          {actions}
+        </div>
+        <aside className="side">
+          {snap.view.winner !== undefined && (
+            <section className="panel winner" role="status">
+              <h2>
+                {seats.find((s) => s.id === snap.view.winner)?.name ?? snap.view.winner} wins!
+              </h2>
+              {/* A scenario's own ending (spec 019: the villages ran out of cloth). */}
+              {snap.log.some((e) => e.type === "VILLAGES_EMPTY") && (
+                <p>Five villages ran out of cloth, so the most victory points won.</p>
+              )}
+              <p className="muted">
+                Final scores: {seats.map((s) => `${s.name} ${snap.scores[s.id] ?? 0}`).join(" · ")}
+              </p>
+              <a href="#/">Back home</a>
+            </section>
+          )}
+          {!playing && <p className="panel muted">You're watching. Hands are hidden.</p>}
+          <PlayersPanel snap={snap} seats={seats} />
+          <GameLog snap={snap} seats={seats} client={client} />
+          <BankPanel snap={snap} />
+        </aside>
+      </div>
     </main>
   );
 }

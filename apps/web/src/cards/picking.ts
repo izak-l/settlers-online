@@ -2,7 +2,8 @@
  * Picking cards for an action, before it's sent: discards, trades, Bounty, Monopoly and gold.
  * These limits only shape the controls; the server validates the action that's sent.
  */
-export type PickPurpose = "discard" | "bank" | "offer" | "bounty" | "monopoly" | "gold";
+/** `trade` covers both a bank trade and an offer to players: you pick first, then choose (spec 232). */
+export type PickPurpose = "discard" | "trade" | "bounty" | "monopoly" | "gold";
 
 export interface Pick {
   purpose: PickPurpose;
@@ -47,15 +48,22 @@ export function removePick(p: Pick, side: Side, resource: string): Pick {
   return { ...p, [side]: n > 1 ? { ...rest, [resource]: n - 1 } : rest };
 }
 
-/** Bank and port trades: picking a resource takes your rate's worth of it, if you have that many. */
-export function bankGive(
-  p: Pick,
-  resource: string,
-  rate: number,
-  hand: Record<string, number>,
-): Pick {
-  if ((hand[resource] ?? 0) < rate) return p;
-  return { ...p, give: { [resource]: rate } };
+/**
+ * The bank trade these picks make, if any: exactly your rate of one resource for one card of
+ * another (`ratios` from the snapshot; 4:1 when unknown). The server still checks it.
+ */
+export function bankTrade(
+  give: Record<string, number>,
+  want: Record<string, number>,
+  ratios: Record<string, number>,
+): { give: string; get: string } | null {
+  const gives = Object.entries(give).filter(([, n]) => n > 0);
+  const wants = Object.entries(want).filter(([, n]) => n > 0);
+  if (gives.length !== 1 || wants.length !== 1) return null;
+  const [[g, gn]] = gives as [[string, number]];
+  const [[w, wn]] = wants as [[string, number]];
+  if (wn !== 1 || g === w || gn !== (ratios[g] ?? 4)) return null;
+  return { give: g, get: w };
 }
 
 /**

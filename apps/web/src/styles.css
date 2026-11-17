@@ -190,10 +190,28 @@ input {
   display: flex;
   flex-direction: column;
 }
-.layout {
+/* Spec 232: the frame is the space under any banner. The layout inside it is laid out at
+   1/scale of the frame's size and scaled back up, so every window gets the same arrangement,
+   just bigger or smaller (--ui-scale comes from ui/uiScale.ts). The map is not scaled. */
+.layout-frame {
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
+  /* Nothing in the game (flying cards, popups) may make the page scroll: a scrollbar would
+     narrow the window and re-fit everything for a moment. */
+  overflow: clip;
   isolation: isolate;
+  pointer-events: none;
+}
+.layout {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: calc(100% / var(--ui-scale, 1));
+  height: calc(100% / var(--ui-scale, 1));
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: 0 0;
   pointer-events: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 380px);
@@ -207,7 +225,7 @@ input {
 .board-wrap {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: auto;
 }
 .board-space {
@@ -215,12 +233,281 @@ input {
   min-width: 0;
   min-height: 0;
 }
-.layout > .hand-panel {
+/* Spec 232: a bottom bar, centred under the map: the hand, then the status line and action
+   buttons, then the dice over a big Roll / End turn button. Its height is fixed because the map
+   re-fits whenever the space above it changes; anything that comes and goes (the prompt card,
+   menus, trays, flying cards) floats over the map instead. Clicks pass through the gaps. */
+.bottom-dock {
+  --dock-h: 140px;
   grid-area: hand;
+  height: var(--dock-h);
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+}
+/* Wide enough for a splayed fan; it gives way first when the bar runs out of room. */
+/* The heading, then the fan, fit the bar's fixed height. */
+.bottom-dock > .hand-panel {
+  position: relative;
+  gap: 0.35rem;
+  padding: 0.55rem 0.8rem 0.6rem;
+  flex: 0 1 520px;
+  min-width: 300px;
+  align-content: end;
   pointer-events: auto;
-  max-height: 38dvh;
+}
+.bottom-dock .hand-rows {
+  flex-wrap: nowrap;
+}
+.bottom-dock .res-fan {
+  flex: 1 1 0;
+}
+.bottom-dock .dev-detail {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 6;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.action-dock {
+  flex: none;
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+.action-main {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  align-content: end;
+  gap: 8px;
+}
+.action-main > *,
+.turn-col > * {
+  pointer-events: auto;
+}
+.prompt-card {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 6;
+  display: grid;
+  gap: 0.5rem;
+  width: max-content;
+  min-width: 260px;
+  max-width: 520px;
+  max-height: 40dvh;
   overflow-y: auto;
-  overscroll-behavior: contain;
+}
+/* The status row never sets the bar's width (width 0, at least the buttons' width) or its
+   height (a fixed 46px). A longer prompt makes the pill taller, growing upward over the map. */
+.status-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 0;
+  min-width: 100%;
+  height: 46px;
+}
+.status-pill {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 46px;
+  margin: 0;
+  padding: 0.35rem 0.8rem;
+  display: flex;
+  align-items: center;
+  line-height: 1.25;
+  font-size: 0.92rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.status-pill.mine {
+  font-weight: 600;
+  border-color: var(--accent);
+}
+.status-row .timer {
+  align-self: stretch;
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  align-content: center;
+}
+.square-row {
+  display: flex;
+  gap: 8px;
+}
+button.square {
+  position: relative;
+  width: 64px;
+  height: 86px;
+  padding: 6px 4px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text);
+}
+/* Trade has no cost, so its icon sits in the middle. */
+button.square:not(:has(.cost)) {
+  align-content: center;
+}
+/* The cost under the icon, at most two chips a row. */
+.square .cost {
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: start;
+  max-width: 44px;
+}
+.square .chip {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 2px;
+  font-size: 0.7rem;
+}
+/* Fade the face only, so the tip and counts on a disabled button stay readable. */
+button.square:disabled {
+  opacity: 1;
+  background: var(--surface-2);
+}
+button.square:disabled > .icon,
+button.square:disabled > .cost {
+  opacity: 0.45;
+}
+button.square:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+button.square.active {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.left-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+}
+button.square.out .left-badge {
+  background: var(--error);
+  color: #fff;
+}
+/* The name, on hover or keyboard focus. */
+.square .tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  padding: 0.3rem 0.55rem;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 5;
+  pointer-events: none;
+}
+.square:hover .tip,
+.square:focus-visible .tip {
+  display: block;
+}
+/* The dice sit above the big turn button, rising over the map's corner. */
+.turn-col {
+  position: relative;
+  flex: none;
+  width: 124px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.turn-button {
+  height: 86px;
+  width: 100%;
+  padding: 0.4rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  border-radius: 14px;
+  font-weight: 700;
+  box-shadow: var(--shadow);
+}
+.turn-button:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+.board-dice {
+  position: absolute;
+  bottom: calc(86px + 10px);
+  left: 0;
+  right: 0;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+}
+/* Your roll: the dice are a button too (spec 232). */
+button.board-dice.rollable {
+  pointer-events: auto;
+  margin: 0 auto;
+  width: max-content;
+  padding: 6px;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  animation: dice-ready 1.6s ease-in-out infinite;
+}
+button.board-dice.rollable:hover,
+button.board-dice.rollable:focus-visible {
+  background: #fff3;
+}
+@keyframes dice-ready {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button.board-dice.rollable {
+    animation: none;
+  }
+}
+.board-dice .die {
+  width: 50px;
+  height: 50px;
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 -3px 0 #0003,
+    0 3px 8px #0005;
+}
+.board-dice .die .pip {
+  width: 8px;
+  height: 8px;
 }
 .board-viewport {
   position: absolute;
@@ -251,9 +538,12 @@ input {
 }
 .board-controls {
   position: absolute;
-  left: 16px;
-  /* A column below the settings gear (spec 231): same left edge, same button size. */
-  top: 64px;
+  /* A column below the settings gear (spec 231): same left edge, same button size, and the
+     same scale as the panels (spec 232), though the map itself isn't scaled. */
+  left: calc(16px * var(--ui-scale, 1));
+  top: calc(64px * var(--ui-scale, 1));
+  transform: scale(var(--ui-scale, 1));
+  transform-origin: 0 0;
   display: flex;
   flex-direction: column;
   width: max-content;
@@ -523,27 +813,8 @@ input {
   text-align: right;
 }
 
-.actions {
-  display: grid;
-  gap: 0.7rem;
-}
 .prompt {
   margin: 0;
-}
-.builds {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
-}
-.build {
-  display: grid;
-  gap: 0.3rem;
-  justify-items: center;
-  padding: 0.5rem 0.3rem;
-}
-.build.active {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 .cost {
   display: flex;
@@ -625,7 +896,7 @@ input {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 220px;
+  max-height: 320px;
   overflow-y: auto;
   font-size: 0.85rem;
 }
@@ -823,10 +1094,16 @@ select {
 }
 .target-hex {
   fill: var(--target);
-  fill-opacity: 0.55;
+  fill-opacity: 0.3;
   stroke: #1f2328;
   stroke-width: 2;
-  animation: pulse 1.2s ease-in-out infinite;
+  /* Robber/pirate targets cover most of the board, so they pulse gently and slowly. */
+  animation: hex-pulse 2.4s ease-in-out infinite;
+}
+@keyframes hex-pulse {
+  50% {
+    opacity: 0.75;
+  }
 }
 .winner {
   border-color: #d4a017;
@@ -919,13 +1196,6 @@ button.danger {
 }
 
 /* ---- M6: turn timer ---- */
-.action-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
 .timer {
   display: grid;
   grid-template-columns: auto auto;
@@ -961,6 +1231,38 @@ button.danger {
 }
 .timer.urgent .timer-bar span {
   background: var(--error);
+}
+
+/* The bank: cards left of each resource and the dev deck (spec 232). */
+.bank-panel {
+  --card-w: 34px;
+}
+.bank-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.bank-row li {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.bank-card .card-face {
+  font-size: 0;
+}
+.bank-count {
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.bank-row li.empty .bank-card {
+  opacity: 0.35;
+}
+.bank-row li.empty .bank-count {
+  color: var(--error);
 }
 
 /* ---- M6: log and chat ---- */
@@ -1086,53 +1388,12 @@ button.danger {
 }
 
 /* ---- M6: small screens ---- */
-@media (max-width: 860px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(80px, 1fr) minmax(0, auto) auto;
-    grid-template-areas: "board" "side" "hand";
-    gap: 10px;
-    padding: 12px;
-  }
-  .board-space {
-    margin-top: 52px;
-  }
-  .side > .actions {
-    order: -1;
-  }
-  .side > .winner {
-    order: -2;
-  }
-  .side {
-    max-height: 32dvh;
-    gap: 10px;
-  }
-  .layout > .hand-panel {
-    max-height: 30dvh;
-  }
-  .board-controls {
-    left: 12px;
-    top: 64px;
-  }
-  .layout > .settings-menu {
-    left: 12px;
-    top: 12px;
-  }
-}
+/* Phone touch sizes for the home and lobby screens. The game screen scales as a whole instead
+   (spec 232), so it keeps its desktop sizes; :where() keeps these selectors' specificity. */
 @media (max-width: 600px) {
-  .board-controls button,
-  .settings-menu .settings-trigger {
-    width: 44px;
-    height: 44px;
-  }
-  .board-controls {
-    top: 64px;
-  }
-}
-@media (max-width: 600px) {
-  button,
-  select,
-  input:not([type="radio"]):not([type="checkbox"]) {
+  :where(.app:not(:has(.layout))) button,
+  :where(.app:not(:has(.layout))) select,
+  :where(.app:not(:has(.layout))) input:not([type="radio"]):not([type="checkbox"]) {
     min-height: 44px;
   }
   fieldset label,
@@ -1142,18 +1403,11 @@ button.danger {
     align-items: center;
     gap: 0.4rem;
   }
-  button.link {
+  :where(.app:not(:has(.layout))) button.link {
     min-height: 44px;
     padding: 0.25rem 0.5rem;
   }
-  .layout {
-    padding: 8px 8px 16px;
-    gap: 10px;
-  }
-  .side {
-    gap: 10px;
-  }
-  .panel {
+  :where(.app:not(:has(.layout))) .panel {
     padding: 0.75rem;
   }
   .card {
@@ -1170,9 +1424,6 @@ button.danger {
   .topbar {
     gap: 0.5rem;
     padding: 0.4rem 12px;
-  }
-  .builds {
-    grid-template-columns: repeat(2, 1fr);
   }
   .toasts {
     left: 8px;
@@ -1270,6 +1521,7 @@ button.danger {
 .hand-panel {
   display: grid;
   gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
 }
 .hand-panel h3 {
   margin: 0;
@@ -1277,7 +1529,7 @@ button.danger {
 .hand-rows {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  gap: 10px 12px;
   align-items: flex-end;
 }
 .fan {
@@ -1292,6 +1544,8 @@ button.danger {
 }
 .dev-fan {
   flex: 0 1 auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
   max-width: 100%;
 }
 .card-group {
@@ -1859,6 +2113,13 @@ button.card-group:focus-visible {
 .trade-tray > .tray-head,
 .trade-tray > .tray-actions {
   flex: none;
+}
+.trade-tray > .tray-note {
+  flex: none;
+  margin: 0;
+}
+.tray-actions button {
+  white-space: nowrap;
 }
 .trade-tray > .tray-body {
   min-height: 0;

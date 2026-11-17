@@ -21,6 +21,7 @@ export {
   defaultAction,
   computeVP,
   tradeRatios,
+  piecesLeft,
   toSnapshot,
   fromSnapshot,
   type StateSnapshot,

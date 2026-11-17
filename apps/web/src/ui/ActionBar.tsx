@@ -1,30 +1,12 @@
-import { BASE_COSTS, SHIP_COST, type Action } from "@settlers/engine";
+import type { Action } from "@settlers/engine";
 import type { Snapshot } from "../game/LocalGame";
 import type { BuildMode, SeatInfo } from "../game/seats";
 import { Icon } from "../art/icons";
+import { startPick, type Pick } from "../cards/picking";
+import { buildTiles, type BuildTile } from "./buildTiles";
+import { BoardDice } from "./Dice";
 import { StealPicker, TradeOfferView } from "./Decisions";
 import { TurnTimer } from "./TurnTimer";
-
-const BUILDS: {
-  mode: Exclude<BuildMode, null>;
-  label: string;
-  action: string;
-  cost?: Record<string, number>;
-}[] = [
-  { mode: "road", label: "Road", action: "BUILD_ROAD", cost: BASE_COSTS["road"]! },
-  {
-    mode: "settlement",
-    label: "Settlement",
-    action: "BUILD_SETTLEMENT",
-    cost: BASE_COSTS["settlement"]!,
-  },
-  { mode: "city", label: "City", action: "BUILD_CITY", cost: BASE_COSTS["city"]! },
-  { mode: "ship", label: "Ship", action: "BUILD_SHIP", cost: SHIP_COST },
-  { mode: "move", label: "Move ship", action: "MOVE_SHIP" },
-];
-
-/** Ship buttons only appear in games with ships (the seafaring rules). */
-const SHIP_MODES = new Set(["ship", "move"]);
 
 const WAITING_FOR: Record<string, string> = {
   PLACE_SETTLEMENT: "to place a settlement",
@@ -42,26 +24,6 @@ const WAITING_FOR: Record<string, string> = {
 /** A port type in words, e.g. "2:1 wheat" or "3:1". */
 const harborName = (type: string) => (type.endsWith("2to1") ? `2:1 ${type.slice(0, -4)}` : "3:1");
 
-/** Pip positions on a 3×3 grid (0–8, row by row) for each face. */
-const PIPS: Record<number, number[]> = {
-  1: [4],
-  2: [2, 6],
-  3: [2, 4, 6],
-  4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8],
-  6: [0, 2, 3, 5, 6, 8],
-};
-
-function Die({ n, die }: { n: number; die: string }) {
-  return (
-    <span className={`die die-${die}`} role="img" aria-label={String(n)}>
-      {Array.from({ length: 9 }, (_, i) => (
-        <span key={i} className={PIPS[n]?.includes(i) ? "pip on" : "pip"} />
-      ))}
-    </span>
-  );
-}
-
 function Cost({ cost }: { cost: Record<string, number> }) {
   return (
     <span className="cost">
@@ -75,31 +37,60 @@ function Cost({ cost }: { cost: Record<string, number> }) {
   );
 }
 
-/** When a road and a ship are both possible, which one the board's targets place. */
-function RoadOrShip({
-  road,
-  ship,
-  mode,
-  setMode,
+/**
+ * A square icon button with an optional count badge and its cost underneath; the name shows
+ * on hover or keyboard focus (spec 232).
+ */
+function SquareButton({
+  icon,
+  label,
+  left,
+  cost,
+  active,
+  disabled,
+  onClick,
 }: {
-  road: boolean;
-  ship: boolean;
-  mode: BuildMode;
-  setMode(mode: BuildMode): void;
+  icon: string;
+  label: string;
+  left?: number;
+  cost?: Record<string, number>;
+  active?: boolean;
+  disabled?: boolean;
+  onClick(): void;
 }) {
-  if (!road || !ship) return null;
+  const cls = ["square", active && "active", left === 0 && "out"].filter(Boolean).join(" ");
+  return (
+    <button
+      className={cls}
+      disabled={disabled}
+      aria-pressed={active}
+      aria-label={left === undefined ? label : `${label}, ${left} left`}
+      onClick={onClick}
+    >
+      <Icon name={icon} size={28} />
+      {cost && <Cost cost={cost} />}
+      {left !== undefined && <span className="left-badge">{left}</span>}
+      <span className="tip" aria-hidden="true">
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** Which one the board's targets place, when a road and a ship are both possible. */
+function RoadOrShip({ mode, setMode }: { mode: BuildMode; setMode(mode: BuildMode): void }) {
   const shipOn = mode === "ship";
   return (
-    <div className="builds" role="group" aria-label="Place a road or a ship">
+    <div className="row" role="group" aria-label="Place a road or a ship">
       <button
-        className={shipOn ? "build" : "build active"}
+        className={shipOn ? "" : "active"}
         aria-pressed={!shipOn}
         onClick={() => setMode(null)}
       >
         Road
       </button>
       <button
-        className={shipOn ? "build active" : "build"}
+        className={shipOn ? "active" : ""}
         aria-pressed={shipOn}
         onClick={() => setMode("ship")}
       >
@@ -114,39 +105,58 @@ interface Props {
   seats: SeatInfo[];
   mode: BuildMode;
   setMode(mode: BuildMode): void;
+  pick: Pick | null;
+  setPick(p: Pick | null): void;
   send(action: Action): void;
   error: string | null;
 }
 
-export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
+/**
+ * The bottom bar beside your hand (spec 232): a status strip with the clock, a card above it
+ * when a decision needs buttons, and a row of square action buttons for players.
+ */
+export function ActionBar({ snap, seats, mode, setMode, pick, setPick, send, error }: Props) {
   const top = snap.view.decisions.at(-1);
-  const myMove = snap.seat !== "spectator" && !!top?.pendingFrom.includes(snap.seat);
+  const playing = snap.seat !== "spectator";
+  const myMove = playing && !!top?.pendingFrom.includes(snap.seat);
   const canDo = (type: string) => snap.legal.some((a) => a.type === type);
-  // Games with ships: the map's graph covers the sea (seafaring). The engine decides legality.
-  const hasShips = snap.view.modules.includes("seafaring");
-  // Harbors this player picked up off the water and still holds (spec 018).
-  const held =
-    snap.seat === "spectator"
-      ? []
-      : ((snap.view.moduleState["sf-lost-settlers"] as { held?: Record<string, string[]> })?.held?.[
-          snap.seat
-        ] ?? []);
-  const lastRoll = (
-    snap.view.moduleState["base"] as { lastRoll?: Record<string, number> } | undefined
-  )?.lastRoll;
+  // The road-or-ship choice only when both are possible; otherwise there's nothing to show,
+  // and an empty prompt card would open.
+  const roadOrShip = (road: string, ship: string) =>
+    canDo(road) && canDo(ship) ? <RoadOrShip mode={mode} setMode={setMode} /> : null;
 
-  let body: React.ReactNode = null;
+  const hasShips = snap.view.modules.includes("seafaring");
+  const tiles = buildTiles({
+    legal: snap.legal.map((a) => a.type),
+    ...(snap.piecesLeft ? { piecesLeft: snap.piecesLeft } : {}),
+    ...(snap.view.zones["devdeck"]?.count !== undefined
+      ? { devDeck: snap.view.zones["devdeck"].count }
+      : {}),
+    hasShips,
+    devCards: snap.view.options.features?.devCards !== false,
+  });
+  // Harbors this player picked up off the water and still holds (spec 018).
+  const held = !playing
+    ? []
+    : ((snap.view.moduleState["sf-lost-settlers"] as { held?: Record<string, string[]> })?.held?.[
+        snap.seat
+      ] ?? []);
+
+  // Trading: only on your own main step (the step allowing offers isn't enough: it's someone's turn).
+  const canTrade = myMove && !!top?.allowed.includes("OFFER_TRADE");
+  const trading = pick?.purpose === "trade";
+
+  // The one-line status, and anything that needs its own buttons (shown in a card above).
+  let status = "";
+  let detail: React.ReactNode = null;
   if (snap.view.winner !== undefined) {
-    body = null;
+    status = "Game over";
   } else if (top?.kind === "TRADE_OFFER") {
-    body = <TradeOfferView snap={snap} seats={seats} send={send} />;
+    status = "Trade offer";
+    detail = <TradeOfferView snap={snap} seats={seats} send={send} />;
   } else if (!myMove) {
     const waiting = top?.pendingFrom.map((id) => seats.find((s) => s.id === id)?.name ?? id) ?? [];
-    body = (
-      <p className="prompt muted">
-        Waiting for {waiting.join(", ") || "the next player"} {WAITING_FOR[top?.kind ?? ""] ?? ""}…
-      </p>
-    );
+    status = `Waiting for ${waiting.join(", ") || "the next player"} ${WAITING_FOR[top?.kind ?? ""] ?? ""}…`;
   } else {
     switch (top?.kind) {
       case "PLACE_SETTLEMENT": {
@@ -154,199 +164,157 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
         // A step may say whether it pays (spec 019's third settlement); otherwise round 2 does.
         const pays =
           typeof top.data?.["resources"] === "boolean" ? top.data["resources"] : round === 2;
-        body = (
-          <p className="prompt">
-            Place your {["first", "second", "third"][round - 1] ?? "next"} settlement on a
-            highlighted corner.
-            {pays && " It collects one resource from each hex it touches."}
-          </p>
-        );
+        status = `Place your ${["first", "second", "third"][round - 1] ?? "next"} settlement on a highlighted corner.${pays ? " It collects one resource from each hex it touches." : ""}`;
         break;
       }
       case "PLACE_ROAD":
-        body = (
-          <>
-            <p className="prompt">
-              {canDo("PLACE_SHIP")
-                ? "Place a road, or a ship on the sea, touching that settlement."
-                : "Place a road touching that settlement."}
-            </p>
-            <RoadOrShip
-              road={canDo("PLACE_ROAD")}
-              ship={canDo("PLACE_SHIP")}
-              mode={mode}
-              setMode={setMode}
-            />
-          </>
-        );
+        status = canDo("PLACE_SHIP")
+          ? "Place a road, or a ship on the sea, touching that settlement."
+          : "Place a road touching that settlement.";
+        detail = roadOrShip("PLACE_ROAD", "PLACE_SHIP");
         break;
       case "PLACE_FREE_ROAD":
-        body = (
-          <>
-            <p className="prompt">
-              Place a free {canDo("PLACE_FREE_SHIP") ? "road or ship" : "road"} (
-              {String(top.data?.["remaining"])} left).
-            </p>
-            <RoadOrShip
-              road={canDo("PLACE_FREE_ROAD")}
-              ship={canDo("PLACE_FREE_SHIP")}
-              mode={mode}
-              setMode={setMode}
-            />
-          </>
-        );
+        status = `Place a free ${canDo("PLACE_FREE_SHIP") ? "road or ship" : "road"} (${String(top.data?.["remaining"])} left).`;
+        detail = roadOrShip("PLACE_FREE_ROAD", "PLACE_FREE_SHIP");
         break;
       case "GOLD_CHOICE": {
         const owed = (top.data?.["amounts"] as Record<string, number>)[snap.seat] ?? 0;
-        body = (
-          <p className="prompt">
-            Gold! Pick {owed} {owed === 1 ? "resource" : "resources"} from the bank.
-          </p>
-        );
+        status = `Gold! Pick ${owed} ${owed === 1 ? "resource" : "resources"} from the bank.`;
         break;
       }
       case "DISCARD": {
         const owed = (top.data?.["amounts"] as Record<string, number>)[snap.seat] ?? 0;
-        body = (
-          <p className="prompt">
-            A 7 was rolled and you hold more than 7 cards. Pick {owed} from your hand to discard.
-          </p>
-        );
+        status = `A 7! You hold more than the limit: discard ${owed} from your hand.`;
         break;
       }
       case "MOVE_ROBBER": {
-        const pirate = snap.legal.some((x) => x.type === "MOVE_PIRATE");
+        const pirate = canDo("MOVE_PIRATE");
         const away = snap.legal.find((x) => x.type === "MOVE_PIRATE" && x.hex === null);
-        body = pirate ? (
-          <div className="stack">
-            <p className="prompt">
-              Move the robber to a land hex, or the pirate to a sea hex: click a highlighted hex.
-            </p>
-            {away && (
-              <button className="link" onClick={() => send(away)}>
-                Send the pirate off the board
-              </button>
-            )}
-          </div>
-        ) : (
-          <p className="prompt">Move the robber: click a highlighted hex.</p>
-        );
+        status = pirate
+          ? "Move the robber to a land hex, or the pirate to a sea hex."
+          : "Move the robber: click a highlighted hex.";
+        if (away)
+          detail = (
+            <button className="link" onClick={() => send(away)}>
+              Send the pirate off the board
+            </button>
+          );
         break;
       }
       case "STEAL":
-        body = <StealPicker snap={snap} seats={seats} send={send} />;
+        status = "Choose who to rob.";
+        detail = <StealPicker snap={snap} seats={seats} send={send} />;
         break;
       case "PLACE_HARBOR":
-        body = (
-          <p className="prompt">
-            You picked up a {harborName(held[0] ?? "any3to1")} harbor. Place it on a highlighted
-            coast edge next to your settlement or city.
-          </p>
-        );
+        status = `Place your ${harborName(held[0] ?? "any3to1")} harbor on a highlighted coast edge next to your settlement or city.`;
         break;
       case "ROLL":
-        body = (
-          <>
-            <button className="primary big" onClick={() => send({ type: "ROLL" })}>
-              Roll dice
-            </button>
-            {snap.legal.some((a) => a.type.startsWith("PLAY_")) && (
-              <p className="muted small">You can play a development card before rolling.</p>
-            )}
-          </>
-        );
+        status = snap.legal.some((a) => a.type.startsWith("PLAY_"))
+          ? "Your turn: roll the dice (you can play a development card first)."
+          : "Your turn: roll the dice.";
         break;
       case "MAIN":
-        body = (
-          <>
-            <div className="builds">
-              {BUILDS.filter((b) => !SHIP_MODES.has(b.mode) || hasShips).map((b) => (
-                <button
-                  key={b.mode}
-                  className={mode === b.mode ? "build active" : "build"}
-                  disabled={!canDo(b.action)}
-                  aria-pressed={mode === b.mode}
-                  onClick={() => setMode(mode === b.mode ? null : b.mode)}
-                >
-                  <span>{b.label}</span>
-                  {b.cost && <Cost cost={b.cost} />}
-                </button>
-              ))}
-              {canDo("PLACE_HARBOR") && (
-                <button
-                  className={mode === "harbor" ? "build active" : "build"}
-                  aria-pressed={mode === "harbor"}
-                  onClick={() => setMode(mode === "harbor" ? null : "harbor")}
-                >
-                  <span>Place harbor</span>
-                  <span className="cost muted small">{harborName(held[0] ?? "any3to1")}</span>
-                </button>
-              )}
-              {snap.view.options.features?.devCards !== false && (
-                <button
-                  className="build"
-                  disabled={!canDo("BUY_DEV_CARD")}
-                  onClick={() => send({ type: "BUY_DEV_CARD" })}
-                >
-                  <span>Dev card</span>
-                  <Cost cost={BASE_COSTS["devCard"]!} />
-                </button>
-              )}
-            </div>
-            {!mode && (
-              <p className="prompt muted small">
-                Click an edge or corner on the map to see build options.
-              </p>
-            )}
-            {held.length > 0 && !canDo("PLACE_HARBOR") && (
-              <p className="muted small">
-                You hold {held.length === 1 ? "a harbor" : `${held.length} harbors`} (
-                {held.map(harborName).join(", ")}). Place it once you have a settlement or city by a
-                free coast edge, at least one edge from other harbors.
-              </p>
-            )}
-            {mode && (
-              <p className="prompt">
-                {mode === "move"
-                  ? "Tap one of your highlighted ships, then where it should go. Press the button again to cancel."
-                  : "Pick a highlighted spot, or press the button again to cancel."}
-              </p>
-            )}
-            <button className="primary" onClick={() => send({ type: "END_TURN" })}>
-              End turn
-            </button>
-          </>
-        );
+        status = mode
+          ? mode === "move"
+            ? "Tap one of your highlighted ships, then where it should go."
+            : "Pick a highlighted spot, or press the button again to cancel."
+          : trading
+            ? "Pick cards in your hand and from the bank."
+            : "Your turn: build, trade, or end your turn.";
+        if (held.length > 0 && !canDo("PLACE_HARBOR"))
+          detail = (
+            <p className="muted small">
+              You hold {held.length === 1 ? "a harbor" : `${held.length} harbors`} (
+              {held.map(harborName).join(", ")}). Place it once you have a settlement or city by a
+              free coast edge, at least one edge from other harbors.
+            </p>
+          );
         break;
     }
   }
 
+  const rolling = myMove && top?.kind === "ROLL";
+
+  // The bar has a fixed height (the map re-fits when it changes), so the card floats above.
   return (
-    <section className="panel actions">
-      {((lastRoll && snap.view.turn.number > 0) || snap.clock) && (
-        <div className="action-head">
-          {lastRoll && snap.view.turn.number > 0 && (
-            <div
-              // Remount on every roll so the roll animation plays again.
-              key={snap.log.filter((e) => e.type === "ROLLED").length}
-              className="dice"
-              aria-label="Last roll"
-            >
-              {Object.entries(lastRoll).map(([die, n]) => (
-                <Die key={die} die={die} n={n} />
-              ))}
-              <span className="muted">= {Object.values(lastRoll).reduce((a, b) => a + b, 0)}</span>
-            </div>
-          )}
+    <section className="action-dock" aria-label="Actions">
+      <div className="action-main">
+        {(detail || error) && (
+          <div className="panel prompt-card">
+            {detail}
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="status-row">
+          <p className={myMove ? "status-pill mine" : "status-pill"} role="status">
+            {status}
+          </p>
           {snap.clock && <TurnTimer clock={snap.clock} mine={myMove} />}
         </div>
-      )}
-      {body}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+        {playing && snap.view.winner === undefined && (
+          <div className="square-row">
+            <SquareButton
+              icon="trade"
+              label="Trade"
+              active={trading}
+              disabled={!canTrade}
+              onClick={() => {
+                setMode(null);
+                setPick(trading ? null : startPick("trade"));
+              }}
+            />
+            {tiles.map((t: BuildTile) => (
+              <SquareButton
+                key={t.action}
+                icon={t.icon}
+                label={t.label}
+                {...(t.left !== undefined ? { left: t.left } : {})}
+                {...(t.cost ? { cost: t.cost } : {})}
+                active={t.mode !== null && mode === t.mode}
+                disabled={!t.enabled}
+                onClick={() =>
+                  t.mode === null
+                    ? send({ type: "BUY_DEV_CARD" })
+                    : setMode(mode === t.mode ? null : t.mode)
+                }
+              />
+            ))}
+            {canDo("PLACE_HARBOR") && (
+              <SquareButton
+                icon="harbor"
+                label={`Place ${harborName(held[0] ?? "any3to1")} harbor`}
+                active={mode === "harbor"}
+                onClick={() => setMode(mode === "harbor" ? null : "harbor")}
+              />
+            )}
+          </div>
+        )}
+      </div>
+      {/* The dice, with the big Roll / End turn button under them. */}
+      <div className="turn-col">
+        <BoardDice snap={snap} onRoll={canDo("ROLL") ? () => send({ type: "ROLL" }) : undefined} />
+        {playing &&
+          snap.view.winner === undefined &&
+          (rolling ? (
+            <button className="turn-button primary" onClick={() => send({ type: "ROLL" })}>
+              <Icon name="dice" size={30} />
+              <span>Roll dice</span>
+            </button>
+          ) : (
+            <button
+              className="turn-button primary"
+              disabled={!canDo("END_TURN")}
+              onClick={() => send({ type: "END_TURN" })}
+            >
+              <Icon name="endTurn" size={30} />
+              <span>End turn</span>
+            </button>
+          ))}
+      </div>
     </section>
   );
 }

@@ -1706,7 +1706,7 @@ button.card-group:focus-visible {
   white-space: nowrap;
 }
 
-/* Map build inspection and confirmation (spec 024). */
+/* Map build inspection and confirmation (spec 224). */
 .build-location {
   cursor: pointer;
 }
@@ -1775,7 +1775,7 @@ button.card-group:focus-visible {
   margin: 4px 2px 0;
 }
 
-/* Trade trays (spec 025): float outside the hand's scroll container. */
+/* Trade trays (spec 225): float outside the hand's scroll container. */
 .tray-body {
   display: grid;
   gap: 0.6rem;

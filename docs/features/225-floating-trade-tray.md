@@ -1,4 +1,4 @@
-# 025 — Floating trade tray
+# 225 — Floating trade tray
 
 ## Goal
 
@@ -7,7 +7,7 @@ while keeping the player's hand visible and usable over the immersive map.
 
 ## Scope / non-scope
 
-- Trial change on `fix/immersive-map`, after checkpoint commit `0519580` (specs 023–024).
+- Trial change on `fix/immersive-map`, after checkpoint commit `0519580` (specs 223–224).
 - Bank and player offer trays float above the hand, growing to their natural content height.
 - Measure space below navigation and above the hand; update on resize/browser zoom.
 - If content exceeds that space, scroll only the selections/resource choices. Keep the title,

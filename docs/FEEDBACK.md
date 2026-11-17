@@ -60,10 +60,10 @@ and the expansions (M10–M13).
 ## Board and map
 
 - **#21** Can't drag the board when fully zoomed out. Allow zooming out a bit further, and fit the
-  map to the screen better at the start. Done (spec 023, `fix/immersive-map`).
+  map to the screen better at the start. Done (spec 223, `fix/immersive-map`).
 - **#22** Click any edge of the board to get a small popup above it showing a road icon and the road's
   cost; click the popup to build (as colonist.io does). Consider the same for vertices
-  (settlement, city). Done (spec 024, `fix/immersive-map`; ship metadata follows the `m10` merge).
+  (settlement, city). Done (spec 224, `fix/immersive-map`; ship metadata follows the `m10` merge).
 - **#23** Art polish: the board doesn't look nice yet. The sheep port icon and the ore art were
   called out.
 - **#24** Make the robber gray.

@@ -2,7 +2,7 @@
 
 Artwork selects tile and resource-card faces together. It is independent of UI theme colors.
 Original SVG/CSS art is the default and the fallback for missing PNGs.
-See [spec 026](features/026-artwork-selector.md#adding-a-new-selectable-style) for the exact
+See [spec 226](features/226-artwork-selector.md#adding-a-new-selectable-style) for the exact
 code registration steps and its missing-assets/expansion compatibility rules. Missing lookup
 entries and browser load failures fall back per face; nonexistent static imports fail the
 build. Expansions must supply their original baseline renderer before relying on fallback.

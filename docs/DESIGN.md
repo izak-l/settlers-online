@@ -413,7 +413,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - Components only see a `GameClient` (`apps/web/src/game/LocalGame.ts`): `snapshot()` → `{ seat, view, legal, scores, log }` and `send(action)`. In M4 a socket client implements it for online play, and the components don't change.
 - `LocalGame` implements `GameClient` with the engine running in the tab. It powers the **dev sandbox** (`pnpm dev`, development builds only), where one person acts for whichever seat is being waited on, and the web tests. It is not a player-facing mode; production builds show a placeholder until online play lands.
 - The board draws a vertex at the average of its three hex centres and an edge between its two vertices, so positions come straight from the IDs. Views don't carry the graph; the client rebuilds it from `view.map` once.
-- Setup, free roads and robber targets come from `legal` and act directly. During a normal turn, edges and corners open build confirmations (spec 024); sidebar Road / Settlement / City modes still highlight legal locations. Map locations and highlights are keyboard-focusable buttons.
+- Setup, free roads and robber targets come from `legal` and act directly. During a normal turn, edges and corners open build confirmations (spec 224); sidebar Road / Settlement / City modes still highlight legal locations. Map locations and highlights are keyboard-focusable buttons.
 
 **As built (M5: full rules in the UI)**
 
@@ -431,14 +431,14 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - **Small screens:** the board's viewBox fits the land plus a strip of sea (ports stay visible). Below 860px actions lead a scrollable panel above the hand, over the full-screen map; below 600px every control is at least 44px tall. Board targets have wide invisible hit areas. Checked at 375px: no sideways scrolling on home, lobby or game.
 - **Animations:** the dice spin on each roll, new pieces (and city upgrades) pop in, the robber slides, gained resources flash with a "+n". All are off under `prefers-reduced-motion`. They come only from comparing views, never from delaying input.
 
-**As built (layout, resize and zoom; spec 023 supersedes spec 006)**
+**As built (layout, resize and zoom; spec 223 supersedes spec 006)**
 
-- Client layout improvements live on `fix/immersive-map`, cut from `main`, separately from the expansion work on `m10` (spec 023, feedback #21).
+- Client layout improvements live on `fix/immersive-map`, cut from `main`, separately from the expansion work on `m10` (spec 223, feedback #21).
 - The SVG board fills the viewport behind the existing navigation, hand and side panels. A measured clear rectangle between overlays determines the initial fit and Fit reset, without cropping the SVG to that rectangle. Desktop keeps the side column (`clamp(300px, 24vw, 380px)`) and bottom hand as floating panels. Below 860px the side panel scrolls above the hand, with current actions first; both panels have bounded heights and contain their scrolling. The map remains visible behind them. Home and lobby layouts are unchanged.
 - **Zoom and pan** (`board/viewport.ts`, pure and tested; `board/useViewport.ts`): 0.65× to 4× by + / − buttons, wheel around the cursor or pinch. Drag pans at every zoom, with generous movement on both axes; pan limits retain 20% overlap on each axis between the map fit box and clear area. Fit always resets zoom and position. A press becomes a drag after 6px and the click ending it is swallowed. Board gestures ignore buttons; touch dragging pans the map while panels scroll normally. Keyboard focus reveals targets within the clear area. Zoom resets when the game opens. No gesture library.
 - **Hit areas** are 22 screen px in radius, capped just under half the vertex spacing so neighbours never overlap (at 375px and 1× that cap wins; zooming in gives full-size targets). Keyboard focus on a target outside the zoomed view pans to it.
 
-**As built (map build popups, spec 024)**
+**As built (map build popups, spec 224)**
 
 - On `fix/immersive-map`, clicking a map edge or vertex during a normal turn opens a popup only at valid build locations, with piece icons, costs and affordability reasons. Invalid locations and exhausted pieces have no inspection targets. Clicking an enabled choice submits that intent; setup, free road and robber clicks remain direct. Sidebar build modes still highlight locations and open the same confirmation. Popups follow their map anchor, fit within the measured clear area, scroll on small screens, and dismiss with Escape, outside press, a submitted build or a changed turn/decision/seat. Keyboard dismissal returns focus to the map location using its piece-shaped marker; pointer dismissal does not refocus it. SVG map targets never show browser outline boxes. A drag cannot open a menu or build.
 - `ActionHandler.build` optionally registers module-owned piece/label/cost metadata. The pure `buildOptions(state, player)` query runs each candidate through its validator, returning valid locations alongside their costs; unaffordable choices remain disabled. Build validators check placement and other restrictions before affordability, and the query omits all failures except `CANNOT_AFFORD`. It does not change legal actions, game state or RNG. A location is offered only if it is spatially legal, even with an empty hand.
@@ -447,13 +447,13 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 **As built (M7b: cards)**
 
 - **Hand dock** (`cards/HandDock.tsx`) over the bottom of the board: resource cards fanned by type in a fixed order, then dev cards (one group per type, with cards bought this turn in a separate dimmed "New" group). Each group has a count badge. `cards/fan.ts` (pure) sets the overlap from the dock's width; when even a 6px sliver doesn't fit, groups draw only their first few cards. Cards are 64px wide, or 48px under 600px.
-- **Picking** (`cards/picking.ts`, pure) replaces the old +/− `ResourcePicker`. A tray holds the picked cards (tap one to put it back) and the confirm button; tap a hand group to pick from your hand, or a bank card for what you want. Discards open the tray automatically; the trade panel starts a bank trade or an offer; Bounty and Monopoly start from their card's Play button. Bank trade, Bounty and Monopoly buttons are enabled only from `legal`; the discard and offer buttons only check counts, and the server validates. Picks reset whenever the top decision changes. Bank and player-offer trays float above the hand (spec 025); other picking trays stay inside the scrollable hand overlay. The board keeps its full-screen size.
+- **Picking** (`cards/picking.ts`, pure) replaces the old +/− `ResourcePicker`. A tray holds the picked cards (tap one to put it back) and the confirm button; tap a hand group to pick from your hand, or a bank card for what you want. Discards open the tray automatically; the trade panel starts a bank trade or an offer; Bounty and Monopoly start from their card's Play button. Bank trade, Bounty and Monopoly buttons are enabled only from `legal`; the discard and offer buttons only check counts, and the server validates. Picks reset whenever the top decision changes. Bank and player-offer trays float above the hand (spec 225); other picking trays stay inside the scrollable hand overlay. The board keeps its full-screen size.
 - **Dev cards:** tap a card to show its blurb and a Play button (from `legal`).
 - **Opponents:** face-down fans (at most 8 backs drawn) with counts, which pulse +n / −n when the count changes. The open trade offer shows both sides as small card faces.
 - **Motion** (`cards/handDiff.ts`, `useCardMotion.ts`): comparing snapshots gives the cards that moved in or out and where from. The partner comes from the new `STOLE` / `TRADED` events (their `data` names both players); otherwise players whose totals dropped (Monopoly) or rose; otherwise the bank. Cards fly from (or to) that player's row, or from above for the bank. Under reduced motion they just appear with an outline.
 - **Icons:** `art/icons.tsx` holds original resource and dev card icons used on the cards.
 
-**As built (floating trade tray, spec 025)**
+**As built (floating trade tray, spec 225)**
 
 - Checkpoint `0519580` contains the accepted map and build-menu work. The subsequent floating trade tray change was approved by the user after review and is committed separately.
 - Bank/player trade trays render in a portal above the hand, outside its height cap, with a width of at most 560px and no wider than the dock or viewport. Their height follows the content, capped by the measured space below navigation and above the hand; resize, browser zoom and visual viewport changes update that measurement.
@@ -465,7 +465,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - `art/icons.tsx` icons are reused on cards, cost chips, port signs, award badges (road and knight) and in the log, which puts an icon before each resource word. Dice show pip faces.
 - Palette: warm parchment light theme and slate dark theme as CSS tokens in `styles.css`; panels have a soft shadow; the current player's row has an edge in their seat colour.
 
-**Artwork selection (spec 026, approved on `graphics-upgrades`)**
+**Artwork selection (spec 226, approved on `graphics-upgrades`)**
 
 - Appearance in the top bar offers Original / Realism. One choice changes the six land
   terrain faces and five resource-card faces together, immediately and per viewer. Guarded
@@ -479,7 +479,7 @@ React renders the board as one SVG; the client holds only the latest `PlayerView
 - Missing style entries fall back per face without resetting the selected pack. Expansions
   must supply their original terrain/card renderer so this fallback has a complete baseline.
   A missing static import fails the build; browser image-load failures use the original face.
-  Spec 026 documents the explicit registration steps for additional styles and partial packs.
+  Spec 226 documents the explicit registration steps for additional styles and partial packs.
 - Supplied source files stay unchanged in `assets/images/`. `scripts/prepare-artwork.py`
   generates explicitly named runtime PNGs under `art/assets/realism/`: 330 × 382 tiles
   and 300 × 420 cards. `docs/ARTWORK.md` describes source naming, normalization, registration

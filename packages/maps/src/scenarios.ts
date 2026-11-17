@@ -15,6 +15,10 @@ import fourIsles3pV from "../scenarios/four-isles/3p-variable.json" with { type:
 import fourIsles4pV from "../scenarios/four-isles/4p-variable.json" with { type: "json" };
 import acrossTheSands3pV from "../scenarios/across-the-sands/3p-variable.json" with { type: "json" };
 import acrossTheSands4pV from "../scenarios/across-the-sands/4p-variable.json" with { type: "json" };
+import lostSettlers3p from "../scenarios/lost-settlers/3p-fixed.json" with { type: "json" };
+import lostSettlers4p from "../scenarios/lost-settlers/4p-fixed.json" with { type: "json" };
+import lostSettlers3pV from "../scenarios/lost-settlers/3p-variable.json" with { type: "json" };
+import lostSettlers4pV from "../scenarios/lost-settlers/4p-variable.json" with { type: "json" };
 
 /** Fixed: the rulebook's map. Variable: random within its areas (spec 017). */
 export type SetupMode = "fixed" | "variable";
@@ -61,6 +65,7 @@ export const SCENARIO_CATALOG: readonly CatalogScenario[] = [
   scenario(2, fourIsles3p, fourIsles4p, fourIsles3pV, fourIsles4pV),
   scenario(3, mistyPassage3p, mistyPassage4p, mistyPassage3pV, mistyPassage4pV),
   scenario(4, acrossTheSands3p, acrossTheSands4p, acrossTheSands3pV, acrossTheSands4pV),
+  scenario(5, lostSettlers3p, lostSettlers4p, lostSettlers3pV, lostSettlers4pV),
 ];
 
 export function findScenario(id: string): CatalogScenario | undefined {

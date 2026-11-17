@@ -137,6 +137,10 @@ const watched = [
   "GOLD_PICKED",
   "ISLAND_SETTLED",
   "REVEALED",
+  "TOOK_VP_TOKEN",
+  "TOOK_BOARD_CARD",
+  "TOOK_HARBOR",
+  "PLACED_HARBOR",
   "AWARD",
 ];
 const seen = watched.filter((t) => totals[t]).map((t) => `${t} ${totals[t]}`);

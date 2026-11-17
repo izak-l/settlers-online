@@ -6,6 +6,7 @@ import { seedFromString } from "@settlers/engine";
 import { generateMap } from "../generator";
 import { validateResolvedMap } from "../validator";
 import { MapDefSchema, type MapDef } from "../schema";
+import { BASE_4P } from "../definitions";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASE_MAP_PATH = join(__dirname, "../../maps/base-4p.json");
@@ -135,5 +136,21 @@ describe("port placement", () => {
     const counts: Record<string, number> = {};
     for (const p of map.ports) counts[p.type] = (counts[p.type] ?? 0) + 1;
     expect(counts).toEqual(def.pools!.ports!["ports"]);
+  });
+});
+
+describe("no-tokens-on-hexes constraint (spec 018)", () => {
+  it("keeps the listed tokens off the listed hexes (500 seeds)", () => {
+    const listed = ["0,0", "1,-1", "-1,1"];
+    const def = {
+      ...BASE_4P,
+      constraints: [{ rule: "no-tokens-on-hexes" as const, tokens: [5, 6, 8, 9], hexes: listed }],
+    };
+    for (let i = 0; i < 500; i++) {
+      const { map } = generateMap(def, seedFromString(`off:${i}`));
+      for (const h of map.hexes) {
+        if (listed.includes(`${h.q},${h.r}`)) expect([5, 6, 8, 9]).not.toContain(h.token);
+      }
+    }
   });
 });

@@ -151,3 +151,63 @@ describe("MapDefSchema: size limits for uploaded maps", () => {
     expect(ok({ ...BASE_4P, description: "x".repeat(201) })).toBe(false);
   });
 });
+
+describe("validateMapDef: markers (spec 018)", () => {
+  // A one-hex island in a ring of sea, with things lying on its edges.
+  const island = (markers: unknown[], extra: Partial<MapDef> = {}): MapDef =>
+    ({
+      id: "marker-test",
+      version: 1,
+      players: { min: 1, max: 4 },
+      vpToWin: 10,
+      hexes: [
+        { q: 0, r: 0, terrain: "forest", token: 6 },
+        { q: 1, r: 0, terrain: "sea" },
+        { q: 0, r: 1, terrain: "hills", token: 8 },
+      ],
+      modules: ["base", "seafaring"],
+      markers,
+      ...extra,
+    }) as MapDef;
+
+  it("accepts tokens, cards and harbors on sea edges, with a port pool for the harbors", () => {
+    const def = island(
+      [
+        { id: "vp-1", kind: "vp-token", at: { edge: "0,0|1,0" } },
+        { id: "dev-1", kind: "dev-card", at: { edge: "0,0|0,-1" } },
+        { id: "harbor-1", kind: "harbor", at: { edge: "0,1|1,0" }, data: { port: "pool:h" } },
+      ],
+      { pools: { ports: { h: { ore2to1: 1 } } } },
+    );
+    expect(validateMapDef(def)).toEqual({ ok: true, errors: [] });
+    const { map } = generateMap(def, seedFromString("m"));
+    expect(map.markers).toContainEqual({
+      id: "harbor-1",
+      kind: "harbor",
+      at: { edge: "0,1|1,0" },
+      data: { port: "ore2to1" },
+    });
+  });
+
+  it("rejects a marker between two land hexes, off the map, repeated, or a harbor with no type", () => {
+    expect(codes(island([{ id: "a", kind: "vp-token", at: { edge: "0,0|0,1" } }]))).toContain(
+      "MARKER",
+    );
+    expect(codes(island([{ id: "a", kind: "vp-token", at: { edge: "5,5|5,6" } }]))).toContain(
+      "MARKER",
+    );
+    const twice = { id: "a", kind: "vp-token", at: { edge: "0,0|1,0" } };
+    expect(codes(island([twice, twice]))).toContain("MARKER");
+    expect(codes(island([{ id: "h", kind: "harbor", at: { edge: "0,0|1,0" } }]))).toContain(
+      "MARKER",
+    );
+  });
+
+  it("counts harbors against their port pool", () => {
+    const def = island(
+      [{ id: "harbor-1", kind: "harbor", at: { edge: "0,1|1,0" }, data: { port: "pool:h" } }],
+      { pools: { ports: { h: { ore2to1: 2 } } } },
+    );
+    expect(codes(def)).toContain("POOL_SIZE");
+  });
+});

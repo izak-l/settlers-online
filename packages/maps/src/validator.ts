@@ -29,6 +29,7 @@ export function validateMapDef(def: MapDef): ValidationResult {
 
   errors.push(...checkPools(def));
   errors.push(...checkScenario(def));
+  errors.push(...checkMarkers(def));
 
   return { ok: errors.length === 0, errors };
 }
@@ -88,8 +89,13 @@ function checkPools(def: MapDef): ValidationError[] {
       );
   }
 
-  for (const name of new Set((def.ports ?? []).flatMap((p) => poolOf(p.type) ?? []))) {
-    const slots = (def.ports ?? []).filter((p) => poolOf(p.type) === name).length;
+  // Ports on the coast and harbors lying on the water (spec 018) draw from the same port pools.
+  const portSlots = [
+    ...(def.ports ?? []).map((p) => p.type),
+    ...(def.markers ?? []).flatMap((m) => (m.data ? [m.data.port] : [])),
+  ];
+  for (const name of new Set(portSlots.flatMap((t) => poolOf(t) ?? []))) {
+    const slots = portSlots.filter((t) => poolOf(t) === name).length;
     const pool = pools.ports?.[name];
     if (!pool) errors.push(err("POOL_MISSING", `No port pool "${name}"`));
     else if (total(pool) !== slots)
@@ -154,6 +160,38 @@ function checkScenario(def: MapDef): ValidationError[] {
     at.get(s.pirateStart)?.terrain !== "sea"
   ) {
     errors.push(err("PIRATE_START", `Pirate start ${s.pirateStart} is not a sea hex`));
+  }
+  return errors;
+}
+
+/**
+ * Markers (spec 018): ids are unique; each sits on a listed hex, or on an edge or corner of one;
+ * an edge marker is on a sea edge (water on one side, or the frame) where a ship can reach it; a
+ * harbor says its type.
+ */
+function checkMarkers(def: MapDef): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const markers = def.markers ?? [];
+  if (markers.length === 0) return errors;
+  const at = new Map(def.hexes.map((h) => [`${h.q},${h.r}`, h]));
+  const water = (key: string) => {
+    const t = at.get(key)?.terrain;
+    return t === undefined || t === "sea" || t === "fog";
+  };
+  const ids = new Set<string>();
+  for (const m of markers) {
+    if (ids.has(m.id)) errors.push(err("MARKER", `Marker ${m.id} appears twice`));
+    ids.add(m.id);
+    if (m.kind === "harbor" && !m.data)
+      errors.push(err("MARKER", `Harbor marker ${m.id} needs a port type`));
+    const loc = m.at;
+    const keys = "hex" in loc ? [loc.hex] : ("edge" in loc ? loc.edge : loc.vertex).split("|");
+    if (!keys.every(isHexKey) || !keys.some((k) => at.has(k))) {
+      errors.push(err("MARKER", `Marker ${m.id} is not on the map`));
+      continue;
+    }
+    if ("edge" in loc && (keys.length !== 2 || !keys.some(water)))
+      errors.push(err("MARKER", `Marker ${m.id} is not on a sea edge`));
   }
   return errors;
 }

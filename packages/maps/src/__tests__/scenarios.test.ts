@@ -16,6 +16,12 @@ const DIR = join(dirname(fileURLToPath(import.meta.url)), "../../scenarios");
  * ports. Sea isn't compared: the frame encloses two more water spaces than the rulebook's sea
  * tiles (the frame pieces carry printed sea), and we make every water space a sea hex.
  */
+const LOST_SETTLERS = {
+  land: { gold: 2, hills: 5, forest: 5, pasture: 5, fields: 5, mountains: 5, desert: 3 },
+  tokens: [1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+  ports: { two: 5, three: 1 },
+};
+
 const RULEBOOK: Record<
   string,
   { land: Record<string, number>; tokens: number[]; ports: { two: number; three: number } }
@@ -61,6 +67,9 @@ const RULEBOOK: Record<
     tokens: [1, 3, 3, 3, 3, 3, 3, 3, 3, 2],
     ports: { two: 5, three: 4 },
   },
+  // One map for 3 and 4 players; every harbor starts on the water (counted with the ports).
+  "lost-settlers-3p-fixed": LOST_SETTLERS,
+  "lost-settlers-4p-fixed": LOST_SETTLERS,
 };
 
 const allMaps = SCENARIO_CATALOG.flatMap((s) => Object.values(s.maps) as MapDef[]);
@@ -109,11 +118,22 @@ describe("scenario catalog", () => {
       expect(land).toEqual(expected.land);
       expect(tokens.filter((_, i) => i !== 5)).toEqual(expected.tokens); // no 7
       const ports = def.ports ?? [];
-      const portTypes = ports.some((p) => p.type === "pool:ports")
-        ? Object.entries(def.pools!.ports!["ports"]!).flatMap(([t, n]) => Array<string>(n!).fill(t))
-        : ports.map((p) => p.type);
+      const pool = (name: string) =>
+        Object.entries(def.pools?.ports?.[name] ?? {}).flatMap(([t, n]) =>
+          Array<string>(n!).fill(t),
+        );
+      const portTypes = [
+        ...(ports.some((p) => p.type === "pool:ports") ? pool("ports") : ports.map((p) => p.type)),
+        ...pool("harbors"),
+      ];
       expect(portTypes.filter((t) => t === "any3to1")).toHaveLength(expected.ports.three);
       expect(portTypes.filter((t) => t !== "any3to1")).toHaveLength(expected.ports.two);
+    });
+
+    it("has the rulebook's things on the water", () => {
+      const count = (kind: string) => (def.markers ?? []).filter((m) => m.kind === kind).length;
+      const expected = id.startsWith("lost-settlers") ? [8, 4, 6] : [0, 0, 0];
+      expect([count("vp-token"), count("dev-card"), count("harbor")]).toEqual(expected);
     });
 
     it("has the rulebook's face-down stack when it has fog", () => {
@@ -145,6 +165,8 @@ describe("scenario catalog", () => {
         const at = new Map(map.hexes.map((h) => [`${h.q},${h.r}`, h]));
         for (const c of def.constraints ?? []) {
           for (const h of map.hexes) {
+            if (typeof c === "object" && c.hexes.includes(`${h.q},${h.r}`))
+              expect(c.tokens).not.toContain(h.token);
             const red = h.token === 6 || h.token === 8;
             if (c === "no-red-on-gold") expect(h.terrain === "gold" && red).toBe(false);
             if (c === "no-low-tokens-on-forest-pasture")

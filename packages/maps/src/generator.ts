@@ -8,8 +8,10 @@ import {
   type Hex,
 } from "@settlers/engine";
 import {
+  type Constraint,
   type MapDef,
   type ResolvedHex,
+  type ResolvedMarker,
   type ResolvedMap,
   type TerrainType,
   type ResolvedPort,
@@ -97,10 +99,17 @@ const LOW_TOKENS = new Set([2, 3, 11, 12]);
 
 /** Does the board break one of the map's token rules? */
 function breaksConstraint(
-  constraint: string,
+  constraint: Constraint,
   hexes: ResolvedHex[],
   graph: ReturnType<typeof buildGraph>,
 ): boolean {
+  if (typeof constraint === "object") {
+    // "no-tokens-on-hexes": none of the listed tokens on the listed hexes.
+    const listed = new Set(constraint.hexes);
+    return hexes.some(
+      (h) => listed.has(hexKey(h)) && h.token !== undefined && constraint.tokens.includes(h.token),
+    );
+  }
   switch (constraint) {
     case "no-adjacent-red-tokens":
       return hasRedTokenViolation(hexes, graph);
@@ -195,7 +204,7 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
     do {
       if (attempts > MAX_RETRIES) {
         throw new Error(
-          `Could not satisfy ${constraints.join(", ")} after ${MAX_RETRIES} attempts`,
+          `Could not satisfy ${constraints.map((c) => (typeof c === "string" ? c : c.rule)).join(", ")} after ${MAX_RETRIES} attempts`,
         );
       }
       for (const name of tokenPools) {
@@ -237,6 +246,13 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
 
   let autoIndex = 0;
   const used = new Map<string, number>();
+  /** The next port from a pool, in its shuffled order. */
+  const drawPort = (name: string): PortType => {
+    const pool = shuffledPorts.get(name) ?? [];
+    const i = used.get(name) ?? 0;
+    used.set(name, i + 1);
+    return pool.length > 0 ? pool[i % pool.length]! : "any3to1";
+  };
   const ports: ResolvedPort[] = portDefs.map((p) => {
     let edge = p.edge;
     if (edge === "auto") {
@@ -245,16 +261,15 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       autoIndex++;
     }
     const name = poolName(p.type);
-    let type: PortType;
-    if (name) {
-      const pool = shuffledPorts.get(name) ?? [];
-      const i = used.get(name) ?? 0;
-      used.set(name, i + 1);
-      type = pool.length > 0 ? pool[i % pool.length]! : "any3to1";
-    } else {
-      type = p.type as PortType;
-    }
-    return { edgeId: edge, type };
+    return { edgeId: edge, type: name ? drawPort(name) : (p.type as PortType) };
+  });
+
+  // Markers (spec 018): a harbor lying on the water takes its type from a port pool too.
+  const markers: ResolvedMarker[] | undefined = def.markers?.map((m) => {
+    const { data, ...rest } = m;
+    if (!data) return rest;
+    const name = poolName(data.port);
+    return { ...rest, data: { port: name ? drawPort(name) : (data.port as PortType) } };
   });
 
   // The robber starts on a terrain ("desert"), a hex ("q,r"), or the hex with a token ("token:12").
@@ -276,6 +291,7 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
       ...(robberStart !== undefined ? { robberStart } : {}),
       ...(def.features !== undefined ? { features: def.features } : {}),
       ...(def.scenario !== undefined ? { scenario: def.scenario } : {}),
+      ...(markers !== undefined ? { markers } : {}),
       modules: def.modules,
     },
     rng: r,

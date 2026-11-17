@@ -132,6 +132,7 @@ function chooseAction(state: GameState, rng: BotRng): { player: PlayerId; action
     ["BUILD_SHIP", 0.6],
     ["BUILD_ROAD", 0.7],
     ["MOVE_SHIP", 0.15],
+    ["PLACE_HARBOR", 0.9],
   ] as const) {
     const options = legal.filter((a) => a.type === type);
     if (options.length > 0 && rng.chance(p)) return { player, action: rng.pick(options) };

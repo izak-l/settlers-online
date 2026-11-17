@@ -15,6 +15,9 @@
  *   H F P W M G D  hills forest pasture fields(wheat) mountains gold desert, then the token,
  *                  then an optional lowercase region letter (no letter = the main region)
  *
+ * Markers (spec 018) sit on the edge between a hex (row, k) and its neighbour in a direction,
+ * like ports; a harbor marker's type is drawn from the layout's `harbors` pool.
+ *
  * e.g. "H12n" is hills with a 12 in region n. Axial coordinates: r = row − rowOffset,
  * q = (k − row) / 2.
  */
@@ -40,7 +43,13 @@ interface Layout {
   pirate?: [number, number] | "frame";
   /** Scenario settings for this map only (e.g. its fog stack), merged over the scenario's. */
   scenario?: Record<string, unknown>;
+  /** Things lying on the water at the start (spec 018), in the order they're numbered. */
+  markers?: { kind: MarkerKind; at: [number, number]; dir: Dir }[];
+  /** The harbors lying on the water, shuffled onto the harbor markers. */
+  harbors?: Partial<Record<PortType, number>>;
 }
+
+type MarkerKind = "vp-token" | "dev-card" | "harbor";
 
 interface Scenario {
   id: string;
@@ -48,6 +57,8 @@ interface Scenario {
   description: string;
   vpToWin: number;
   scenario: Record<string, unknown>;
+  /** Modules after base and seafaring (a scenario module, spec 018 onwards). */
+  modules?: string[];
   layouts: Layout[];
   /** How to make the variable-setup maps (spec 017) from the fixed ones. */
   variable?: Variable;
@@ -64,11 +75,13 @@ interface Variable {
   constraints: string[];
   /** Per player size: "token:12", "desert", or "fixed" (where the fixed map puts it). */
   robber: Record<string, string>;
+  /** Tokens kept off some hexes, given as layout cells (row, k). */
+  tokensOff?: { tokens: number[]; cells: [number, number][] };
 }
 
 type HexOut = { q: number; r: number; terrain: string; token?: number | string; region?: string };
 
-function variableOf(s: Scenario, fixed: ReturnType<typeof build>, size: string) {
+function variableOf(s: Scenario, layout: Layout, fixed: ReturnType<typeof build>, size: string) {
   const v = s.variable!;
   const terrain: Record<string, Record<string, number>> = {};
   const tokens: Record<string, number[]> = {};
@@ -83,6 +96,15 @@ function variableOf(s: Scenario, fixed: ReturnType<typeof build>, size: string) 
   const portCounts: Record<string, number> = {};
   for (const p of fixed.ports) portCounts[p.type] = (portCounts[p.type] ?? 0) + 1;
   const robber = v.robber[size] ?? "fixed";
+  const middle = Math.floor(layout.rows.length / 2);
+  const constraints: unknown[] = [...v.constraints];
+  if (v.tokensOff) {
+    constraints.push({
+      rule: "no-tokens-on-hexes",
+      tokens: v.tokensOff.tokens,
+      hexes: v.tokensOff.cells.map(([row, k]) => keyOf(row, k, middle)),
+    });
+  }
   return {
     ...fixed,
     id: fixed.id.replace(/-fixed$/, "-variable"),
@@ -92,11 +114,14 @@ function variableOf(s: Scenario, fixed: ReturnType<typeof build>, size: string) 
       tokens: Object.fromEntries(
         Object.entries(tokens).map(([k, t]) => [k, t.sort((a, b) => a - b)]),
       ),
-      ports: { ports: portCounts },
+      ports: {
+        ...(fixed.ports.length > 0 ? { ports: portCounts } : {}),
+        ...fixed.pools?.ports,
+      },
     },
     ports: fixed.ports.map((p) => ({ edge: p.edge, type: "pool:ports" })),
     robberStart: robber === "fixed" ? fixed.robberStart : robber,
-    ...(v.constraints.length > 0 ? { constraints: v.constraints } : {}),
+    ...(constraints.length > 0 ? { constraints } : {}),
   };
 }
 
@@ -165,12 +190,23 @@ function build(s: Scenario, layout: Layout) {
     }
   });
   const at = ([row, k]: [number, number]) => keyOf(row, k, middle);
-  const ports = layout.ports.map((p) => {
-    const land = at(p.at);
-    if (!seen.has(land)) throw new Error(`${s.id} ${layout.variant}: port on missing hex ${land}`);
-    const [dr, dk] = STEP[p.dir];
-    const other = keyOf(p.at[0] + dr, p.at[1] + dk, middle);
-    return { edge: edgeKey(land, other), type: p.type };
+  const edgeAt = (cell: [number, number], dir: Dir, what: string) => {
+    const land = at(cell);
+    if (!seen.has(land))
+      throw new Error(`${s.id} ${layout.variant}: ${what} on missing hex ${land}`);
+    const [dr, dk] = STEP[dir];
+    return edgeKey(land, keyOf(cell[0] + dr, cell[1] + dk, middle));
+  };
+  const ports = layout.ports.map((p) => ({ edge: edgeAt(p.at, p.dir, "port"), type: p.type }));
+  const numbered: Record<string, number> = {};
+  const markers = (layout.markers ?? []).map((m) => {
+    numbered[m.kind] = (numbered[m.kind] ?? 0) + 1;
+    return {
+      id: `${m.kind}-${numbered[m.kind]}`,
+      kind: m.kind,
+      at: { edge: edgeAt(m.at, m.dir, "marker") },
+      ...(m.kind === "harbor" ? { data: { port: "pool:harbors" } } : {}),
+    };
   });
   return {
     id: `${s.id}-${layout.variant}`,
@@ -180,6 +216,7 @@ function build(s: Scenario, layout: Layout) {
     players: layout.players,
     vpToWin: s.vpToWin,
     hexes,
+    ...(layout.harbors ? { pools: { ports: { harbors: layout.harbors } } } : {}),
     ports,
     robberStart: at(layout.robber),
     scenario: {
@@ -191,7 +228,8 @@ function build(s: Scenario, layout: Layout) {
           ? { pirateStart: at(layout.pirate) }
           : {}),
     },
-    modules: ["base", "seafaring"],
+    ...(markers.length > 0 ? { markers } : {}),
+    modules: ["base", "seafaring", ...(s.modules ?? [])],
   };
 }
 
@@ -499,6 +537,84 @@ const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    // Scenario 5 (pages 12–13). One map for 3 and 4 players. Only the large island has number
+    // tokens; the islets around it hold the things lying on the water.
+    id: "lost-settlers",
+    name: "Lost Settlers",
+    description:
+      "Settle the great island, then sail among the bare islets for victory tokens, hidden cards and harbors you can move.",
+    vpToWin: 13,
+    scenario: { islandBonus: 0, home: { regions: ["main"] }, setupRegions: ["main"] },
+    modules: ["sf-lost-settlers"],
+    // The large island's land and tokens are shuffled; the islets stay put (page 13).
+    variable: {
+      pool: (region) => (region === "main" ? "main" : null),
+      constraints: [],
+      robber: { "3p": "fixed", "4p": "fixed" },
+      // The three hexes outlined on the island's east side never take a 5, 6, 8 or 9.
+      tokensOff: {
+        tokens: [5, 6, 8, 9],
+        cells: [
+          [2, 12],
+          [3, 13],
+          [4, 12],
+        ],
+      },
+    },
+    layouts: (["3p-fixed", "4p-fixed"] as const).map((variant): Layout => ({
+      variant,
+      players: variant === "3p-fixed" ? THREE : FOUR,
+      rows: [
+        "4: Ga Ma ~ Db Mb Wb",
+        "3: ~ ~ ~ ~ ~ ~ ~",
+        "2: W6 F9 M11 H5 F6 M4 ~ Pc",
+        "1: ~ P10 H8 P4 W12 F5 P2 ~ ~",
+        "2: F11 W9 M3 P8 H10 W3 ~ Fd",
+        "3: ~ ~ ~ ~ ~ ~ ~",
+        "4: De He ~ Hf Df Gf",
+      ],
+      regions: {
+        a: "northwest",
+        b: "northeast",
+        c: "east",
+        d: "southeast",
+        e: "southwest",
+        f: "south",
+      },
+      ports: [],
+      markers: [
+        { kind: "vp-token", at: [0, 4], dir: "NE" },
+        { kind: "vp-token", at: [0, 10], dir: "NE" },
+        { kind: "vp-token", at: [0, 14], dir: "NE" },
+        { kind: "vp-token", at: [2, 16], dir: "E" },
+        { kind: "vp-token", at: [4, 16], dir: "E" },
+        { kind: "vp-token", at: [6, 4], dir: "SE" },
+        { kind: "vp-token", at: [6, 10], dir: "SW" },
+        { kind: "vp-token", at: [6, 14], dir: "SE" },
+        { kind: "dev-card", at: [0, 4], dir: "W" },
+        { kind: "dev-card", at: [0, 14], dir: "E" },
+        { kind: "dev-card", at: [6, 4], dir: "W" },
+        { kind: "dev-card", at: [6, 14], dir: "E" },
+        { kind: "harbor", at: [0, 4], dir: "NW" },
+        { kind: "harbor", at: [0, 10], dir: "NW" },
+        { kind: "harbor", at: [2, 16], dir: "NE" },
+        { kind: "harbor", at: [4, 16], dir: "SE" },
+        { kind: "harbor", at: [6, 4], dir: "SW" },
+        { kind: "harbor", at: [6, 10], dir: "SE" },
+      ],
+      harbors: {
+        any3to1: 1,
+        wood2to1: 1,
+        brick2to1: 1,
+        sheep2to1: 1,
+        wheat2to1: 1,
+        ore2to1: 1,
+      },
+      robber: [6, 12],
+      pirate: [0, 8],
+    })),
+  },
 ];
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -511,7 +627,7 @@ for (const s of SCENARIOS) {
     console.log(`${def.id}: ${def.hexes.length} hexes (${land} land), ${def.ports.length} ports`);
     if (s.variable && layout.variant.endsWith("-fixed")) {
       const size = layout.variant.slice(0, 2);
-      const vdef = variableOf(s, def, size);
+      const vdef = variableOf(s, layout, def, size);
       writeFileSync(
         join(here, s.id, `${size}-variable.json`),
         JSON.stringify(vdef, null, 2) + "\n",

@@ -1706,3 +1706,21 @@ button.card-group:focus-visible {
 .harbor-marker .port-sign {
   stroke-dasharray: 3 2;
 }
+
+/* Villages and their cloth (spec 019) */
+.village {
+  pointer-events: none;
+}
+.village.empty {
+  opacity: 0.55;
+}
+.cloth-badge rect {
+  fill: #6b3fa0;
+  stroke: #f3e6c8;
+  stroke-width: 1.2;
+}
+.cloth-badge text {
+  fill: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}

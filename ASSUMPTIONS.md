@@ -304,3 +304,35 @@ Taking a harbor pushes a `PLACE_HARBOR` step if there is a legal edge. Otherwise
 The rulebook places the harbors face up at random even in the fixed setup, so harbor markers draw their type from a port pool when the map is generated. With development cards switched off there is nothing to deal, so the card markers are left off the board.
 
 **Test:** `validator.test.ts` — "accepts tokens, cards and harbors on sea edges, with a port pool for the harbors"; `lost-settlers.test.ts` — "with development cards switched off, no cards are dealt and the markers go".
+
+## Spec 019 — Weavers' Isles (M10g)
+
+### A48: A closed route is one whose ships join your building to a village
+
+A ship is closed (can't move) when, without it, one of its ends still reaches one of your buildings and the other reaches a village along your own roads and ships, joined as for the longest route. Ships branching off the route stay movable.
+
+**Test:** `weavers.test.ts` — "ships on a route to a village can't move; a branch off it can".
+
+### A49: Trade with a village, once opened, lasts the whole game
+
+A route opens trade the moment it is complete (building, ship move, road or new settlement). Trade isn't lost if an opponent later cuts the route. Opening trade with a village that has no cloth left takes nothing. The pirate may be moved, or parked off the board, by any player who has opened trade with at least one village.
+
+**Test:** `weavers.test.ts` — "a route from your building to a village opens trade and takes 1 cloth at once", "can't be moved before you trade with a village".
+
+### A50: The pirate may take a cloth instead of a card; the robber only takes cards
+
+When the pirate robs, the thief picks a player and either a random resource card or one cloth. A player with only cloth can still be robbed. The robber works as in the base game.
+
+**Test:** `weavers.test.ts` — "robs a resource card or a cloth from a ship owner next to it".
+
+### A51: The five-villages ending: most VP, then most cloth, then seat order
+
+At the end of a turn with five or more villages out of cloth, the player with the most VP wins. A tie goes to the most cloth, and a tie on both to the earliest seat. The usual 14 VP win during your own turn still applies.
+
+**Test:** `weavers.test.ts` — "with five villages empty at the end of a turn, the most VP wins", "a tie goes to the most cloth".
+
+### A52: Variable setup starts the robber on the first 12 on the map
+
+The rulebook lets players choose which 12 the robber starts on. We take the first hex with a 12 in the generated map.
+
+**Test:** `scenarios.test.ts` — "generates boards that keep the regions and the token rules" (robber start defined).

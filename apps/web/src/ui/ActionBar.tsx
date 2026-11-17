@@ -149,15 +149,20 @@ export function ActionBar({ snap, seats, mode, setMode, send, error }: Props) {
     );
   } else {
     switch (top?.kind) {
-      case "PLACE_SETTLEMENT":
+      case "PLACE_SETTLEMENT": {
+        const round = Number(top.data?.["round"] ?? 1);
+        // A step may say whether it pays (spec 019's third settlement); otherwise round 2 does.
+        const pays =
+          typeof top.data?.["resources"] === "boolean" ? top.data["resources"] : round === 2;
         body = (
           <p className="prompt">
-            Place your {top.data?.["round"] === 2 ? "second" : "first"} settlement on a highlighted
-            corner.
-            {top.data?.["round"] === 2 && " It collects one resource from each hex it touches."}
+            Place your {["first", "second", "third"][round - 1] ?? "next"} settlement on a
+            highlighted corner.
+            {pays && " It collects one resource from each hex it touches."}
           </p>
         );
         break;
+      }
       case "PLACE_ROAD":
         body = (
           <>

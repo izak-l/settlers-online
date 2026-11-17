@@ -20,8 +20,10 @@ export function StealPicker({
       <div className="row wrap">
         {snap.legal.map((a) =>
           a.type === "STEAL" ? (
-            <button key={a.from} onClick={() => send(a)}>
-              {nameOf(seats, a.from)} ({snap.view.zones[`hand-${a.from}`]?.count ?? 0} cards)
+            <button key={`${a.from}-${a.what ?? "card"}`} onClick={() => send(a)}>
+              {a.what === "cloth"
+                ? `${nameOf(seats, a.from)}: 1 cloth (${snap.view.zones[`cloth-${a.from}`]?.contents?.["cloth"] ?? 0} held)`
+                : `${nameOf(seats, a.from)} (${snap.view.zones[`hand-${a.from}`]?.count ?? 0} cards)`}
             </button>
           ) : null,
         )}

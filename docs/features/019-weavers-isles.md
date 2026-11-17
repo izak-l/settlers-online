@@ -49,4 +49,13 @@ Engine tests above; maps component counts; `pnpm sim --scenario weavers-isles`; 
 
 ## Status
 
-Draft
+Shipped (M10g, on `m10`). As built:
+
+- **Setup sequence** needed no new hook: the module's `setup` (run after base's) rewrites the setup steps, and each step carries `resources` (does this settlement pay?), which base reads with a round-2 default.
+- **`checkWin`**: the last module that defines it decides; the module checks its ending flag (set by `onTurnEnd`), else applies base's `activePlayerWins`.
+- **Steal choices**: base's `rob` serves the robber and the pirate; hooks `stealOptions` / `stealItem` add cloth for the pirate; `STEAL` takes an optional `what`.
+- **Closed routes** use a new `canMove` hook, called when a ship moves.
+- **Small islands** are the regions that hold a village, so the map needs no extra scenario field. Village cloth amounts (5 each, 10 in the supply) are module constants.
+- **Maps:** one layout for 3 and 4 players (the rulebook prints one map): 44 hexes inside the frame (24 land, 18 sea tiles plus the frame's 2 water spaces); port types are shuffled onto the nine spots in both setups; the variable maps shuffle the two large islands together.
+- **UI:** villages with a number and a cloth badge on their corners; cloth in the players panel; the steal picker offers cloth; a third-settlement prompt; the winner panel says when the villages ran out.
+- Readings A48–A52 in ASSUMPTIONS.md.

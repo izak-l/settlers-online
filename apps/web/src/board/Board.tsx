@@ -323,6 +323,32 @@ export function Board({ snap, seats, mode, onAction }: Props) {
           );
         })}
 
+        {/* Villages (spec 019): a number on a corner, with the cloth still next to it */}
+        {(view.map.markers ?? []).map((m) => {
+          if (m.kind !== "village" || !("vertex" in m.at)) return null;
+          const token = typeof m.data?.["token"] === "number" ? m.data["token"] : 0;
+          const left = view.zones[`cloth-${m.id}`]?.contents?.["cloth"] ?? 0;
+          const [x, y] = vertexPoint(m.at.vertex);
+          const label = `Village on ${token}: ${left} cloth left`;
+          return (
+            <g
+              key={m.id}
+              className={left === 0 ? "village empty" : "village"}
+              role="img"
+              aria-label={label}
+            >
+              <title>{label}</title>
+              <Token token={token} at={[x, y]} />
+              <g className="cloth-badge">
+                <rect x={x + 12} y={y - 22} width={22} height={15} rx={4} />
+                <text x={x + 23} y={y - 14} textAnchor="middle" dominantBaseline="middle">
+                  {left}
+                </text>
+              </g>
+            </g>
+          );
+        })}
+
         {/* Things lying on the water (spec 018): taken by the first ship to reach their edge */}
         {(view.map.markers ?? []).map((m) => {
           if (!("edge" in m.at)) return null;

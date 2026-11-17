@@ -93,6 +93,10 @@ export function GameView({ client }: { client: GameClient }) {
         {snap.view.winner !== undefined && (
           <section className="panel winner" role="status">
             <h2>{seats.find((s) => s.id === snap.view.winner)?.name ?? snap.view.winner} wins!</h2>
+            {/* A scenario's own ending (spec 019: the villages ran out of cloth). */}
+            {snap.log.some((e) => e.type === "VILLAGES_EMPTY") && (
+              <p>Five villages ran out of cloth, so the most victory points won.</p>
+            )}
             <p className="muted">
               Final scores: {seats.map((s) => `${s.name} ${snap.scores[s.id] ?? 0}`).join(" · ")}
             </p>

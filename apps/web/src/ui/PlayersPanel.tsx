@@ -24,6 +24,8 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
           // Lost Settlers (spec 018): VP tokens found, harbors picked up and not yet placed.
           const vpTokens = snap.view.zones[`vp-${s.id}`]?.contents?.["vpToken"] ?? 0;
           const harbors = lost?.held?.[s.id]?.length ?? 0;
+          // Weavers' Isles (spec 019): cloth woven by the villages they trade with.
+          const clothZone = snap.view.zones[`cloth-${s.id}`]?.contents;
           return (
             <li
               key={s.id}
@@ -43,6 +45,7 @@ export function PlayersPanel({ snap, seats }: { snap: Snapshot; seats: SeatInfo[
                   )}
                   {knights > 0 && <span>{plural(knights, "knight")}</span>}
                   {vpTokens > 0 && <span>{plural(vpTokens, "VP token")}</span>}
+                  {clothZone && <span>{clothZone["cloth"] ?? 0} cloth</span>}
                   {harbors > 0 && <span>{plural(harbors, "harbor")} to place</span>}
                 </span>
                 {(base.longestRoad === s.id || base.largestArmy === s.id) && (

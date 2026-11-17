@@ -1,0 +1,434 @@
+{
+  "id": "weavers-isles-3p-variable",
+  "name": "Weavers' Isles",
+  "description": "Link your roads and ships to the islet villages and trade for cloth: every two bolts are a victory point.",
+  "version": 1,
+  "players": {
+    "min": 1,
+    "max": 3
+  },
+  "vpToWin": 14,
+  "hexes": [
+    {
+      "q": 2,
+      "r": -3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 3,
+      "r": -3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 4,
+      "r": -3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 5,
+      "r": -3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 6,
+      "r": -3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 1,
+      "r": -2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 2,
+      "r": -2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 3,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": -2,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 6,
+      "r": -2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 0,
+      "r": -1,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "north"
+    },
+    {
+      "q": 1,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": -1,
+      "terrain": "gold",
+      "region": "isle-a"
+    },
+    {
+      "q": 4,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": -1,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 0,
+      "terrain": "desert",
+      "region": "isle-b"
+    },
+    {
+      "q": 2,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 0,
+      "terrain": "desert",
+      "region": "isle-c"
+    },
+    {
+      "q": 5,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": 6,
+      "r": 0,
+      "terrain": "sea"
+    },
+    {
+      "q": -1,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 0,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 1,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 1,
+      "terrain": "gold",
+      "region": "isle-d"
+    },
+    {
+      "q": 3,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 4,
+      "r": 1,
+      "terrain": "sea"
+    },
+    {
+      "q": 5,
+      "r": 1,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": -1,
+      "r": 2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 0,
+      "r": 2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 1,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 2,
+      "r": 2,
+      "terrain": "sea"
+    },
+    {
+      "q": 3,
+      "r": 2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 4,
+      "r": 2,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": -1,
+      "r": 3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 0,
+      "r": 3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 1,
+      "r": 3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 2,
+      "r": 3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    },
+    {
+      "q": 3,
+      "r": 3,
+      "terrain": "pool:large",
+      "token": "pool:large",
+      "region": "south"
+    }
+  ],
+  "pools": {
+    "terrain": {
+      "large": {
+        "forest": 4,
+        "pasture": 4,
+        "hills": 3,
+        "fields": 5,
+        "mountains": 4
+      }
+    },
+    "tokens": {
+      "large": [2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12]
+    },
+    "ports": {
+      "ports": {
+        "any3to1": 4,
+        "wood2to1": 1,
+        "brick2to1": 1,
+        "sheep2to1": 1,
+        "wheat2to1": 1,
+        "ore2to1": 1
+      }
+    }
+  },
+  "ports": [
+    {
+      "edge": "2,-3|3,-4",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "5,-3|5,-4",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "0,-2|1,-2",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "6,-2|7,-2",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-1,2|-2,2",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "5,1|6,1",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "4,2|4,3",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "-1,4|0,3",
+      "type": "pool:ports"
+    },
+    {
+      "edge": "2,3|2,4",
+      "type": "pool:ports"
+    }
+  ],
+  "robberStart": "token:12",
+  "features": {
+    "longestRoad": false
+  },
+  "scenario": {
+    "islandBonus": 0,
+    "home": {
+      "regions": ["north", "south"]
+    },
+    "setupRegions": ["north", "south"],
+    "pirateStart": "6,0"
+  },
+  "markers": [
+    {
+      "id": "village-1",
+      "kind": "village",
+      "at": {
+        "vertex": "3,-1|3,-2|4,-2"
+      },
+      "data": {
+        "token": 11
+      }
+    },
+    {
+      "id": "village-2",
+      "kind": "village",
+      "at": {
+        "vertex": "2,0|3,-1|3,0"
+      },
+      "data": {
+        "token": 8
+      }
+    },
+    {
+      "id": "village-3",
+      "kind": "village",
+      "at": {
+        "vertex": "1,-1|1,0|2,-1"
+      },
+      "data": {
+        "token": 10
+      }
+    },
+    {
+      "id": "village-4",
+      "kind": "village",
+      "at": {
+        "vertex": "0,1|1,0|1,1"
+      },
+      "data": {
+        "token": 9
+      }
+    },
+    {
+      "id": "village-5",
+      "kind": "village",
+      "at": {
+        "vertex": "4,-1|4,0|5,-1"
+      },
+      "data": {
+        "token": 4
+      }
+    },
+    {
+      "id": "village-6",
+      "kind": "village",
+      "at": {
+        "vertex": "3,1|4,0|4,1"
+      },
+      "data": {
+        "token": 5
+      }
+    },
+    {
+      "id": "village-7",
+      "kind": "village",
+      "at": {
+        "vertex": "2,0|2,1|3,0"
+      },
+      "data": {
+        "token": 6
+      }
+    },
+    {
+      "id": "village-8",
+      "kind": "village",
+      "at": {
+        "vertex": "1,2|2,1|2,2"
+      },
+      "data": {
+        "token": 3
+      }
+    }
+  ],
+  "modules": ["base", "seafaring", "sf-weavers"]
+}

@@ -50,6 +50,17 @@ describe("fuzz: random bots", () => {
           });
   }, 120_000);
 
+  it("Weavers' Isles runs clean: fixed and variable, 3 and 4 players (spec 019)", () => {
+    for (const size of ["3p", "4p"])
+      for (const setup of ["fixed", "variable"])
+        for (let i = 0; i < 3; i++)
+          playGame(`ci-weavers-${size}-${setup}-${i}`, {
+            seats: size === "3p" ? 3 : 4,
+            map: `weavers-isles-${size}-${setup}`,
+            maxTurns: 150,
+          });
+  }, 120_000);
+
   it("plays on the chosen map and refuses an unknown one", () => {
     expect(playGame("map-check", { seats: 2, map: "grand-diamond", maxTurns: 1 }).map).toBe(
       "grand-diamond",

@@ -92,7 +92,7 @@ function checkPools(def: MapDef): ValidationError[] {
   // Ports on the coast and harbors lying on the water (spec 018) draw from the same port pools.
   const portSlots = [
     ...(def.ports ?? []).map((p) => p.type),
-    ...(def.markers ?? []).flatMap((m) => (m.data ? [m.data.port] : [])),
+    ...(def.markers ?? []).flatMap((m) => (m.data?.port ? [m.data.port] : [])),
   ];
   for (const name of new Set(portSlots.flatMap((t) => poolOf(t) ?? []))) {
     const slots = portSlots.filter((t) => poolOf(t) === name).length;
@@ -182,14 +182,18 @@ function checkMarkers(def: MapDef): ValidationError[] {
   for (const m of markers) {
     if (ids.has(m.id)) errors.push(err("MARKER", `Marker ${m.id} appears twice`));
     ids.add(m.id);
-    if (m.kind === "harbor" && !m.data)
+    if (m.kind === "harbor" && !m.data?.port)
       errors.push(err("MARKER", `Harbor marker ${m.id} needs a port type`));
+    if (m.kind === "village" && (!("vertex" in m.at) || m.data?.token === undefined))
+      errors.push(err("MARKER", `Village ${m.id} needs a corner and a number token`));
     const loc = m.at;
     const keys = "hex" in loc ? [loc.hex] : ("edge" in loc ? loc.edge : loc.vertex).split("|");
     if (!keys.every(isHexKey) || !keys.some((k) => at.has(k))) {
       errors.push(err("MARKER", `Marker ${m.id} is not on the map`));
       continue;
     }
+    if ("vertex" in loc && keys.length !== 3)
+      errors.push(err("MARKER", `Marker ${m.id} is not on a corner`));
     if ("edge" in loc && (keys.length !== 2 || !keys.some(water)))
       errors.push(err("MARKER", `Marker ${m.id} is not on a sea edge`));
   }

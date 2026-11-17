@@ -45,20 +45,25 @@ export const PortDefSchema = z.object({
 const HexKeyString = z.string().regex(/^-?\d+,-?\d+$/, "a hex as q,r");
 
 /**
- * Something lying on the board at the start, read by a scenario module (spec 018): a VP token, a
- * face-down development card, or a harbor (with its type, fixed or drawn from a port pool).
+ * Something on the board at the start, read by a scenario module: a VP token, a face-down
+ * development card, or a harbor (with its type, fixed or drawn from a port pool) lying on a sea
+ * edge (spec 018); or a village on a corner, with its number token (spec 019).
  */
 export const MarkerDefSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9-]{1,32}$/, "a marker id: lowercase, digits, -"),
-    kind: z.enum(["vp-token", "dev-card", "harbor"]),
+    kind: z.enum(["vp-token", "dev-card", "harbor", "village"]),
     at: z.union([
       z.object({ edge: z.string().min(1).max(64) }).strict(),
       z.object({ vertex: z.string().min(1).max(64) }).strict(),
       z.object({ hex: HexKeyString }).strict(),
     ]),
     data: z
-      .object({ port: z.union([PortType, z.string().startsWith("pool:")]) })
+      .object({
+        port: z.union([PortType, z.string().startsWith("pool:")]),
+        token: z.number().int().min(2).max(12),
+      })
+      .partial()
       .strict()
       .optional(),
   })
@@ -211,5 +216,5 @@ export interface ResolvedMap {
 }
 
 export interface ResolvedMarker extends Omit<MarkerDef, "data"> {
-  data?: { port: ResolvedPort["type"] };
+  data?: { port?: ResolvedPort["type"] | undefined; token?: number | undefined };
 }

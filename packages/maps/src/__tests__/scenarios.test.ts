@@ -22,6 +22,13 @@ const LOST_SETTLERS = {
   ports: { two: 5, three: 1 },
 };
 
+// Number discs include the 8 on the islets' corners (the villages).
+const WEAVERS_ISLES = {
+  land: { gold: 2, hills: 3, forest: 4, pasture: 4, fields: 5, mountains: 4, desert: 2 },
+  tokens: [2, 3, 3, 3, 3, 3, 3, 3, 3, 2],
+  ports: { two: 5, three: 4 },
+};
+
 const RULEBOOK: Record<
   string,
   { land: Record<string, number>; tokens: number[]; ports: { two: number; three: number } }
@@ -70,6 +77,8 @@ const RULEBOOK: Record<
   // One map for 3 and 4 players; every harbor starts on the water (counted with the ports).
   "lost-settlers-3p-fixed": LOST_SETTLERS,
   "lost-settlers-4p-fixed": LOST_SETTLERS,
+  "weavers-isles-3p-fixed": WEAVERS_ISLES,
+  "weavers-isles-4p-fixed": WEAVERS_ISLES,
 };
 
 const allMaps = SCENARIO_CATALOG.flatMap((s) => Object.values(s.maps) as MapDef[]);
@@ -115,6 +124,7 @@ describe("scenario catalog", () => {
         for (const [t, n] of Object.entries(pool)) land[t] = (land[t] ?? 0) + (n ?? 0);
       for (const pool of Object.values(def.pools?.tokens ?? {}))
         for (const t of pool) tokens[t - 2]!++;
+      for (const m of def.markers ?? []) if (m.data?.token) tokens[m.data.token - 2]!++;
       expect(land).toEqual(expected.land);
       expect(tokens.filter((_, i) => i !== 5)).toEqual(expected.tokens); // no 7
       const ports = def.ports ?? [];
@@ -132,8 +142,14 @@ describe("scenario catalog", () => {
 
     it("has the rulebook's things on the water", () => {
       const count = (kind: string) => (def.markers ?? []).filter((m) => m.kind === kind).length;
-      const expected = id.startsWith("lost-settlers") ? [8, 4, 6] : [0, 0, 0];
-      expect([count("vp-token"), count("dev-card"), count("harbor")]).toEqual(expected);
+      const expected = id.startsWith("lost-settlers")
+        ? [8, 4, 6, 0]
+        : id.startsWith("weavers-isles")
+          ? [0, 0, 0, 8]
+          : [0, 0, 0, 0];
+      expect([count("vp-token"), count("dev-card"), count("harbor"), count("village")]).toEqual(
+        expected,
+      );
     });
 
     it("has the rulebook's face-down stack when it has fog", () => {

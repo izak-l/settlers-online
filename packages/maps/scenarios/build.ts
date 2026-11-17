@@ -16,7 +16,8 @@
  *                  then an optional lowercase region letter (no letter = the main region)
  *
  * Markers (spec 018) sit on the edge between a hex (row, k) and its neighbour in a direction,
- * like ports; a harbor marker's type is drawn from the layout's `harbors` pool.
+ * like ports; a harbor marker's type is drawn from the layout's `harbors` pool. A village (spec
+ * 019) sits on a hex's north or south corner instead, with its number token.
  *
  * e.g. "H12n" is hills with a 12 in region n. Axial coordinates: r = row − rowOffset,
  * q = (k − row) / 2.
@@ -36,20 +37,27 @@ interface Layout {
   rows: string[];
   /** Region letter → region name; unlettered land is "main". */
   regions: Record<string, string>;
-  /** A port on the edge between a land hex (row, k) and its neighbour in `dir`. */
-  ports: { at: [number, number]; dir: Dir; type: PortType }[];
+  /**
+   * A port on the edge between a land hex (row, k) and its neighbour in `dir`. With `portPool`,
+   * types are left out and shuffled onto the spots from the pool.
+   */
+  ports: { at: [number, number]; dir: Dir; type?: PortType }[];
+  portPool?: Partial<Record<PortType, number>>;
   robber: [number, number];
   /** A sea hex, or "frame": in play but starting off the board. Omitted: no pirate. */
   pirate?: [number, number] | "frame";
   /** Scenario settings for this map only (e.g. its fog stack), merged over the scenario's. */
   scenario?: Record<string, unknown>;
   /** Things lying on the water at the start (spec 018), in the order they're numbered. */
-  markers?: { kind: MarkerKind; at: [number, number]; dir: Dir }[];
+  markers?: (
+    | { kind: Exclude<MarkerKind, "village">; at: [number, number]; dir: Dir }
+    | { kind: "village"; at: [number, number]; corner: "N" | "S"; token: number }
+  )[];
   /** The harbors lying on the water, shuffled onto the harbor markers. */
   harbors?: Partial<Record<PortType, number>>;
 }
 
-type MarkerKind = "vp-token" | "dev-card" | "harbor";
+type MarkerKind = "vp-token" | "dev-card" | "harbor" | "village";
 
 interface Scenario {
   id: string;
@@ -59,6 +67,8 @@ interface Scenario {
   scenario: Record<string, unknown>;
   /** Modules after base and seafaring (a scenario module, spec 018 onwards). */
   modules?: string[];
+  /** Base-game parts switched off for this scenario (spec 014), e.g. no longest route. */
+  features?: Record<string, boolean>;
   layouts: Layout[];
   /** How to make the variable-setup maps (spec 017) from the fixed ones. */
   variable?: Variable;
@@ -115,7 +125,7 @@ function variableOf(s: Scenario, layout: Layout, fixed: ReturnType<typeof build>
         Object.entries(tokens).map(([k, t]) => [k, t.sort((a, b) => a - b)]),
       ),
       ports: {
-        ...(fixed.ports.length > 0 ? { ports: portCounts } : {}),
+        ...(fixed.ports.length > 0 && !fixed.pools?.ports?.["ports"] ? { ports: portCounts } : {}),
         ...fixed.pools?.ports,
       },
     },
@@ -197,12 +207,30 @@ function build(s: Scenario, layout: Layout) {
     const [dr, dk] = STEP[dir];
     return edgeKey(land, keyOf(cell[0] + dr, cell[1] + dk, middle));
   };
-  const ports = layout.ports.map((p) => ({ edge: edgeAt(p.at, p.dir, "port"), type: p.type }));
+  const ports = layout.ports.map((p) => ({
+    edge: edgeAt(p.at, p.dir, "port"),
+    type: p.type ?? "pool:ports",
+  }));
+  const cornerAt = ([row, k]: [number, number], corner: "N" | "S") => {
+    const land = at([row, k]);
+    if (!seen.has(land))
+      throw new Error(`${s.id} ${layout.variant}: village on missing hex ${land}`);
+    const dr = corner === "N" ? -1 : 1;
+    return [land, keyOf(row + dr, k - 1, middle), keyOf(row + dr, k + 1, middle)].sort().join("|");
+  };
   const numbered: Record<string, number> = {};
   const markers = (layout.markers ?? []).map((m) => {
     numbered[m.kind] = (numbered[m.kind] ?? 0) + 1;
+    const id = `${m.kind}-${numbered[m.kind]}`;
+    if (m.kind === "village")
+      return {
+        id,
+        kind: m.kind,
+        at: { vertex: cornerAt(m.at, m.corner) },
+        data: { token: m.token },
+      };
     return {
-      id: `${m.kind}-${numbered[m.kind]}`,
+      id,
       kind: m.kind,
       at: { edge: edgeAt(m.at, m.dir, "marker") },
       ...(m.kind === "harbor" ? { data: { port: "pool:harbors" } } : {}),
@@ -216,9 +244,19 @@ function build(s: Scenario, layout: Layout) {
     players: layout.players,
     vpToWin: s.vpToWin,
     hexes,
-    ...(layout.harbors ? { pools: { ports: { harbors: layout.harbors } } } : {}),
+    ...(layout.harbors || layout.portPool
+      ? {
+          pools: {
+            ports: {
+              ...(layout.harbors ? { harbors: layout.harbors } : {}),
+              ...(layout.portPool ? { ports: layout.portPool } : {}),
+            },
+          },
+        }
+      : {}),
     ports,
     robberStart: at(layout.robber),
+    ...(s.features ? { features: s.features } : {}),
     scenario: {
       ...s.scenario,
       ...layout.scenario,
@@ -613,6 +651,73 @@ const SCENARIOS: Scenario[] = [
       },
       robber: [6, 12],
       pirate: [0, 8],
+    })),
+  },
+  {
+    // Scenario 6 (pages 14–15). One map for 3 and 4 players: two large islands (north and south)
+    // around four islets, each with a village on its north and south corners.
+    id: "weavers-isles",
+    name: "Weavers' Isles",
+    description:
+      "Link your roads and ships to the islet villages and trade for cloth: every two bolts are a victory point.",
+    vpToWin: 14,
+    scenario: {
+      islandBonus: 0,
+      home: { regions: ["north", "south"] },
+      setupRegions: ["north", "south"],
+    },
+    modules: ["sf-weavers"],
+    features: { longestRoad: false },
+    // The large islands' land and tokens are shuffled together; islets and villages stay put.
+    variable: {
+      pool: (region) => (region === "north" || region === "south" ? "large" : null),
+      constraints: [],
+      robber: { "3p": "token:12", "4p": "token:12" },
+    },
+    layouts: (["3p-fixed", "4p-fixed"] as const).map((variant): Layout => ({
+      variant,
+      players: variant === "3p-fixed" ? THREE : FOUR,
+      rows: [
+        "4: F4n P6n H5n P11n W8n",
+        "3: W3n F12n ~ ~ F3n M9n",
+        "2: W12n ~ ~ Ga ~ ~ ~",
+        "1: ~ ~ Db ~ ~ Dc ~ ~",
+        "2: ~ ~ ~ Gd ~ ~ M2s",
+        "3: H9s W2s ~ ~ P11s M4s",
+        "4: P10s F6s M5s W10s H8s",
+      ],
+      regions: { n: "north", s: "south", a: "isle-a", b: "isle-b", c: "isle-c", d: "isle-d" },
+      ports: [
+        { at: [0, 4], dir: "NE" },
+        { at: [0, 10], dir: "NW" },
+        { at: [1, 3], dir: "W" },
+        { at: [1, 13], dir: "E" },
+        { at: [5, 3], dir: "W" },
+        { at: [4, 14], dir: "E" },
+        { at: [5, 13], dir: "SE" },
+        { at: [6, 6], dir: "SW" },
+        { at: [6, 10], dir: "SE" },
+      ],
+      portPool: {
+        any3to1: 4,
+        wood2to1: 1,
+        brick2to1: 1,
+        sheep2to1: 1,
+        wheat2to1: 1,
+        ore2to1: 1,
+      },
+      markers: [
+        { kind: "village", at: [2, 8], corner: "N", token: 11 },
+        { kind: "village", at: [2, 8], corner: "S", token: 8 },
+        { kind: "village", at: [3, 5], corner: "N", token: 10 },
+        { kind: "village", at: [3, 5], corner: "S", token: 9 },
+        { kind: "village", at: [3, 11], corner: "N", token: 4 },
+        { kind: "village", at: [3, 11], corner: "S", token: 5 },
+        { kind: "village", at: [4, 8], corner: "N", token: 6 },
+        { kind: "village", at: [4, 8], corner: "S", token: 3 },
+      ],
+      robber: [2, 2],
+      pirate: [3, 15],
     })),
   },
 ];

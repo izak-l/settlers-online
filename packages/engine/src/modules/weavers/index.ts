@@ -206,9 +206,15 @@ export const weaversModule: RulesModule = {
       });
       return true;
     },
-    onTurnEnd(draft) {
+    onTurnEnd(draft, _player, { events }) {
       const empty = villages(draft).filter((v) => clothOf(draft, v.id) === 0).length;
-      if (empty >= EMPTY_VILLAGES_TO_END) weavers(draft).ended = true;
+      if (empty < EMPTY_VILLAGES_TO_END) return;
+      weavers(draft).ended = true;
+      events.push({
+        type: "VILLAGES_EMPTY",
+        text: `${empty} villages have run out of cloth: the game ends`,
+        data: { empty },
+      });
     },
     checkWin(state, modules) {
       if (weavers(state).ended) return mostVP(state, modules);

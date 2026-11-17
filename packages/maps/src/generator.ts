@@ -268,8 +268,10 @@ export function generateMap(def: MapDef, rng: RngState): { map: ResolvedMap; rng
   const markers: ResolvedMarker[] | undefined = def.markers?.map((m) => {
     const { data, ...rest } = m;
     if (!data) return rest;
-    const name = poolName(data.port);
-    return { ...rest, data: { port: name ? drawPort(name) : (data.port as PortType) } };
+    const { port, ...other } = data;
+    if (port === undefined) return { ...rest, data: other };
+    const name = poolName(port);
+    return { ...rest, data: { ...other, port: name ? drawPort(name) : (port as PortType) } };
   });
 
   // The robber starts on a terrain ("desert"), a hex ("q,r"), or the hex with a token ("token:12").

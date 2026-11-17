@@ -141,6 +141,10 @@ const watched = [
   "TOOK_BOARD_CARD",
   "TOOK_HARBOR",
   "PLACED_HARBOR",
+  "VILLAGE_TRADE",
+  "CLOTH",
+  "VILLAGES_EMPTY",
+  "GAME_WON",
   "AWARD",
 ];
 const seen = watched.filter((t) => totals[t]).map((t) => `${t} ${totals[t]}`);

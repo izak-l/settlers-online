@@ -203,6 +203,20 @@ describe("validateMapDef: markers (spec 018)", () => {
     );
   });
 
+  it("accepts a village on a corner with a token; rejects one on an edge or without a token", () => {
+    expect(
+      validateMapDef(
+        island([{ id: "v", kind: "village", at: { vertex: "0,0|0,1|1,0" }, data: { token: 8 } }]),
+      ).ok,
+    ).toBe(true);
+    expect(
+      codes(island([{ id: "v", kind: "village", at: { edge: "0,0|1,0" }, data: { token: 8 } }])),
+    ).toContain("MARKER");
+    expect(codes(island([{ id: "v", kind: "village", at: { vertex: "0,0|0,1|1,0" } }]))).toContain(
+      "MARKER",
+    );
+  });
+
   it("counts harbors against their port pool", () => {
     const def = island(
       [{ id: "harbor-1", kind: "harbor", at: { edge: "0,1|1,0" }, data: { port: "pool:h" } }],
